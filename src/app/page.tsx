@@ -23,138 +23,115 @@ import { AlertToast } from "@/components/AlertToast";
 import { AlertSettings } from "@/components/AlertSettings";
 import { MacroDashboard } from "@/components/MacroDashboard";
 import { usePortfolio } from "@/context/PortfolioContext";
+import { AuthGuard } from "@/components/AuthGuard";
 import { Loader2 } from "lucide-react";
 
 export default function Home() {
-  const { user, loading } = useAuth();
   const { calculatedAssets, totalAssetsValue, totalProfitAndLoss, lastUpdated, isFetching } = usePortfolio();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
-  }, [user, loading, router]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
-          <p className="text-slate-400 font-bold animate-pulse">認証情報を確認中...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) return null;
 
   return (
-    <>
-      {/* 画面右上固定のトースト通知 */}
+    <AuthGuard>
       <AlertToast />
       <main className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 lg:p-12 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        <header className="flex flex-col justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">
-              My Portfolio
-            </h1>
-            <p className="text-slate-500 dark:text-slate-400">
-              あなたのすべての資産を一つの場所で管理
-            </p>
-          </div>
-        </header>
+        <div className="max-w-7xl mx-auto space-y-8">
+          <header className="flex flex-col justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">
+                My Portfolio
+              </h1>
+              <p className="text-slate-500 dark:text-slate-400">
+                あなたのすべての資産を一つの場所で管理
+              </p>
+            </div>
+          </header>
 
-        <section>
-          <DashboardHeader 
-            totalAssets={totalAssetsValue} 
-            totalProfitAndLoss={totalProfitAndLoss} 
-            lastUpdated={lastUpdated}
-            isFetching={isFetching}
-          />
-        </section>
+          <section>
+            <DashboardHeader 
+              totalAssets={totalAssetsValue} 
+              totalProfitAndLoss={totalProfitAndLoss} 
+              lastUpdated={lastUpdated}
+              isFetching={isFetching}
+            />
+          </section>
 
-        {/* マクロ経済状況 */}
-        <section>
-          <MacroDashboard />
-        </section>
+          {/* マクロ経済状況 */}
+          <section>
+            <MacroDashboard />
+          </section>
 
-        {/* AI インサイト & 戦略分析 */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <InvestmentAdvice />
-            <BehaviorInsight />
-          </div>
-          <div className="lg:col-span-1">
-            <InvestmentStrategyCard />
-          </div>
-        </section>
+          {/* AI インサイト & 戦略分析 */}
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <InvestmentAdvice />
+              <BehaviorInsight />
+            </div>
+            <div className="lg:col-span-1">
+              <InvestmentStrategyCard />
+            </div>
+          </section>
 
-        {/* センチメント分析 */}
-        <section>
-          <MarketSentiment />
-        </section>
+          {/* センチメント分析 */}
+          <section>
+            <MarketSentiment />
+          </section>
 
-        {/* パフォーマンス & リスク 分析 & 最適化 */}
-        <section className="space-y-8">
-          <PerformanceMetrics />
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <RiskAnalysis />
-            <PortfolioOptimization />
-          </div>
-        </section>
+          {/* パフォーマンス & リスク 分析 & 最適化 */}
+          <section className="space-y-8">
+            <PerformanceMetrics />
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <RiskAnalysis />
+              <PortfolioOptimization />
+            </div>
+          </section>
 
-        {/* グラフエリア */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <AssetTrendChart />
-          </div>
-          <div className="lg:col-span-1">
-            <PortfolioComposition />
-          </div>
-        </section>
+          {/* グラフエリア */}
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <AssetTrendChart />
+            </div>
+            <div className="lg:col-span-1">
+              <PortfolioComposition />
+            </div>
+          </section>
 
-        {/* マーケットニュース & 経済指標カレンダー */}
-        <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <NewsPanel />
-          <EconomicCalendar />
-        </section>
+          {/* マーケットニュース & 経済指標カレンダー */}
+          <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            <NewsPanel />
+            <EconomicCalendar />
+          </section>
 
-        <section className="pt-2 grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
-          <div className="xl:col-span-2 space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-                資産内訳
-              </h2>
-              <div className="text-sm font-medium text-slate-500 bg-slate-200/50 dark:bg-slate-800/50 px-3 py-1 rounded-full">
-                {calculatedAssets.length} 件の資産
+          <section className="pt-2 grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+            <div className="xl:col-span-2 space-y-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                  資産内訳
+                </h2>
+                <div className="text-sm font-medium text-slate-500 bg-slate-200/50 dark:bg-slate-800/50 px-3 py-1 rounded-full">
+                  {calculatedAssets.length} 件の資産
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {calculatedAssets.map((asset) => (
+                  <AssetCard key={asset.id} asset={asset} />
+                ))}
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {calculatedAssets.map((asset) => (
-                <AssetCard key={asset.id} asset={asset} />
-              ))}
+            <div className="xl:col-span-1 flex flex-col gap-6 sticky top-8">
+              <TransactionForm />
+              <TransactionList />
             </div>
-          </div>
-          
-          <div className="xl:col-span-1 flex flex-col gap-6 sticky top-8">
-            <TransactionForm />
-            <TransactionList />
-          </div>
-        </section>
+          </section>
 
-        {/* アラート & 戦略設定 */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          <UserRiskSettings />
-          <AlertSettings />
-        </section>
-
-      </div>
-    </main>
-    </>
+          {/* アラート & 戦略設定 */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <UserRiskSettings />
+            <AlertSettings />
+          </section>
+        </div>
+      </main>
+    </AuthGuard>
   );
 }
