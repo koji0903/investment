@@ -15,6 +15,7 @@ import { EconomicCalendar } from "@/components/EconomicCalendar";
 import { AlertToast } from "@/components/AlertToast";
 import { AlertSettings } from "@/components/AlertSettings";
 import { MarketSentiment } from "@/components/MarketSentiment";
+import { MacroDashboard } from "@/components/MacroDashboard";
 import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function Home() {
@@ -45,6 +46,11 @@ export default function Home() {
             lastUpdated={lastUpdated}
             isFetching={isFetching}
           />
+        </section>
+
+        {/* マクロ経済状況 */}
+        <section>
+          <MacroDashboard />
         </section>
 
         {/* AI インサイト & センチメント分析 */}
