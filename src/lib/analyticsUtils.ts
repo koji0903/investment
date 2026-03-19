@@ -178,3 +178,78 @@ export const calculatePortfolioRisk = (assets: AssetCalculated[]): PortfolioRisk
     highRiskAssets
   };
 };
+
+export interface AssetOptimization {
+  category: string;
+  currentRatio: number; // 0-100
+  targetRatio: number; // 0-100
+  differenceValue: number; // プラスは過剰、マイナスは不足
+  status: "Excess" | "Deficit" | "Optimal";
+  actionText: string;
+}
+
+// モデルポートフォリオ（標準的な理想配分 %）
+const TARGET_PORTFOLIO: Record<string, number> = {
+  "株": 40,
+  "投資信託": 40,
+  "FX": 10,
+  "仮想通貨": 10,
+};
+
+export const calculateOptimization = (assets: AssetCalculated[]): AssetOptimization[] => {
+  const totalValue = assets.reduce((sum, a) => sum + Math.max(0, a.evaluatedValue), 0);
+  
+  if (totalValue === 0) return [];
+
+  // カテゴリごとの合計を算出
+  const categoryTotals: Record<string, number> = {
+    "株": 0,
+    "投資信託": 0,
+    "FX": 0,
+    "仮想通貨": 0,
+  };
+  
+  assets.forEach(a => {
+    if (categoryTotals[a.category] !== undefined) {
+      categoryTotals[a.category] += Math.max(0, a.evaluatedValue);
+    } else {
+      categoryTotals[a.category] = Math.max(0, a.evaluatedValue);
+    }
+  });
+
+  const optimizations: AssetOptimization[] = [];
+
+  for (const [category, targetRatio] of Object.entries(TARGET_PORTFOLIO)) {
+    const currentValue = categoryTotals[category] || 0;
+    const currentRatio = (currentValue / totalValue) * 100;
+    const targetValue = totalValue * (targetRatio / 100);
+    const differenceValue = currentValue - targetValue;
+    
+    const diffRatio = currentRatio - targetRatio;
+    let status: AssetOptimization["status"] = "Optimal";
+    
+    // ±5%以上乖離している場合にリバランスを提案
+    if (diffRatio > 5) status = "Excess";
+    else if (diffRatio < -5) status = "Deficit";
+
+    let actionText = "適正なバランスです。現在の比率を維持してください。";
+    if (status === "Excess") {
+      actionText = `比率が過剰です。約 ¥${Math.abs(Math.round(differenceValue)).toLocaleString()} 分の利益確定（売却）を検討してください。`;
+    } else if (status === "Deficit") {
+      actionText = `比率が不足しています。約 ¥${Math.abs(Math.round(differenceValue)).toLocaleString()} 分の買い増しを推奨します。`;
+    }
+
+    optimizations.push({
+      category,
+      currentRatio,
+      targetRatio,
+      differenceValue,
+      status,
+      actionText
+    });
+  }
+
+  // 表示用に、乖離が大きい順（絶対値）にソート
+  return optimizations.sort((a, b) => Math.abs(b.differenceValue) - Math.abs(a.differenceValue));
+};
+

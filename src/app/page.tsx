@@ -8,6 +8,7 @@ import { PortfolioComposition } from "@/components/PortfolioComposition";
 import { AssetTrendChart } from "@/components/AssetTrendChart";
 import { PerformanceMetrics } from "@/components/PerformanceMetrics";
 import { RiskAnalysis } from "@/components/RiskAnalysis";
+import { PortfolioOptimization } from "@/components/PortfolioOptimization";
 import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function Home() {
@@ -37,14 +38,14 @@ export default function Home() {
           />
         </section>
 
-        {/* パフォーマンス分析 */}
-        <section>
+        {/* パフォーマンス & リスク 分析 & 最適化 */}
+        <section className="space-y-8">
           <PerformanceMetrics />
-        </section>
-
-        {/* リスク分析 */}
-        <section>
-          <RiskAnalysis />
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <RiskAnalysis />
+            <PortfolioOptimization />
+          </div>
         </section>
 
         {/* グラフエリア */}
