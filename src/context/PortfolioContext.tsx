@@ -9,6 +9,7 @@ import { updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface PortfolioContextType {
+  portfolioId: string;
   assets: Asset[];
   transactions: Transaction[];
   calculatedAssets: AssetCalculated[];
@@ -23,6 +24,7 @@ const PortfolioContext = createContext<PortfolioContextType | undefined>(undefin
 
 export const PortfolioProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
+  const [portfolioId, setPortfolioId] = useState("default");
   const [assets, setAssets] = useState<Asset[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
@@ -36,11 +38,11 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       return;
     }
 
-    const unsubAssets = subscribeAssets(user.uid, (data) => {
+    const unsubAssets = subscribeAssets(user.uid, portfolioId, (data) => {
       setAssets(data);
     });
 
-    const unsubTx = subscribeTransactions(user.uid, (data) => {
+    const unsubTx = subscribeTransactions(user.uid, portfolioId, (data) => {
       setTransactions(data);
     });
 
@@ -48,7 +50,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       unsubAssets();
       unsubTx();
     };
-  }, [user]);
+  }, [user, portfolioId]);
 
   // 外部APIからの価格フェッチ (Firestoreの資産に対して価格をマッピング)
   useEffect(() => {
@@ -86,7 +88,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     const interval = setInterval(fetchMarketData, 60000);
 
     return () => clearInterval(interval);
-  }, [user, assets.length > 0]);
+  }, [user, assets.length]);
 
   const addTransaction = async (newTx: Omit<Transaction, "id" | "date">) => {
     if (!user) return;
@@ -95,7 +97,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     await saveTransaction(user.uid, {
       ...newTx,
       date: new Date().toISOString()
-    });
+    }, portfolioId);
 
     // 2. 資産の数量・平均取得単価を更新
     const targetAsset = assets.find(a => a.id === newTx.assetId || a.symbol === newTx.assetId);
@@ -113,7 +115,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         newQuantity = Math.max(0, targetAsset.quantity - newTx.quantity);
       }
 
-      await updateDoc(doc(db, "users", user.uid, "assets", targetAsset.id), {
+      await updateDoc(doc(db, "users", user.uid, "portfolios", portfolioId, "assets", targetAsset.id), {
         quantity: newQuantity,
         averageCost: newAverageCost
       });
@@ -133,7 +135,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         quantity: newTx.quantity,
         averageCost: newTx.price,
         currentPrice: newTx.price
-      });
+      }, portfolioId);
     }
   };
 
@@ -152,6 +154,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   return (
     <PortfolioContext.Provider
       value={{
+        portfolioId,
         assets,
         transactions,
         calculatedAssets,
