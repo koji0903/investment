@@ -1,12 +1,14 @@
 import { formatCurrency, cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, RefreshCw } from "lucide-react";
 
 interface DashboardHeaderProps {
   totalAssets: number;
   totalProfitAndLoss: number;
+  lastUpdated?: string | null;
+  isFetching?: boolean;
 }
 
-export const DashboardHeader = ({ totalAssets, totalProfitAndLoss }: DashboardHeaderProps) => {
+export const DashboardHeader = ({ totalAssets, totalProfitAndLoss, lastUpdated, isFetching }: DashboardHeaderProps) => {
   const isProfit = totalProfitAndLoss >= 0;
 
   return (
@@ -17,12 +19,26 @@ export const DashboardHeader = ({ totalAssets, totalProfitAndLoss }: DashboardHe
       
       <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
         <div className="flex flex-col gap-3">
-          <h2 className="text-slate-400 font-medium tracking-wide text-sm md:text-base flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-indigo-400" />
-            総資産額
-          </h2>
-          <div className="text-5xl md:text-6xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 pb-1">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <h2 className="text-slate-400 font-medium tracking-wide text-sm md:text-base flex items-center gap-2">
+              <Wallet className="w-5 h-5 text-indigo-400" />
+              総資産額
+            </h2>
+            {lastUpdated && (
+              <div className="w-fit flex items-center gap-1.5 text-xs font-medium text-slate-400 bg-slate-800/80 backdrop-blur-sm px-2.5 py-1.5 rounded-full border border-slate-700/50 hidden sm:flex">
+                <RefreshCw className={cn("w-3 h-3 text-indigo-400", isFetching && "animate-spin")} />
+                {new Date(lastUpdated).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </div>
+            )}
+          </div>
+          <div className="text-5xl md:text-6xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 pb-1 flex flex-col sm:flex-row gap-4 sm:items-end">
             {formatCurrency(totalAssets)}
+            {lastUpdated && (
+              <div className="sm:hidden flex items-center gap-1.5 text-[0.7rem] font-medium text-slate-400 bg-slate-800/80 backdrop-blur-sm px-2 py-1 rounded-full border border-slate-700/50 w-fit leading-none mb-1">
+                <RefreshCw className={cn("w-3 h-3 text-indigo-400", isFetching && "animate-spin")} />
+                {new Date(lastUpdated).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            )}
           </div>
         </div>
         

@@ -7,25 +7,29 @@ import { TransactionList } from "@/components/TransactionList";
 import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function Home() {
-  const { calculatedAssets, totalAssetsValue, totalProfitAndLoss } = usePortfolio();
+  const { calculatedAssets, totalAssetsValue, totalProfitAndLoss, lastUpdated, isFetching } = usePortfolio();
 
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 lg:p-12 transition-colors duration-300">
       <div className="max-w-7xl mx-auto space-y-8">
         
-        <header className="mb-10">
-          <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">
-            My Portfolio
-          </h1>
-          <p className="text-slate-500 dark:text-slate-400">
-            あなたのすべての資産を一つの場所で管理
-          </p>
+        <header className="mb-10 flex flex-col justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">
+              My Portfolio
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400">
+              あなたのすべての資産を一つの場所で管理
+            </p>
+          </div>
         </header>
 
         <section>
           <DashboardHeader 
             totalAssets={totalAssetsValue} 
             totalProfitAndLoss={totalProfitAndLoss} 
+            lastUpdated={lastUpdated}
+            isFetching={isFetching}
           />
         </section>
 

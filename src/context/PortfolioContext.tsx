@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useMemo } from "react";
+import React, { createContext, useContext, useState, useMemo, useEffect } from "react";
 import { Asset, AssetCalculated, Transaction } from "@/types";
 import { dummyAssets, calculateAssetValues } from "@/lib/dummyData";
 
@@ -11,18 +11,59 @@ interface PortfolioContextType {
   totalAssetsValue: number;
   totalProfitAndLoss: number;
   addTransaction: (transaction: Omit<Transaction, "id" | "date">) => void;
+  lastUpdated: string | null;
+  isFetching: boolean;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
-// 初期取引データ（今回は空ですが拡張可能）
 const initialTransactions: Transaction[] = [];
 
 export const PortfolioProvider = ({ children }: { children: React.ReactNode }) => {
   const [assets, setAssets] = useState<Asset[]>(dummyAssets);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
 
-  // 取引追加時に、対象資産の保有数量と平均取得単価を自動で再計算するロジック
+  // 外部APIからの定期データフェッチ
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchMarketData = async () => {
+      try {
+        setIsFetching(true);
+        const res = await fetch("/api/market-data");
+        if (!res.ok) throw new Error("API Fetch Error");
+        const data = await res.json();
+
+        if (isMounted && data.prices) {
+          setAssets((prevAssets) =>
+            prevAssets.map((asset) => {
+              const newPrice = data.prices[asset.id];
+              if (newPrice != null) {
+                return { ...asset, currentPrice: newPrice };
+              }
+              return asset;
+            })
+          );
+          if (data.timestamp) setLastUpdated(data.timestamp);
+        }
+      } catch (error) {
+        console.error("Failed to fetch market data", error);
+      } finally {
+        if (isMounted) setIsFetching(false);
+      }
+    };
+
+    fetchMarketData();
+    const interval = setInterval(fetchMarketData, 60000); // 60秒ごと
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   const addTransaction = (newTx: Omit<Transaction, "id" | "date">) => {
     const transaction: Transaction = {
       ...newTx,
@@ -30,10 +71,8 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       date: new Date().toISOString(),
     };
 
-    // 取引履歴リストの先頭に追加
     setTransactions((prev) => [transaction, ...prev]);
 
-    // 取引をもとに資産データを更新
     setAssets((prevAssets) => {
       return prevAssets.map((asset) => {
         if (asset.id !== transaction.assetId) return asset;
@@ -42,12 +81,10 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         let newAverageCost = asset.averageCost;
 
         if (transaction.type === "buy") {
-          // [買い] 総取得コストを計算し、新しい平均取得単価を算出
           const totalCost = (asset.quantity * asset.averageCost) + (transaction.quantity * transaction.price);
           newQuantity = asset.quantity + transaction.quantity;
           newAverageCost = newQuantity > 0 ? totalCost / newQuantity : 0;
         } else if (transaction.type === "sell") {
-          // [売り] 保有数量を減らす。平均取得単価は変動させない。
           newQuantity = Math.max(0, asset.quantity - transaction.quantity);
         }
 
@@ -60,7 +97,6 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     });
   };
 
-  // メモリ上で保持する計算済み資産配列
   const calculatedAssets = useMemo(() => {
     return assets.map(calculateAssetValues);
   }, [assets]);
@@ -82,6 +118,8 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         totalAssetsValue,
         totalProfitAndLoss,
         addTransaction,
+        lastUpdated,
+        isFetching,
       }}
     >
       {children}
