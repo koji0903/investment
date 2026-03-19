@@ -24,16 +24,41 @@ import { AlertSettings } from "@/components/AlertSettings";
 import { MacroDashboard } from "@/components/MacroDashboard";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { AuthGuard } from "@/components/AuthGuard";
-import { Loader2 } from "lucide-react";
+import { DemoDataLoader } from "@/components/DemoDataLoader";
+import { DemoStory } from "@/components/DemoStory";
+import { Loader2, Sparkles } from "lucide-react";
 
 export default function Home() {
   const { calculatedAssets, totalAssetsValue, totalProfitAndLoss, lastUpdated, isFetching } = usePortfolio();
+  const { isDemo } = useAuth();
 
   return (
     <AuthGuard>
       <AlertToast />
       <main className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 lg:p-12 transition-colors duration-300">
         <div className="max-w-7xl mx-auto space-y-8">
+          
+          {isDemo && (
+            <div className="bg-indigo-600 text-white px-6 py-3 rounded-2xl shadow-lg flex items-center justify-between animate-in slide-in-from-top-4 duration-500">
+              <div className="flex items-center gap-3">
+                <Sparkles className="w-5 h-5 text-amber-300" />
+                <span className="font-bold text-sm">閲覧専用デモモード実行中</span>
+              </div>
+              <button 
+                onClick={() => window.location.href = "/login"}
+                className="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-4 py-1.5 rounded-full transition-all"
+              >
+                ログインして始める
+              </button>
+            </div>
+          )}
+
+          {isDemo && <DemoStory />}
+
+          <div className="flex justify-end">
+            {!isDemo && <DemoDataLoader />}
+          </div>
+
           <header className="flex flex-col justify-between gap-4">
             <div>
               <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">

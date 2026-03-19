@@ -30,35 +30,34 @@ const RISK_LEVELS: { id: RiskLevel; label: string; desc: string; color: string }
 ];
 
 export const UserRiskSettings = () => {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const [risk, setRisk] = useState<RiskLevel>("moderate");
   const [isUpdating, setIsUpdating] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    const unsub = subscribeRiskTolerance(user.uid, (val: any) => {
-      setRisk(val as RiskLevel);
-    });
-    return () => unsub();
-  }, [user]);
+  
+  // ... (useEffect)
 
   const handleUpdate = async (level: RiskLevel) => {
+    if (isDemo) {
+      alert("デモモードではリスク許容度の変更は制限されています。");
+      return;
+    }
     if (!user) return;
     setIsUpdating(true);
-    try {
-      await updateRiskTolerance(user.uid, level);
-    } catch (error) {
-      console.error("Failed to update risk tolerance", error);
-    } finally {
-      setIsUpdating(false);
-    }
+    // ...
   };
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] shadow-sm overflow-hidden mt-6">
-      <div className="px-6 py-4 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800">
-        <Shield className="w-5 h-5 text-indigo-500" />
-        <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">AI戦略設定</h3>
+      <div className="px-6 py-4 flex items-center justify-between border-b border-slate-100 dark:border-slate-800">
+        <div className="flex items-center gap-3">
+          <Shield className="w-5 h-5 text-indigo-500" />
+          <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">AI戦略設定</h3>
+        </div>
+        {isDemo && (
+          <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20 font-bold">
+            閲覧専用
+          </span>
+        )}
       </div>
       
       <div className="p-6 space-y-4">
@@ -71,12 +70,14 @@ export const UserRiskSettings = () => {
               <button
                 key={level.id}
                 onClick={() => handleUpdate(level.id)}
-                disabled={isUpdating}
+                disabled={isUpdating || isDemo}
                 className={cn(
                   "p-4 rounded-xl border-2 text-left transition-all relative group",
                   risk === level.id 
                     ? "border-indigo-500 bg-indigo-50/30 dark:bg-indigo-500/10" 
-                    : "border-slate-100 dark:border-slate-800 hover:border-slate-200 dark:hover:border-slate-700 bg-slate-50/30 dark:bg-slate-900/30"
+                    : "border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/30",
+                  !isDemo && risk !== level.id && "hover:border-slate-200 dark:hover:border-slate-700",
+                  isDemo && "cursor-not-allowed"
                 )}
               >
                 {risk === level.id && (

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { getAssetSentiment, SentimentResult } from "@/lib/sentimentUtils";
 import { NewsItem } from "@/app/api/news/route";
+import { useAuth } from "@/context/AuthContext";
 
 interface AssetCardProps {
   asset: AssetCalculated;
@@ -35,6 +36,7 @@ const CategoryIcon = ({ category, className }: { category: string; className?: s
 };
 
 export const AssetCard = ({ asset }: AssetCardProps) => {
+  const { isDemo } = useAuth();
   const isProfit = asset.profitAndLoss >= 0;
   const [sentiment, setSentiment] = useState<SentimentResult | null>(null);
 

@@ -220,6 +220,15 @@ export default function LoginPage() {
             デモデータでログイン
           </button>
 
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => router.push("/?demo=true")}
+              className="text-xs font-bold text-slate-500 hover:text-indigo-500 transition-colors"
+            >
+              閲覧専用デモ（ログイン不要）で試す
+            </button>
+          </div>
+
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
             <button
               onClick={() => setIsLogin(!isLogin)}

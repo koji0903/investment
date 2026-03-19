@@ -208,3 +208,19 @@ export const generateDemoData = async (uid: string, portfolioId: string = "defau
 
   return batch.commit();
 };
+
+export const clearPortfolioData = async (uid: string, portfolioId: string = "default") => {
+  const batch = writeBatch(db);
+  const assetsCol = getAssetsCol(uid, portfolioId);
+  const transCol = getTransactionsCol(uid, portfolioId);
+
+  // 全アセットの取得
+  const assetsSnap = await getDocs(assetsCol);
+  assetsSnap.docs.forEach(d => batch.delete(d.ref));
+
+  // 全トランザクションの取得
+  const transSnap = await getDocs(transCol);
+  transSnap.docs.forEach(d => batch.delete(d.ref));
+
+  return batch.commit();
+};

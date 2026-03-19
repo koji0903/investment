@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from "
 import { Asset, AssetCalculated, Transaction } from "@/types";
 import { calculateAssetValues } from "@/lib/dummyData";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeAssets, subscribeTransactions, subscribeAnalysis, subscribeBehavior, subscribeStrategy, saveTransaction, saveAsset } from "@/lib/db";
+import { subscribeAssets, subscribeTransactions, subscribeAnalysis, subscribeBehavior, subscribeStrategy, saveTransaction, saveAsset, generateDemoData } from "@/lib/db";
 import { updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -36,7 +36,7 @@ interface PortfolioContextType {
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
 export const PortfolioProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
+  const { user, isDemo } = useAuth();
   const [portfolioId, setPortfolioId] = useState("default");
   const [assets, setAssets] = useState<Asset[]>([]);
   const [prices, setPrices] = useState<Record<string, number>>({});
@@ -46,6 +46,13 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   const [strategy, setStrategy] = useState<any>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
+
+  // デモデータの自動生成
+  useEffect(() => {
+    if (isDemo && user && assets.length === 0 && !isFetching) {
+      generateDemoData(user.uid, portfolioId);
+    }
+  }, [isDemo, user, assets.length, isFetching, portfolioId]);
 
   // Firestoreとの同期
   useEffect(() => {
@@ -116,6 +123,10 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   }, [user, assets.length]);
 
   const addTransaction = async (newTx: Omit<Transaction, "id" | "date">) => {
+    if (isDemo) {
+      alert("デモモードでは取引の追加・編集は制限されています。");
+      return;
+    }
     if (!user) return;
 
     // 1. 取引をFirestoreに保存
@@ -142,7 +153,6 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       await updateDoc(doc(db, "users", user.uid, "portfolios", portfolioId, "assets", targetAsset.id), {
         quantity: newQuantity,
         averageCost: newAverageCost,
-        // 最新価格も念のためFirestoreに同期させておく（他デバイスでの初期表示用）
         currentPrice: prices[targetAsset.symbol] || targetAsset.currentPrice
       });
     } else if (newTx.type === "buy") {
@@ -165,7 +175,6 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
 
   const calculatedAssets = useMemo(() => {
     return assets.map(asset => {
-      // APIから取得した最新価格があればそれを使用、なければFirestoreの価格を使用
       const latestPrice = prices[asset.symbol] || asset.currentPrice;
       return calculateAssetValues({ ...asset, currentPrice: latestPrice });
     });

@@ -6,14 +6,14 @@ import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 
 export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isDemo } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !user && !isDemo) {
       router.push("/login");
     }
-  }, [user, loading, router]);
+  }, [user, loading, isDemo, router]);
 
   if (loading) {
     return (
