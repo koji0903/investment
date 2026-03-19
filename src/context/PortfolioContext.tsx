@@ -2,7 +2,11 @@
 
 import React, { createContext, useContext, useState, useMemo, useEffect } from "react";
 import { Asset, AssetCalculated, Transaction } from "@/types";
-import { dummyAssets, calculateAssetValues } from "@/lib/dummyData";
+import { calculateAssetValues } from "@/lib/dummyData";
+import { useAuth } from "@/context/AuthContext";
+import { subscribeAssets, subscribeTransactions, saveTransaction, saveAsset } from "@/lib/db";
+import { updateDoc, doc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 interface PortfolioContextType {
   assets: Asset[];
@@ -10,24 +14,45 @@ interface PortfolioContextType {
   calculatedAssets: AssetCalculated[];
   totalAssetsValue: number;
   totalProfitAndLoss: number;
-  addTransaction: (transaction: Omit<Transaction, "id" | "date">) => void;
+  addTransaction: (transaction: Omit<Transaction, "id" | "date">) => Promise<void>;
   lastUpdated: string | null;
   isFetching: boolean;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
-const initialTransactions: Transaction[] = [];
-
 export const PortfolioProvider = ({ children }: { children: React.ReactNode }) => {
-  const [assets, setAssets] = useState<Asset[]>(dummyAssets);
-  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const { user } = useAuth();
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
 
-  // 外部APIからの定期データフェッチ
+  // Firestoreとの同期
   useEffect(() => {
-    let isMounted = true;
+    if (!user) {
+      setAssets([]);
+      setTransactions([]);
+      return;
+    }
+
+    const unsubAssets = subscribeAssets(user.uid, (data) => {
+      setAssets(data);
+    });
+
+    const unsubTx = subscribeTransactions(user.uid, (data) => {
+      setTransactions(data);
+    });
+
+    return () => {
+      unsubAssets();
+      unsubTx();
+    };
+  }, [user]);
+
+  // 外部APIからの価格フェッチ (Firestoreの資産に対して価格をマッピング)
+  useEffect(() => {
+    if (!user || assets.length === 0) return;
 
     const fetchMarketData = async () => {
       try {
@@ -36,10 +61,12 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         if (!res.ok) throw new Error("API Fetch Error");
         const data = await res.json();
 
-        if (isMounted && data.prices) {
+        if (data.prices) {
           setAssets((prevAssets) =>
             prevAssets.map((asset) => {
-              const newPrice = data.prices[asset.id];
+              // symbolがあれば使用、なければID（レガシー互換）を使用
+              const priceKey = asset.symbol || asset.id;
+              const newPrice = data.prices[priceKey]; 
               if (newPrice != null) {
                 return { ...asset, currentPrice: newPrice };
               }
@@ -51,54 +78,67 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       } catch (error) {
         console.error("Failed to fetch market data", error);
       } finally {
-        if (isMounted) setIsFetching(false);
+        setIsFetching(false);
       }
     };
 
     fetchMarketData();
-    const interval = setInterval(fetchMarketData, 60000); // 60秒ごと
+    const interval = setInterval(fetchMarketData, 60000);
 
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+    return () => clearInterval(interval);
+  }, [user, assets.length > 0]);
 
-  const addTransaction = (newTx: Omit<Transaction, "id" | "date">) => {
-    const transaction: Transaction = {
+  const addTransaction = async (newTx: Omit<Transaction, "id" | "date">) => {
+    if (!user) return;
+
+    // 1. 取引をFirestoreに保存
+    await saveTransaction(user.uid, {
       ...newTx,
-      id: Math.random().toString(36).substring(2, 9),
-      date: new Date().toISOString(),
-    };
-
-    setTransactions((prev) => [transaction, ...prev]);
-
-    setAssets((prevAssets) => {
-      return prevAssets.map((asset) => {
-        if (asset.id !== transaction.assetId) return asset;
-
-        let newQuantity = asset.quantity;
-        let newAverageCost = asset.averageCost;
-
-        if (transaction.type === "buy") {
-          const totalCost = (asset.quantity * asset.averageCost) + (transaction.quantity * transaction.price);
-          newQuantity = asset.quantity + transaction.quantity;
-          newAverageCost = newQuantity > 0 ? totalCost / newQuantity : 0;
-        } else if (transaction.type === "sell") {
-          newQuantity = Math.max(0, asset.quantity - transaction.quantity);
-        }
-
-        return {
-          ...asset,
-          quantity: newQuantity,
-          averageCost: newAverageCost,
-        };
-      });
+      date: new Date().toISOString()
     });
+
+    // 2. 資産の数量・平均取得単価を更新
+    const targetAsset = assets.find(a => a.id === newTx.assetId || a.symbol === newTx.assetId);
+    
+    if (targetAsset) {
+      // 既存資産の更新
+      let newQuantity = targetAsset.quantity;
+      let newAverageCost = targetAsset.averageCost;
+
+      if (newTx.type === "buy") {
+        const totalCost = (targetAsset.quantity * targetAsset.averageCost) + (newTx.quantity * newTx.price);
+        newQuantity = targetAsset.quantity + newTx.quantity;
+        newAverageCost = newQuantity > 0 ? totalCost / newQuantity : 0;
+      } else {
+        newQuantity = Math.max(0, targetAsset.quantity - newTx.quantity);
+      }
+
+      await updateDoc(doc(db, "users", user.uid, "assets", targetAsset.id), {
+        quantity: newQuantity,
+        averageCost: newAverageCost
+      });
+    } else if (newTx.type === "buy") {
+      // 新規資産の作成
+      // 簡易的なカテゴリ推論
+      let category: any = "株";
+      const sym = newTx.assetId.toUpperCase();
+      if (sym.includes("-USD") || sym.includes("BTC") || sym.includes("ETH")) category = "仮想通貨";
+      else if (sym.includes(".T") || /^\d{4}$/.test(sym)) category = "株";
+      else if (sym === "USDJPY=X") category = "FX";
+
+      await saveAsset(user.uid, {
+        symbol: newTx.assetId,
+        name: newTx.assetId, // 初期値はシンボルと同じ
+        category: category,
+        quantity: newTx.quantity,
+        averageCost: newTx.price,
+        currentPrice: newTx.price
+      });
+    }
   };
 
   const calculatedAssets = useMemo(() => {
-    return assets.map(calculateAssetValues);
+    return assets.map(asset => calculateAssetValues(asset));
   }, [assets]);
 
   const totalAssetsValue = useMemo(() => {

@@ -8,7 +8,7 @@ import { PlusCircle } from "lucide-react";
 export const TransactionForm = () => {
   const { assets, addTransaction } = usePortfolio();
   
-  const [assetId, setAssetId] = useState<string>(assets[0]?.id || "");
+  const [assetId, setAssetId] = useState<string>("");
   const [type, setType] = useState<TransactionType>("buy");
   const [quantity, setQuantity] = useState<number>(0);
   const [price, setPrice] = useState<number>(0);
@@ -18,13 +18,14 @@ export const TransactionForm = () => {
     if (!assetId || quantity <= 0 || price <= 0) return;
     
     addTransaction({
-      assetId,
+      assetId: assetId.trim().toUpperCase(),
       type,
       quantity,
       price,
     });
     
     // Reset form
+    setAssetId("");
     setQuantity(0);
     setPrice(0);
   };
@@ -32,18 +33,22 @@ export const TransactionForm = () => {
   return (
     <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-6 shadow-sm">
       <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-slate-100">
-        <PlusCircle className="w-5 h-5 text-[var(--color-primary-500)]" />
-        新しい取引を登録
+        <PlusCircle className="w-5 h-5 text-indigo-500" />
+        取引を登録
       </h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
         <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">銘柄</label>
-          <select 
-            value={assetId} onChange={(e) => setAssetId(e.target.value)}
-            className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[var(--color-primary-500)] focus:border-transparent outline-none"
-          >
-            {assets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          <label className="text-xs font-bold text-slate-400 ml-1">銘柄 / シンボル</label>
+          <input 
+            list="assets-list"
+            value={assetId}
+            onChange={(e) => setAssetId(e.target.value)}
+            placeholder="AAPL, 7203.T等"
+            className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
+          <datalist id="assets-list">
+            {assets.map(a => <option key={a.id} value={a.symbol || a.id}>{a.name}</option>)}
+          </datalist>
         </div>
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-slate-500 dark:text-slate-400">売買区分</label>

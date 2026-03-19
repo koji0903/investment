@@ -6,30 +6,13 @@ import React, {
 import { AlertRule, AlertNotification } from "@/types/alert";
 import { evaluateAlerts } from "@/lib/alertEngine";
 import { usePortfolio } from "@/context/PortfolioContext";
-
-interface AlertContextType {
-  rules: AlertRule[];
-  notifications: AlertNotification[];
-  addRule: (rule: Omit<AlertRule, "id">) => void;
-  removeRule: (id: string) => void;
-  toggleRule: (id: string) => void;
-  dismissNotification: (id: string) => void;
-  dismissAll: () => void;
-}
-
-const AlertContext = createContext<AlertContextType | undefined>(undefined);
-
-const LS_RULES_KEY = "investment_alert_rules_v1";
-
-function loadRules(): AlertRule[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(LS_RULES_KEY);
-    return raw ? JSON.parse(raw) : getDefaultRules();
-  } catch {
-    return getDefaultRules();
-  }
-}
+import { useAuth } from "@/context/AuthContext";
+import { 
+  subscribeAlerts, 
+  saveAlert, 
+  removeAlert as removeAlertDb, 
+  updateAlertEnabled 
+} from "@/lib/db";
 
 function getDefaultRules(): AlertRule[] {
   return [
@@ -60,17 +43,44 @@ function getDefaultRules(): AlertRule[] {
   ];
 }
 
+interface AlertContextType {
+  rules: AlertRule[];
+  notifications: AlertNotification[];
+  addRule: (rule: Omit<AlertRule, "id">) => Promise<void>;
+  removeRule: (id: string) => Promise<void>;
+  toggleRule: (id: string, enabled: boolean) => Promise<void>;
+  dismissNotification: (id: string) => void;
+  dismissAll: () => void;
+}
+
+const AlertContext = createContext<AlertContextType | undefined>(undefined);
+
 export const AlertProvider = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuth();
   const { calculatedAssets } = usePortfolio();
-  const [rules, setRules] = useState<AlertRule[]>(loadRules);
+  const [rules, setRules] = useState<AlertRule[]>([]);
   const [notifications, setNotifications] = useState<AlertNotification[]>([]);
-  // 重要ニュース検知のためのフラグ（NewsPanelとの連携に依存しないよう5分ごとにAPIから取得）
   const hasHighImpactNewsRef = useRef(false);
 
-  // ルールが変わったらlocalStorageに保存
+  // Firestoreとの同期
   useEffect(() => {
-    localStorage.setItem(LS_RULES_KEY, JSON.stringify(rules));
-  }, [rules]);
+    if (!user) {
+      setRules([]);
+      return;
+    }
+
+    const unsub = subscribeAlerts(user.uid, (data) => {
+      if (data.length === 0) {
+        // 初回ログイン時はデフォルトのルールをFirestoreに保存
+        const defaults = getDefaultRules();
+        defaults.forEach(rule => saveAlert(user.uid!, rule));
+      } else {
+        setRules(data);
+      }
+    });
+
+    return () => unsub();
+  }, [user]);
 
   // 定期的なニュース重要度チェック（5分ごと）
   useEffect(() => {
@@ -78,8 +88,8 @@ export const AlertProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const res = await fetch("/api/news");
         const data = await res.json();
-        const news: { importance: string }[] = data.news ?? [];
-        hasHighImpactNewsRef.current = news.some((n) => n.importance === "high");
+        const newsList: { importance: string }[] = data.news ?? [];
+        hasHighImpactNewsRef.current = newsList.some((n: any) => n.importance === "high");
       } catch {
         hasHighImpactNewsRef.current = false;
       }
@@ -91,35 +101,44 @@ export const AlertProvider = ({ children }: { children: React.ReactNode }) => {
 
   // 資産価格が変化するたびにアラート評価
   useEffect(() => {
-    if (calculatedAssets.length === 0) return;
+    if (!user || rules.length === 0 || calculatedAssets.length === 0) return;
+    
     const { notifications: newNotifs, updatedRules } = evaluateAlerts(
       rules,
       calculatedAssets,
       hasHighImpactNewsRef.current
     );
+
     if (newNotifs.length > 0) {
       setNotifications((prev) => [...newNotifs, ...prev].slice(0, 20));
-      setRules(updatedRules);
+      // トリガーされた状態（クールダウン等）をFirestoreに反映
+      updatedRules.forEach(rule => {
+        const original = rules.find(r => r.id === rule.id);
+        if (original && JSON.stringify(original) !== JSON.stringify(rule)) {
+          saveAlert(user.uid, rule);
+        }
+      });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [calculatedAssets]);
+  }, [calculatedAssets, user, rules]);
 
-  const addRule = useCallback((rule: Omit<AlertRule, "id">) => {
-    setRules((prev) => [
-      ...prev,
-      { ...rule, id: Math.random().toString(36).slice(2, 9) },
-    ]);
-  }, []);
+  const addRule = useCallback(async (rule: Omit<AlertRule, "id">) => {
+    if (!user) return;
+    const newRule: AlertRule = {
+      ...rule,
+      id: Math.random().toString(36).slice(2, 9),
+    };
+    await saveAlert(user.uid, newRule);
+  }, [user]);
 
-  const removeRule = useCallback((id: string) => {
-    setRules((prev) => prev.filter((r) => r.id !== id));
-  }, []);
+  const removeRule = useCallback(async (id: string) => {
+    if (!user) return;
+    await removeAlertDb(user.uid, id);
+  }, [user]);
 
-  const toggleRule = useCallback((id: string) => {
-    setRules((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, enabled: !r.enabled } : r))
-    );
-  }, []);
+  const toggleRule = useCallback(async (id: string, enabled: boolean) => {
+    if (!user) return;
+    await updateAlertEnabled(user.uid, id, !enabled);
+  }, [user]);
 
   const dismissNotification = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));

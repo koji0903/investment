@@ -13,6 +13,7 @@ export interface Transaction {
 
 export interface Asset {
   id: string;
+  symbol: string; // 価格取得用のシンボル (AAPL, 7203.T等)
   name: string;
   category: AssetCategory;
   currentPrice: number;
