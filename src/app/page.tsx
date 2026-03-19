@@ -12,13 +12,18 @@ import { PortfolioOptimization } from "@/components/PortfolioOptimization";
 import { InvestmentAdvice } from "@/components/InvestmentAdvice";
 import { NewsPanel } from "@/components/NewsPanel";
 import { EconomicCalendar } from "@/components/EconomicCalendar";
+import { AlertToast } from "@/components/AlertToast";
+import { AlertSettings } from "@/components/AlertSettings";
 import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function Home() {
   const { calculatedAssets, totalAssetsValue, totalProfitAndLoss, lastUpdated, isFetching } = usePortfolio();
 
   return (
-    <main className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 lg:p-12 transition-colors duration-300">
+    <>
+      {/* 画面右上固定のトースト通知 */}
+      <AlertToast />
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 lg:p-12 transition-colors duration-300">
       <div className="max-w-7xl mx-auto space-y-8">
         
         <header className="flex flex-col justify-between gap-4">
@@ -96,7 +101,13 @@ export default function Home() {
           </div>
         </section>
 
+        {/* アラート設定 */}
+        <section>
+          <AlertSettings />
+        </section>
+
       </div>
     </main>
+    </>
   );
 }
