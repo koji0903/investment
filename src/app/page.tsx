@@ -11,6 +11,7 @@ import { RiskAnalysis } from "@/components/RiskAnalysis";
 import { PortfolioOptimization } from "@/components/PortfolioOptimization";
 import { InvestmentAdvice } from "@/components/InvestmentAdvice";
 import { NewsPanel } from "@/components/NewsPanel";
+import { EconomicCalendar } from "@/components/EconomicCalendar";
 import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function Home() {
@@ -65,9 +66,10 @@ export default function Home() {
           </div>
         </section>
 
-        {/* マーケットニュース */}
-        <section>
+        {/* マーケットニュース & 経済指標カレンダー */}
+        <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <NewsPanel />
+          <EconomicCalendar />
         </section>
 
         <section className="pt-2 grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
