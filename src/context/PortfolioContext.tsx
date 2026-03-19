@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from "
 import { Asset, AssetCalculated, Transaction } from "@/types";
 import { calculateAssetValues } from "@/lib/dummyData";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeAssets, subscribeTransactions, subscribeAnalysis, subscribeBehavior, saveTransaction, saveAsset } from "@/lib/db";
+import { subscribeAssets, subscribeTransactions, subscribeAnalysis, subscribeBehavior, subscribeStrategy, saveTransaction, saveAsset } from "@/lib/db";
 import { updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -25,6 +25,7 @@ interface PortfolioContextType {
   calculatedAssets: AssetCalculated[];
   analysis: AnalysisSummary | null;
   behavior: any;
+  strategy: any;
   totalAssetsValue: number;
   totalProfitAndLoss: number;
   addTransaction: (transaction: Omit<Transaction, "id" | "date">) => Promise<void>;
@@ -42,6 +43,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisSummary | null>(null);
   const [behavior, setBehavior] = useState<any>(null);
+  const [strategy, setStrategy] = useState<any>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
 
@@ -52,6 +54,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       setTransactions([]);
       setAnalysis(null);
       setBehavior(null);
+      setStrategy(null);
       return;
     }
 
@@ -71,11 +74,16 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       setBehavior(data);
     });
 
+    const unsubStrategy = subscribeStrategy(user.uid, portfolioId, (data) => {
+      setStrategy(data);
+    });
+
     return () => {
       unsubAssets();
       unsubTx();
       unsubAnalysis();
       unsubBehavior();
+      unsubStrategy();
     };
   }, [user, portfolioId]);
 
@@ -180,6 +188,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         calculatedAssets,
         analysis,
         behavior,
+        strategy,
         totalAssetsValue,
         totalProfitAndLoss,
         addTransaction,

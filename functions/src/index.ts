@@ -148,5 +148,68 @@ export const onTransactionUpdate = onDocumentWritten(
     });
 
     console.log(`Behavior analysis updated for user: ${userId}`);
+
+    // 6. 投資戦略の生成 (Strategy)
+    // ユーザー設定 (リスク許容度) の取得
+    const settingsSnap = await db.collection("users").doc(userId).collection("settings").doc("general").get();
+    const riskTolerance = settingsSnap.exists() ? settingsSnap.data()?.riskTolerance || "moderate" : "moderate";
+
+    // 現在の資産価格情報の取得
+    const assetsSnap = await db.collection("users").doc(userId).collection("portfolios").doc(portfolioId).collection("assets").get();
+    const assetsData = assetsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    const totalPortfolioValue = assetsData.reduce((sum, a: any) => sum + (a.quantity * (a.currentPrice || a.averageCost)), 0);
+    
+    const recommendations = assetsData.map((asset: any) => {
+      const currentPrice = asset.currentPrice || asset.averageCost;
+      const profitRate = asset.averageCost > 0 ? ((currentPrice - asset.averageCost) / asset.averageCost) * 100 : 0;
+      const weight = totalPortfolioValue > 0 ? ((asset.quantity * currentPrice) / totalPortfolioValue) * 100 : 0;
+      
+      let action: "BUY" | "SELL" | "HOLD" = "HOLD";
+      let reason = "現在の株価は安定しています。";
+
+      // 戦略ロジック (簡易エンジン)
+      if (riskTolerance === "low") {
+        if (profitRate > 15) {
+          action = "SELL";
+          reason = "目標利益に達しました。堅実な利確を推奨します。";
+        } else if (profitRate < -10) {
+          action = "SELL";
+          reason = "リスク回避のため、早めの損切りを検討してください。";
+        }
+      } else if (riskTolerance === "high") {
+        if (profitRate < -20) {
+          action = "BUY";
+          reason = "大幅に調整されています。ナンピン買いのチャンスかもしれません。";
+        } else if (profitRate > 50) {
+          action = "HOLD";
+          reason = "強い上昇トレンドです。さらなる利伸ばしを推奨します。";
+        }
+      }
+
+      // リバランシングロジック
+      if (weight > 30 && action === "HOLD") {
+        action = "SELL";
+        reason = "ポートフォリオ内の比率が高すぎます。分散投資のため一部売却を推奨します。";
+      }
+
+      return {
+        assetId: asset.id,
+        symbol: asset.symbol,
+        name: asset.name,
+        action,
+        reason,
+        profitRate,
+        weight
+      };
+    });
+
+    await analysisFolder.doc("strategy").set({
+      lastUpdated: admin.firestore.FieldValue.serverTimestamp(),
+      riskTolerance,
+      recommendations
+    });
+
+    console.log(`Strategy generated for user: ${userId}`);
   }
 );

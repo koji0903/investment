@@ -14,11 +14,13 @@ import { RiskAnalysis } from "@/components/RiskAnalysis";
 import { PortfolioOptimization } from "@/components/PortfolioOptimization";
 import { InvestmentAdvice } from "@/components/InvestmentAdvice";
 import { BehaviorInsight } from "@/components/BehaviorInsight";
+import { InvestmentStrategyCard } from "@/components/InvestmentStrategyCard";
+import { UserRiskSettings } from "@/components/UserRiskSettings";
+import { MarketSentiment } from "@/components/MarketSentiment";
 import { NewsPanel } from "@/components/NewsPanel";
 import { EconomicCalendar } from "@/components/EconomicCalendar";
 import { AlertToast } from "@/components/AlertToast";
 import { AlertSettings } from "@/components/AlertSettings";
-import { MarketSentiment } from "@/components/MarketSentiment";
 import { MacroDashboard } from "@/components/MacroDashboard";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { Loader2 } from "lucide-react";
@@ -79,15 +81,20 @@ export default function Home() {
           <MacroDashboard />
         </section>
 
-        {/* AI インサイト & センチメント分析 */}
+        {/* AI インサイト & 戦略分析 */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <InvestmentAdvice />
             <BehaviorInsight />
           </div>
           <div className="lg:col-span-1">
-            <MarketSentiment />
+            <InvestmentStrategyCard />
           </div>
+        </section>
+
+        {/* センチメント分析 */}
+        <section>
+          <MarketSentiment />
         </section>
 
         {/* パフォーマンス & リスク 分析 & 最適化 */}
@@ -140,8 +147,9 @@ export default function Home() {
           </div>
         </section>
 
-        {/* アラート設定 */}
-        <section>
+        {/* アラート & 戦略設定 */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <UserRiskSettings />
           <AlertSettings />
         </section>
 

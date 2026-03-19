@@ -108,12 +108,36 @@ export const subscribeAnalysis = (uid: string, portfolioId: string = "default", 
   });
 };
 
+export const subscribeStrategy = (uid: string, portfolioId: string = "default", callback: (strategy: any) => void) => {
+  return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "strategy"), (doc) => {
+    if (doc.exists()) {
+      callback(doc.data());
+    } else {
+      callback(null);
+    }
+  });
+};
+
 export const subscribeBehavior = (uid: string, portfolioId: string = "default", callback: (behavior: any) => void) => {
   return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "behavior"), (doc) => {
     if (doc.exists()) {
       callback(doc.data());
     } else {
       callback(null);
+    }
+  });
+};
+
+export const updateRiskTolerance = async (uid: string, riskTolerance: "low" | "moderate" | "high") => {
+  return setDoc(doc(db, "users", uid, "settings", "general"), { riskTolerance }, { merge: true });
+};
+
+export const subscribeRiskTolerance = (uid: string, callback: (risk: string) => void) => {
+  return onSnapshot(doc(db, "users", uid, "settings", "general"), (doc) => {
+    if (doc.exists()) {
+      callback(doc.data().riskTolerance || "moderate");
+    } else {
+      callback("moderate");
     }
   });
 };
