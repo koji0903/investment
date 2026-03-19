@@ -10,7 +10,9 @@ import {
   orderBy, 
   onSnapshot,
   Timestamp,
-  updateDoc
+  updateDoc,
+  serverTimestamp,
+  writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { Asset, Transaction } from "@/types";
@@ -140,4 +142,34 @@ export const subscribeRiskTolerance = (uid: string, callback: (risk: string) => 
       callback("moderate");
     }
   });
+};
+
+export const initializeUserData = async (uid: string, email: string, displayName: string = "") => {
+  const batch = writeBatch(db);
+
+  // 1. ユーザー基本ドキュメント
+  const userRef = doc(db, "users", uid);
+  batch.set(userRef, {
+    email,
+    displayName,
+    createdAt: serverTimestamp(),
+    lastLogin: serverTimestamp(),
+  });
+
+  // 2. デフォルトポートフォリオ
+  const portfolioRef = doc(db, "users", uid, "portfolios", "default");
+  batch.set(portfolioRef, {
+    name: "メインポートフォリオ",
+    createdAt: serverTimestamp(),
+  });
+
+  // 3. 初期設定
+  const settingsRef = doc(db, "users", uid, "settings", "general");
+  batch.set(settingsRef, {
+    riskTolerance: "moderate",
+    currency: "JPY",
+    updatedAt: serverTimestamp(),
+  });
+
+  return batch.commit();
 };

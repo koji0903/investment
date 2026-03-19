@@ -7,6 +7,7 @@ import {
   updateProfile 
 } from "firebase/auth";
 import { auth, isConfigValid } from "@/lib/firebase";
+import { initializeUserData } from "@/lib/db";
 import { useRouter } from "next/navigation";
 import { LogIn, UserPlus, Mail, Lock, Loader2, ArrowRight, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -64,6 +65,8 @@ export default function LoginPage() {
       } else {
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(userCredential.user, { displayName: name });
+        // Firestore初期データの作成
+        await initializeUserData(userCredential.user.uid, email, name);
       }
       router.push("/");
     } catch (err: any) {
