@@ -13,7 +13,7 @@ import {
   updateDoc
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Asset, Transaction } from "@/context/PortfolioContext";
+import { Asset, Transaction } from "@/types";
 import { AlertRule } from "@/types/alert";
 
 /**
