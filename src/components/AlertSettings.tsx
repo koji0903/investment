@@ -89,7 +89,7 @@ export const AlertSettings = () => {
               <div key={rule.id} className="flex items-center gap-3 px-6 py-3">
                 {/* ON/OFFトグル */}
                 <button
-                  onClick={() => toggleRule(rule.id)}
+                  onClick={() => toggleRule(rule.id, rule.enabled)}
                   className={cn(
                     "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
                     rule.enabled ? "bg-indigo-500" : "bg-slate-300 dark:bg-slate-600"
