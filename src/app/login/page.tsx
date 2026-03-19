@@ -18,7 +18,14 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  React.useEffect(() => {
+    if (!authLoading && user) {
+      router.push("/");
+    }
+  }, [user, authLoading, router]);
 
   if (!isConfigValid) {
     return (
