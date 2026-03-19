@@ -4,6 +4,10 @@ import { DashboardHeader } from "@/components/DashboardHeader";
 import { AssetCard } from "@/components/AssetCard";
 import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionList } from "@/components/TransactionList";
+import { PortfolioComposition } from "@/components/PortfolioComposition";
+import { AssetTrendChart } from "@/components/AssetTrendChart";
+import { PerformanceMetrics } from "@/components/PerformanceMetrics";
+import { RiskAnalysis } from "@/components/RiskAnalysis";
 import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function Home() {
@@ -13,7 +17,7 @@ export default function Home() {
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 lg:p-12 transition-colors duration-300">
       <div className="max-w-7xl mx-auto space-y-8">
         
-        <header className="mb-10 flex flex-col justify-between gap-4">
+        <header className="flex flex-col justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white mb-2">
               My Portfolio
@@ -33,7 +37,27 @@ export default function Home() {
           />
         </section>
 
-        <section className="pt-4 grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+        {/* パフォーマンス分析 */}
+        <section>
+          <PerformanceMetrics />
+        </section>
+
+        {/* リスク分析 */}
+        <section>
+          <RiskAnalysis />
+        </section>
+
+        {/* グラフエリア */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <AssetTrendChart />
+          </div>
+          <div className="lg:col-span-1">
+            <PortfolioComposition />
+          </div>
+        </section>
+
+        <section className="pt-2 grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
           <div className="xl:col-span-2 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
