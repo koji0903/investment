@@ -95,3 +95,25 @@ export const updateAlertEnabled = async (uid: string, alertId: string, enabled: 
 export const removeAlert = async (uid: string, alertId: string) => {
   return deleteDoc(doc(db, "users", uid, "alerts", alertId));
 };
+
+// --- Analysis ---
+
+export const subscribeAnalysis = (uid: string, portfolioId: string = "default", callback: (analysis: any) => void) => {
+  return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "summary"), (doc) => {
+    if (doc.exists()) {
+      callback(doc.data());
+    } else {
+      callback(null);
+    }
+  });
+};
+
+export const subscribeBehavior = (uid: string, portfolioId: string = "default", callback: (behavior: any) => void) => {
+  return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "behavior"), (doc) => {
+    if (doc.exists()) {
+      callback(doc.data());
+    } else {
+      callback(null);
+    }
+  });
+};

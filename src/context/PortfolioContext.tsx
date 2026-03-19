@@ -4,15 +4,27 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from "
 import { Asset, AssetCalculated, Transaction } from "@/types";
 import { calculateAssetValues } from "@/lib/dummyData";
 import { useAuth } from "@/context/AuthContext";
-import { subscribeAssets, subscribeTransactions, saveTransaction, saveAsset } from "@/lib/db";
+import { subscribeAssets, subscribeTransactions, subscribeAnalysis, subscribeBehavior, saveTransaction, saveAsset } from "@/lib/db";
 import { updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+
+interface AnalysisSummary {
+  realizedProfit: number;
+  winRate: number;
+  winCount: number;
+  lossCount: number;
+  totalTrades: number;
+  lastUpdated: any;
+  assetMeta: any[];
+}
 
 interface PortfolioContextType {
   portfolioId: string;
   assets: Asset[];
   transactions: Transaction[];
   calculatedAssets: AssetCalculated[];
+  analysis: AnalysisSummary | null;
+  behavior: any;
   totalAssetsValue: number;
   totalProfitAndLoss: number;
   addTransaction: (transaction: Omit<Transaction, "id" | "date">) => Promise<void>;
@@ -28,6 +40,8 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   const [assets, setAssets] = useState<Asset[]>([]);
   const [prices, setPrices] = useState<Record<string, number>>({});
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [analysis, setAnalysis] = useState<AnalysisSummary | null>(null);
+  const [behavior, setBehavior] = useState<any>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
 
@@ -36,6 +50,8 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     if (!user) {
       setAssets([]);
       setTransactions([]);
+      setAnalysis(null);
+      setBehavior(null);
       return;
     }
 
@@ -47,9 +63,19 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       setTransactions(data);
     });
 
+    const unsubAnalysis = subscribeAnalysis(user.uid, portfolioId, (data) => {
+      setAnalysis(data);
+    });
+
+    const unsubBehavior = subscribeBehavior(user.uid, portfolioId, (data) => {
+      setBehavior(data);
+    });
+
     return () => {
       unsubAssets();
       unsubTx();
+      unsubAnalysis();
+      unsubBehavior();
     };
   }, [user, portfolioId]);
 
@@ -152,6 +178,8 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         assets,
         transactions,
         calculatedAssets,
+        analysis,
+        behavior,
         totalAssetsValue,
         totalProfitAndLoss,
         addTransaction,

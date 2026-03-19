@@ -6,6 +6,8 @@ export interface PerformanceMetrics {
   averageReturn: number;
   maxDrawdown: number;
   sharpeRatio: number;
+  totalTrades: number;
+  realizedProfit: number;
 }
 
 export const getPerformanceMetrics = (
@@ -15,17 +17,21 @@ export const getPerformanceMetrics = (
   // 1. 勝率 & 平均リターン
   let winCount = 0;
   let totalReturn = 0;
+  let totalProfit = 0;
   const validAssets = assets.filter((a) => a.averageCost > 0 && a.quantity > 0);
   
   if (validAssets.length > 0) {
     validAssets.forEach((asset) => {
       if (asset.profitAndLoss > 0) winCount++;
       totalReturn += asset.profitPercentage;
+      totalProfit += asset.profitAndLoss;
     });
   }
   
   const winRate = validAssets.length > 0 ? (winCount / validAssets.length) * 100 : 0;
   const averageReturn = validAssets.length > 0 ? totalReturn / validAssets.length : 0;
+  const totalTrades = validAssets.length; // クライアント側での簡易集計
+  const realizedProfit = totalProfit; // 簡易
 
   // 2. 最大ドローダウン & トレンドボラティリティ
   let maxDrawdown = 0;
@@ -71,6 +77,8 @@ export const getPerformanceMetrics = (
     averageReturn,
     maxDrawdown,
     sharpeRatio,
+    totalTrades,
+    realizedProfit,
   };
 };
 

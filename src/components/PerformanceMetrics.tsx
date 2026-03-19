@@ -8,7 +8,7 @@ import { Target, TrendingUp, AlertTriangle, Activity, CheckCircle2 } from "lucid
 import { cn } from "@/lib/utils";
 
 export const PerformanceMetrics = () => {
-  const { calculatedAssets, totalAssetsValue } = usePortfolio();
+  const { calculatedAssets, totalAssetsValue, analysis } = usePortfolio();
   
   // 過去データの再生成または再利用
   const trendData = useMemo(() => {
@@ -16,8 +16,19 @@ export const PerformanceMetrics = () => {
   }, [totalAssetsValue]);
 
   const metrics = useMemo(() => {
-    return getPerformanceMetrics(calculatedAssets, trendData);
-  }, [calculatedAssets, trendData]);
+    const clientMetrics = getPerformanceMetrics(calculatedAssets, trendData);
+    
+    // Cloud Functions からのデータがあれば優先（オフロード）
+    if (analysis) {
+      return {
+        ...clientMetrics,
+        winRate: analysis.winRate ?? clientMetrics.winRate,
+        totalTrades: analysis.totalTrades ?? clientMetrics.totalTrades
+      };
+    }
+    
+    return clientMetrics;
+  }, [calculatedAssets, trendData, analysis]);
 
   const MetricCard = ({ 
     title, 
