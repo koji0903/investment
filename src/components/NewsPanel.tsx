@@ -206,10 +206,10 @@ export const NewsPanel = () => {
 // RSSが取得できない場合のダミーデータ
 function getDummyNews(): NewsItem[] {
   return [
-    { id: "1", title: "日経平均が小反発、米株高を受けて買い先行", url: "#", publishedAt: new Date().toISOString(), source: "Yahoo Finance", category: "株式", importance: "medium", description: "東京株式市場で日経平均株価は小幅に反発。前日の米国株式市場での上昇を受けて買い注文が先行した。" },
-    { id: "2", title: "ドル円、145円台で推移 FRBの発言に注目", url: "#", publishedAt: new Date(Date.now() - 3600000).toISOString(), source: "Yahoo Finance", category: "為替", importance: "medium", description: "外国為替市場でドル円は145円台で取引されている。市場では米連邦準備制度理事会の動向に注目が集まっている。" },
-    { id: "3", title: "ビットコイン、70,000ドル台を回復 機関投資家の流入が続く", url: "#", publishedAt: new Date(Date.now() - 7200000).toISOString(), source: "CoinDesk", category: "仮想通貨", importance: "high", description: "ビットコインが70,000ドル台を回復した。機関投資家からの資金流入が継続しており、市場の強気ムードが続いている。" },
-    { id: "4", title: "米国株先物、小幅安で推移", url: "#", publishedAt: new Date(Date.now() - 10800000).toISOString(), source: "Yahoo Finance", category: "株式", importance: "low", description: "米国株先物市場では主要指数の先物がいずれも小幅安で推移している。" },
-    { id: "5", title: "ユーロドル、ECBの政策発表を控えて様子見", url: "#", publishedAt: new Date(Date.now() - 14400000).toISOString(), source: "Yahoo Finance", category: "為替", importance: "low", description: "欧州中央銀行の政策発表を控え、ユーロドルは様子見の展開となっている。" },
+    { id: "1", title: "日経平均が小反発、米株高を受けて買い先行", url: "#", publishedAt: new Date().toISOString(), source: "Yahoo Finance", category: "株式", importance: "medium", sentiment: "positive", description: "東京株式市場で日経平均株価は小幅に反発。前日の米国株式市場での上昇を受けて買い注文が先行した。" },
+    { id: "2", title: "ドル円、145円台で推移 FRBの発言に注目", url: "#", publishedAt: new Date(Date.now() - 3600000).toISOString(), source: "Yahoo Finance", category: "為替", importance: "medium", sentiment: "neutral", description: "外国為替市場でドル円は145円台で取引されている。市場では米連邦準備制度理事会の動向に注目が集まっている。" },
+    { id: "3", title: "ビットコイン、70,000ドル台を回復 機関投資家の流入が続く", url: "#", publishedAt: new Date(Date.now() - 7200000).toISOString(), source: "CoinDesk", category: "仮想通貨", importance: "high", sentiment: "positive", description: "ビットコインが70,000ドル台を回復した。機関投資家からの資金流入が継続しており、市場の強気ムードが続いている。" },
+    { id: "4", title: "米国株先物、小幅安で推移", url: "#", publishedAt: new Date(Date.now() - 10800000).toISOString(), source: "Yahoo Finance", category: "株式", importance: "low", sentiment: "negative", description: "米国株先物市場では主要指数の先物がいずれも小幅安で推移している。" },
+    { id: "5", title: "ユーロドル、ECBの政策発表を控えて様子見", url: "#", publishedAt: new Date(Date.now() - 14400000).toISOString(), source: "Yahoo Finance", category: "為替", importance: "low", sentiment: "neutral", description: "欧州中央銀行の政策発表を控え、ユーロドルは様子見の展開となっている。" },
   ];
 }

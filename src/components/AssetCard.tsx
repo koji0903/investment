@@ -1,6 +1,19 @@
+import React, { useState, useEffect } from "react";
 import { AssetCalculated } from "@/types";
 import { formatCurrency, cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Coins, Building2, Landmark, CircleDollarSign } from "lucide-react";
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Coins, 
+  Building2, 
+  Landmark, 
+  CircleDollarSign,
+  Flame,
+  Snowflake,
+  Minus
+} from "lucide-react";
+import { getAssetSentiment, SentimentResult } from "@/lib/sentimentUtils";
+import { NewsItem } from "@/app/api/news/route";
 
 interface AssetCardProps {
   asset: AssetCalculated;
@@ -23,6 +36,21 @@ const CategoryIcon = ({ category, className }: { category: string; className?: s
 
 export const AssetCard = ({ asset }: AssetCardProps) => {
   const isProfit = asset.profitAndLoss >= 0;
+  const [sentiment, setSentiment] = useState<SentimentResult | null>(null);
+
+  useEffect(() => {
+    const fetchSentiment = async () => {
+      try {
+        const res = await fetch("/api/news");
+        const data = await res.json();
+        const news: NewsItem[] = data.news ?? [];
+        setSentiment(getAssetSentiment(asset.name, news));
+      } catch (e) {
+        console.error("Failed to fetch sentiment for asset", e);
+      }
+    };
+    fetchSentiment();
+  }, [asset.name]);
   
   return (
     <div className="group relative overflow-hidden rounded-[var(--radius-card)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 transition-all duration-300 hover:shadow-[var(--shadow-card-hover)] dark:hover:border-slate-700">
@@ -40,6 +68,22 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
               <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
                 {asset.name}
               </h3>
+              {sentiment && (
+                <div 
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold",
+                    sentiment.type === "bullish" ? "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" :
+                    sentiment.type === "bearish" ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" :
+                    "bg-slate-50 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400"
+                  )}
+                  title={`センチメント: ${sentiment.label} (スコア: ${sentiment.score})`}
+                >
+                  {sentiment.type === "bullish" ? <Flame className="w-2.5 h-2.5" /> :
+                   sentiment.type === "bearish" ? <Snowflake className="w-2.5 h-2.5" /> :
+                   <Minus className="w-2.5 h-2.5" />}
+                  {sentiment.label}
+                </div>
+              )}
             </div>
           </div>
         </div>

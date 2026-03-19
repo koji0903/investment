@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { XMLParser } from "fast-xml-parser";
+import { analyzeSentiment } from "@/lib/sentimentUtils";
 
 export interface NewsItem {
   id: string;
@@ -9,6 +10,7 @@ export interface NewsItem {
   source: string;
   category: "株式" | "為替" | "仮想通貨";
   importance: "high" | "medium" | "low";
+  sentiment: "positive" | "negative" | "neutral";
   description: string;
 }
 
@@ -63,6 +65,7 @@ async function fetchRSS(feedUrl: string, category: NewsItem["category"], source:
         source,
         category,
         importance: getImportance(title, description),
+        sentiment: analyzeSentiment(title, description),
         description: description.trim(),
       };
     });

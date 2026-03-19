@@ -14,6 +14,7 @@ import { NewsPanel } from "@/components/NewsPanel";
 import { EconomicCalendar } from "@/components/EconomicCalendar";
 import { AlertToast } from "@/components/AlertToast";
 import { AlertSettings } from "@/components/AlertSettings";
+import { MarketSentiment } from "@/components/MarketSentiment";
 import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function Home() {
@@ -46,9 +47,14 @@ export default function Home() {
           />
         </section>
 
-        {/* AI インサイト＆アドバイス */}
-        <section>
-          <InvestmentAdvice />
+        {/* AI インサイト & センチメント分析 */}
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <InvestmentAdvice />
+          </div>
+          <div className="lg:col-span-1">
+            <MarketSentiment />
+          </div>
         </section>
 
         {/* パフォーマンス & リスク 分析 & 最適化 */}
