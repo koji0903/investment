@@ -26,6 +26,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   const { user } = useAuth();
   const [portfolioId, setPortfolioId] = useState("default");
   const [assets, setAssets] = useState<Asset[]>([]);
+  const [prices, setPrices] = useState<Record<string, number>>({});
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
@@ -52,7 +53,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     };
   }, [user, portfolioId]);
 
-  // 外部APIからの価格フェッチ (Firestoreの資産に対して価格をマッピング)
+  // 外部APIからの価格フェッチ
   useEffect(() => {
     if (!user || assets.length === 0) return;
 
@@ -64,17 +65,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         const data = await res.json();
 
         if (data.prices) {
-          setAssets((prevAssets) =>
-            prevAssets.map((asset) => {
-              // symbolがあれば使用、なければID（レガシー互換）を使用
-              const priceKey = asset.symbol || asset.id;
-              const newPrice = data.prices[priceKey]; 
-              if (newPrice != null) {
-                return { ...asset, currentPrice: newPrice };
-              }
-              return asset;
-            })
-          );
+          setPrices(data.prices);
           if (data.timestamp) setLastUpdated(data.timestamp);
         }
       } catch (error) {
@@ -103,7 +94,6 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     const targetAsset = assets.find(a => a.id === newTx.assetId || a.symbol === newTx.assetId);
     
     if (targetAsset) {
-      // 既存資産の更新
       let newQuantity = targetAsset.quantity;
       let newAverageCost = targetAsset.averageCost;
 
@@ -117,11 +107,11 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
 
       await updateDoc(doc(db, "users", user.uid, "portfolios", portfolioId, "assets", targetAsset.id), {
         quantity: newQuantity,
-        averageCost: newAverageCost
+        averageCost: newAverageCost,
+        // 最新価格も念のためFirestoreに同期させておく（他デバイスでの初期表示用）
+        currentPrice: prices[targetAsset.symbol] || targetAsset.currentPrice
       });
     } else if (newTx.type === "buy") {
-      // 新規資産の作成
-      // 簡易的なカテゴリ推論
       let category: any = "株";
       const sym = newTx.assetId.toUpperCase();
       if (sym.includes("-USD") || sym.includes("BTC") || sym.includes("ETH")) category = "仮想通貨";
@@ -130,7 +120,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
 
       await saveAsset(user.uid, {
         symbol: newTx.assetId,
-        name: newTx.assetId, // 初期値はシンボルと同じ
+        name: newTx.assetId,
         category: category,
         quantity: newTx.quantity,
         averageCost: newTx.price,
@@ -140,8 +130,12 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   };
 
   const calculatedAssets = useMemo(() => {
-    return assets.map(asset => calculateAssetValues(asset));
-  }, [assets]);
+    return assets.map(asset => {
+      // APIから取得した最新価格があればそれを使用、なければFirestoreの価格を使用
+      const latestPrice = prices[asset.symbol] || asset.currentPrice;
+      return calculateAssetValues({ ...asset, currentPrice: latestPrice });
+    });
+  }, [assets, prices]);
 
   const totalAssetsValue = useMemo(() => {
     return calculatedAssets.reduce((total, asset) => total + asset.evaluatedValue, 0);
