@@ -10,6 +10,7 @@ import { PerformanceMetrics } from "@/components/PerformanceMetrics";
 import { RiskAnalysis } from "@/components/RiskAnalysis";
 import { PortfolioOptimization } from "@/components/PortfolioOptimization";
 import { InvestmentAdvice } from "@/components/InvestmentAdvice";
+import { NewsPanel } from "@/components/NewsPanel";
 import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function Home() {
@@ -62,6 +63,11 @@ export default function Home() {
           <div className="lg:col-span-1">
             <PortfolioComposition />
           </div>
+        </section>
+
+        {/* マーケットニュース */}
+        <section>
+          <NewsPanel />
         </section>
 
         <section className="pt-2 grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
