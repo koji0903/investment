@@ -7,9 +7,9 @@ import {
   updateProfile 
 } from "firebase/auth";
 import { auth, isConfigValid } from "@/lib/firebase";
-import { initializeUserData } from "@/lib/db";
+import { initializeUserData, generateDemoData } from "@/lib/db";
 import { useRouter } from "next/navigation";
-import { LogIn, UserPlus, Mail, Lock, Loader2, ArrowRight, AlertTriangle } from "lucide-react";
+import { LogIn, UserPlus, Mail, Lock, Loader2, ArrowRight, AlertTriangle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function LoginPage() {
@@ -78,6 +78,40 @@ export default function LoginPage() {
           ? "このメールアドレスは既に登録されています。"
           : "認証に失敗しました。もう一度お試しください。"
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async () => {
+    setLoading(true);
+    setError("");
+    const demoEmail = "demo@example.com";
+    const demoPassword = "demo-password-123";
+
+    try {
+      try {
+        // 1. 既存のデモユーザーでログイン試行
+        await signInWithEmailAndPassword(auth, demoEmail, demoPassword);
+      } catch (err: any) {
+        // 2. 存在しなければ新規作成
+        if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
+          const userCredential = await createUserWithEmailAndPassword(auth, demoEmail, demoPassword);
+          await updateProfile(userCredential.user, { displayName: "Demo Investor" });
+          
+          // 初期化とデモデータ生成
+          await initializeUserData(userCredential.user.uid, demoEmail, "Demo Investor");
+          await generateDemoData(userCredential.user.uid);
+          
+          await signInWithEmailAndPassword(auth, demoEmail, demoPassword);
+        } else {
+          throw err;
+        }
+      }
+      router.push("/");
+    } catch (err: any) {
+      console.error(err);
+      setError("デモログインに失敗しました。時間をおいて再度お試しください。");
     } finally {
       setLoading(false);
     }
@@ -167,6 +201,24 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-100 dark:border-slate-800"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white dark:bg-slate-900 px-4 text-slate-400 font-bold tracking-widest">OR</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleDemoLogin}
+            disabled={loading}
+            className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-all border border-slate-700 shadow-xl group"
+          >
+            <Sparkles className="w-5 h-5 text-amber-400 group-hover:scale-125 transition-transform" />
+            デモデータでログイン
+          </button>
 
           <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
             <button

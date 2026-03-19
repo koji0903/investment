@@ -173,3 +173,38 @@ export const initializeUserData = async (uid: string, email: string, displayName
 
   return batch.commit();
 };
+
+export const generateDemoData = async (uid: string, portfolioId: string = "default") => {
+  const batch = writeBatch(db);
+  const assetsCol = getAssetsCol(uid, portfolioId);
+  const transCol = getTransactionsCol(uid, portfolioId);
+
+  const demoAssets = [
+    { name: "Apple Inc.", symbol: "AAPL", category: "株", currentPrice: 190.5, quantity: 10, averageCost: 175.2 },
+    { name: "Toyota Motor", symbol: "7203.T", category: "株", currentPrice: 3500, quantity: 100, averageCost: 2800 },
+    { name: "Bitcoin", symbol: "BTC", category: "仮想通貨", currentPrice: 9500000, quantity: 0.1, averageCost: 6000000 },
+    { name: "Ethereum", symbol: "ETH", category: "仮想通貨", currentPrice: 450000, quantity: 2, averageCost: 320000 },
+    { name: "eMAXIS Slim S&P500", symbol: "SP500_TRUST", category: "投資信託", currentPrice: 25000, quantity: 100, averageCost: 18000 },
+    { name: "ドル/円 (L)", symbol: "USDJPY", category: "FX", currentPrice: 150.2, quantity: 10000, averageCost: 145.5 },
+  ];
+
+  demoAssets.forEach(data => {
+    const assetRef = doc(assetsCol);
+    batch.set(assetRef, {
+      ...data,
+      updatedAt: serverTimestamp()
+    });
+
+    // 初期購入トランザクション
+    const transRef = doc(transCol);
+    batch.set(transRef, {
+      assetId: assetRef.id,
+      type: "buy",
+      quantity: data.quantity,
+      price: data.averageCost,
+      date: serverTimestamp()
+    });
+  });
+
+  return batch.commit();
+};
