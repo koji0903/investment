@@ -1,11 +1,11 @@
 import { Asset, AssetCalculated } from "@/types";
 
 export const dummyAssets: Asset[] = [
-  { id: "1", name: "Apple Inc.", category: "株", currentPrice: 28500, quantity: 50, averageCost: 25000 },
-  { id: "2", name: "トヨタ自動車", category: "株", currentPrice: 3850, quantity: 400, averageCost: 3200 },
-  { id: "3", name: "USD/JPY", category: "FX", currentPrice: 151.20, quantity: 10000, averageCost: 145.50 },
-  { id: "4", name: "Bitcoin", category: "仮想通貨", currentPrice: 10500000, quantity: 0.15, averageCost: 8000000 },
-  { id: "5", name: "eMAXIS Slim 全世界株式", category: "投資信託", currentPrice: 25000, quantity: 150, averageCost: 20000 },
+  { id: "1", symbol: "AAPL", name: "Apple Inc.", category: "株", currentPrice: 28500, quantity: 50, averageCost: 25000 },
+  { id: "2", symbol: "7203.T", name: "トヨタ自動車", category: "株", currentPrice: 3850, quantity: 400, averageCost: 3200 },
+  { id: "3", symbol: "USDJPY=X", name: "USD/JPY", category: "FX", currentPrice: 151.20, quantity: 10000, averageCost: 145.50 },
+  { id: "4", symbol: "BTC-USD", name: "Bitcoin", category: "仮想通貨", currentPrice: 10500000, quantity: 0.15, averageCost: 8000000 },
+  { id: "5", symbol: "EMAXIS-SLIM", name: "eMAXIS Slim 全世界株式", category: "投資信託", currentPrice: 25000, quantity: 150, averageCost: 20000 },
 ];
 
 export const calculateAssetValues = (asset: Asset): AssetCalculated => {
