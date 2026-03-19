@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useAlert } from "@/context/AlertContext";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { AlertRule, AlertCondition, AlertPriority } from "@/types/alert";
-import { Bell, Plus, Trash2, Toggle, ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const CONDITION_LABELS: Record<AlertCondition, string> = {
