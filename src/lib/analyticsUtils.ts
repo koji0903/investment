@@ -253,3 +253,51 @@ export const calculateOptimization = (assets: AssetCalculated[]): AssetOptimizat
   return optimizations.sort((a, b) => Math.abs(b.differenceValue) - Math.abs(a.differenceValue));
 };
 
+export interface InvestmentAdvice {
+  marketStatus: string;
+  portfolioEvaluation: string;
+  actionProposal: string;
+}
+
+export const generateInvestmentAdvice = (
+  performance: PerformanceMetrics,
+  risk: PortfolioRisk,
+  optimizations: AssetOptimization[]
+): InvestmentAdvice => {
+  // 1. 市場・資産状況
+  let marketStatus = "資産は安定して推移しています。";
+  if (performance.averageReturn > 10) {
+    marketStatus = `Average Returnが +${performance.averageReturn.toFixed(1)}% と非常に好調です。現在の相場トレンドにうまく乗れており、確かな利益を生み出しています。`;
+  } else if (performance.averageReturn > 0) {
+    marketStatus = `Average Returnが +${performance.averageReturn.toFixed(1)}% とプラス圏を維持しており、着実で底堅い運用ができています。`;
+  } else if (performance.averageReturn > -5) {
+    marketStatus = `Average Returnは若干のマイナス（${performance.averageReturn.toFixed(1)}%）ですが、許容範囲内での健全な調整局面と考えられます。`;
+  } else {
+    marketStatus = `全体的な評価損（${performance.averageReturn.toFixed(1)}%）が目立ちます。下落トレンドが続いているため、保有銘柄の見直しや損切りラインの再確認が必要です。`;
+  }
+
+  // 2. ポートフォリオ評価
+  let portfolioEvaluation = "分散の効いた良いバランスです。";
+  if (risk.overallLevel === "Critical" || risk.overallLevel === "HighRisk") {
+    portfolioEvaluation = `ポートフォリオのリスクスコアが ${Math.round(risk.overallScore)} と高止まりしています。ハイボラティリティな資産への集中投資になっている可能性があるため、急落時の痛手に注意が必要です。`;
+  } else if (risk.overallLevel === "Safe") {
+    portfolioEvaluation = `リスクスコアは ${Math.round(risk.overallScore)} と非常に抑えられており、暴落耐性が高い安全性重視のディフェンシブな構成が組まれています。`;
+  } else {
+    portfolioEvaluation = `リスクスコアは ${Math.round(risk.overallScore)} と適正水準にあります。過度なリスクを取らない健全なポートフォリオと言えます。`;
+  }
+
+  // 3. 改善アクション提案
+  let actionProposal = "現在のところ、大規模なリバランスの緊急性はありません。このまま市場の動向を注視してください。";
+  if (optimizations.length > 0) {
+    // 乖離額が一番大きいものを取得（ソート済みなので先頭）
+    const topOpt = optimizations[0];
+    if (topOpt.status !== "Optimal") {
+      const direction = topOpt.status === "Excess" ? "過剰" : "不足";
+      const action = topOpt.status === "Excess" ? "の一部売却" : "の積極的な買い増し";
+      actionProposal = `最も優先すべき最適化アクション：現在『${topOpt.category}』の比率が${direction}しています。理想のバランスに近づけるため、${topOpt.category}${action}を検討し、リバランスを行うことを推奨します。`;
+    }
+  }
+
+  return { marketStatus, portfolioEvaluation, actionProposal };
+};
+

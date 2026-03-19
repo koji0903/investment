@@ -9,6 +9,7 @@ import { AssetTrendChart } from "@/components/AssetTrendChart";
 import { PerformanceMetrics } from "@/components/PerformanceMetrics";
 import { RiskAnalysis } from "@/components/RiskAnalysis";
 import { PortfolioOptimization } from "@/components/PortfolioOptimization";
+import { InvestmentAdvice } from "@/components/InvestmentAdvice";
 import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function Home() {
@@ -36,6 +37,11 @@ export default function Home() {
             lastUpdated={lastUpdated}
             isFetching={isFetching}
           />
+        </section>
+
+        {/* AI インサイト＆アドバイス */}
+        <section>
+          <InvestmentAdvice />
         </section>
 
         {/* パフォーマンス & リスク 分析 & 最適化 */}
