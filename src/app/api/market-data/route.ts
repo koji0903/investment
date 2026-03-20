@@ -42,7 +42,8 @@ export async function GET() {
             interval: "1d"
           });
 
-          const prices = historical.map(h => h.close).filter((p): p is number => p !== undefined);
+          // 型エラー回避のためのキャスト
+          const prices = (historical as any[]).map(h => h.close).filter((p: any): p is number => p !== undefined);
           const lastPrice = prices[prices.length - 1];
           const tech = getTechnicalStatus(lastPrice, prices);
 

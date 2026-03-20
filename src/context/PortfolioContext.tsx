@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useMemo, useEffect } from "react";
-import { Asset, AssetCalculated, Transaction } from "@/types";
+import { Asset, AssetCalculated, Transaction, BrokerConnection } from "@/types";
 import { calculateAssetValues } from "@/lib/dummyData";
 import { useAuth } from "@/context/AuthContext";
 import { useNotify } from "@/context/NotificationContext";

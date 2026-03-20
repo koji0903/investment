@@ -1,12 +1,13 @@
 "use client";
 
+import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNotify } from "@/context/NotificationContext";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { updateBrokerConnection } from "@/lib/db";
 import { ProviderType, BrokerConnection } from "@/types";
-
-type ProviderType = 'stock' | 'crypto' | 'fx';
+import { Landmark, Bitcoin, LineChart, Link as LinkIcon, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ProviderConfig {
   id: ProviderType;
