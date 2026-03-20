@@ -15,7 +15,7 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Asset, Transaction, TradeProposal, InvestmentReport, NotificationSettings, RiskRule, TradingRule } from "@/types";
+import { Asset, Transaction, TradeProposal, InvestmentReport, NotificationSettings, RiskRule, TradingRule, PositionSizingSettings } from "@/types";
 import { AlertRule } from "@/types/alert";
 
 /**
@@ -319,6 +319,30 @@ export const subscribeTradingRules = (uid: string, callback: (rules: TradingRule
 export const updateTradingRule = async (uid: string, ruleId: string, rule: Partial<TradingRule>) => {
   const docRef = doc(db, "users", uid, "settings", "tradingRules", "items", ruleId);
   return setDoc(docRef, rule, { merge: true });
+};
+
+// --- Position Sizing ---
+
+const getPositionSizingDoc = (uid: string) => doc(db, "users", uid, "settings", "positionSizing");
+
+export const subscribePositionSizing = (uid: string, callback: (settings: PositionSizingSettings) => void) => {
+  return onSnapshot(getPositionSizingDoc(uid), (doc) => {
+    if (doc.exists()) {
+      callback(doc.data() as PositionSizingSettings);
+    } else {
+      // 初期値
+      callback({
+        maxCapitalPerTradePct: 20,
+        riskPerTradePct: 1,
+        enabled: true
+      });
+    }
+  });
+};
+
+export const updatePositionSizing = async (uid: string, settings: Partial<PositionSizingSettings>) => {
+  const docRef = getPositionSizingDoc(uid);
+  return setDoc(docRef, settings, { merge: true });
 };
 
 // --- Analysis ---

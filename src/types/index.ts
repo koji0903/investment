@@ -92,3 +92,9 @@ export interface TradingRule {
   enabled: boolean;
   autoPropose: boolean;
 }
+
+export interface PositionSizingSettings {
+  maxCapitalPerTradePct: number; // 1トレードあたりの最大資金投入率 (%)
+  riskPerTradePct: number;       // 1トレードあたりの許容リスク率 (%)
+  enabled: boolean;
+}
