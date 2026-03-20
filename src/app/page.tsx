@@ -48,6 +48,7 @@ import { TradingAutomation } from "@/components/TradingAutomation";
 import { PositionSizing } from "@/components/PositionSizing";
 import { WinPatternAnalysis } from "@/components/WinPatternAnalysis";
 import { InvestmentRuleMonitor } from "@/components/InvestmentRuleMonitor";
+import { Footer } from "@/components/Footer";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -271,6 +272,7 @@ export default function Home() {
           </AnimatePresence>
         </div>
       </main>
+      <Footer />
     </AuthGuard>
   );
 }
