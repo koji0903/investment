@@ -403,6 +403,62 @@ export const calculateMarketCondition = (
   };
 };
 
+export interface AIMarketAnalysisResult {
+  summary: string;
+  points: { title: string, text: string }[];
+  risks: { title: string, text: string }[];
+  overallOutlook: string; // "Bullish" | "Cautious" | "Bearish"
+  score: number;
+}
+
+export const generateAIMarketAnalysis = (
+  condition: MarketConditionResult,
+  newsContext: string[] = [] // デモ用
+): AIMarketAnalysisResult => {
+  const score = condition.score;
+  let overallOutlook = "Cautious";
+  if (score >= 65) overallOutlook = "Bullish";
+  else if (score <= 35) overallOutlook = "Bearish";
+
+  const summary = `現在の市場は ${condition.label} な局面にあります。${condition.factors.equity > 0 ? "株価のトレンドは堅調" : "株価には調整圧力がかかって"}おり、${condition.factors.yield > 0 ? "金利環境も安定" : "金利の変動が警戒"}されています。全体として、今は『${condition.strategy === "Attack" ? "攻め" : "守り"}』のスタンスを基調とした戦略が合理的です。`;
+
+  const points = [
+    { 
+      title: "株価トレンドの維持", 
+      text: condition.factors.equity > 0 
+        ? "主要指数が200日移動平均線を上回って推移しており、テクニカル的な強気形状を維持しています。" 
+        : "主要指数が節目の移動平均線を割り込み、テクニカル的な警戒信号が点灯しています。"
+    },
+    { 
+      title: "金利とマクロ環境", 
+      text: condition.factors.yield > 0 
+        ? "長短金利差が適正なプラス圏にあり、経済の先行きに対する市場の信頼は厚いと言えます。" 
+        : "逆イールド（金利の逆転）の懸念がくすぶっており、先行きの景気後退リスクに注意が必要です。"
+    }
+  ];
+
+  const risks = [
+    { 
+      title: "為替のボラティリティ", 
+      text: Math.abs(condition.factors.fx) > 5 
+        ? "ドル円の急激な変動が、輸出・輸入企業の収益予想に不透明感を与えています。FXヘッジの検討が必要です。" 
+        : "為替相場は比較的安定しており、通貨変動による予期せぬ資産価値の毀損リスクは低い状態です。"
+    },
+    { 
+      title: "地政学的・地学的リスク", 
+      text: "ニュースセンチメントに基づくと、エネルギー価格の変動や供給網の不確実性が、中長期的なインフレ再燃の火種となっています。"
+    }
+  ];
+
+  return {
+    summary,
+    points,
+    risks,
+    overallOutlook,
+    score
+  };
+};
+
 export interface TradingPatternInsight {
   type: "success" | "failure";
   title: string;

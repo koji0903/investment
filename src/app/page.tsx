@@ -29,6 +29,7 @@ import { RiskDecomposition } from "@/components/RiskDecomposition";
 import { CorrelationMatrix } from "@/components/CorrelationMatrix";
 import { MarketCondition } from "@/components/MarketCondition";
 import { SkillCoach } from "@/components/SkillCoach";
+import { MarketAnalysisDashboard } from "@/components/MarketAnalysisDashboard";
 import { AlertList } from "@/components/AlertList";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
@@ -128,6 +129,7 @@ export default function Home() {
             >
               {activeTab === "overview" && (
                 <div className="space-y-12">
+                  <MarketAnalysisDashboard />
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: Visualization & AI Advice */}
                     <div className="lg:col-span-2 space-y-8">
