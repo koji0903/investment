@@ -1166,3 +1166,31 @@ export const generateScenarioStrategies = (
     }
   ];
 };
+
+export interface AllocationComparison {
+  category: string;
+  current: number;
+  target: number;
+  diff: number;
+}
+
+export const compareWithTemplate = (
+  currentAlloc: { name: string; value: number }[],
+  templateAlloc: Partial<Record<string, number>>
+): AllocationComparison[] => {
+  const categories = ["株", "FX", "仮想通貨", "投資信託"];
+  const totalValue = currentAlloc.reduce((sum, a) => sum + a.value, 0);
+
+  return categories.map((cat) => {
+    const currentVal = currentAlloc.find((a) => a.name === cat)?.value || 0;
+    const currentPct = totalValue > 0 ? (currentVal / totalValue) * 100 : 0;
+    const targetPct = templateAlloc[cat as any] || 0;
+
+    return {
+      category: cat,
+      current: currentPct,
+      target: targetPct,
+      diff: currentPct - targetPct,
+    };
+  });
+};

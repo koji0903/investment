@@ -67,3 +67,11 @@ export interface NotificationSettings {
     market: boolean;
   };
 }
+
+export interface StrategyTemplate {
+  id: string;
+  name: string;
+  description: string;
+  allocation: Partial<Record<AssetCategory, number>>;
+  riskLevel: "low" | "moderate" | "high";
+}
