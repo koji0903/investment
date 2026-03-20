@@ -7,19 +7,30 @@ import { generateTrendData } from "@/lib/chartUtils";
 import { Target, TrendingUp, AlertTriangle, Activity, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const PerformanceMetrics = () => {
+export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filterAssetId?: string, hideHeader?: boolean }) => {
   const { calculatedAssets, totalAssetsValue, analysis } = usePortfolio();
   
+  const targetAssets = useMemo(() => {
+    if (!filterAssetId) return calculatedAssets;
+    return calculatedAssets.filter(a => a.id === filterAssetId || a.symbol === filterAssetId);
+  }, [calculatedAssets, filterAssetId]);
+
+  const targetValue = useMemo(() => {
+    if (!filterAssetId) return totalAssetsValue;
+    return targetAssets.reduce((sum, a) => sum + a.evaluatedValue, 0);
+  }, [targetAssets, totalAssetsValue, filterAssetId]);
+
   // 過去データの再生成または再利用
   const trendData = useMemo(() => {
-    return generateTrendData(totalAssetsValue, 30);
-  }, [totalAssetsValue]);
+    return generateTrendData(targetValue, 30);
+  }, [targetValue]);
 
   const metrics = useMemo(() => {
-    const clientMetrics = getPerformanceMetrics(calculatedAssets, trendData);
+    const clientMetrics = getPerformanceMetrics(targetAssets, trendData);
     
     // Cloud Functions からのデータがあれば優先（オフロード）
-    if (analysis) {
+    // 個別資産の場合は一旦クライアント計算のみとする
+    if (analysis && !filterAssetId) {
       return {
         ...clientMetrics,
         winRate: analysis.winRate ?? clientMetrics.winRate,
@@ -28,7 +39,7 @@ export const PerformanceMetrics = () => {
     }
     
     return clientMetrics;
-  }, [calculatedAssets, trendData, analysis]);
+  }, [targetAssets, trendData, analysis, filterAssetId]);
 
   const MetricCard = ({ 
     title, 
@@ -66,11 +77,16 @@ export const PerformanceMetrics = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-4 md:p-6 shadow-sm">
-      <h3 className="text-lg md:text-xl font-bold mb-5 flex items-center gap-2 text-slate-800 dark:text-slate-100">
-        <Activity className="w-5 h-5 text-indigo-500" />
-        パフォーマンス分析
-      </h3>
+    <div className={cn(
+      "flex flex-col",
+      !hideHeader && "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-4 md:p-6 shadow-sm"
+    )}>
+      {!hideHeader && (
+        <h3 className="text-lg md:text-xl font-bold mb-5 flex items-center gap-2 text-slate-800 dark:text-slate-100">
+          <Activity className="w-5 h-5 text-indigo-500" />
+          パフォーマンス分析
+        </h3>
+      )}
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
         <MetricCard 

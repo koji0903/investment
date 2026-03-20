@@ -53,7 +53,7 @@ const formatRelativeTime = (dateStr: string) => {
   }
 };
 
-export const NewsPanel = () => {
+export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
   const { calculatedAssets } = usePortfolio();
   const [news, setNews] = useState<NewsItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,19 +90,27 @@ export const NewsPanel = () => {
 
   const filtered = useMemo(() => {
     let items = news;
-    if (activeTab === "関連") {
-      items = items.filter(n =>
-        relatedKeywords.some(kw => kw && (n.title.includes(kw) || n.description.includes(kw)))
+    if (filterKeyword) {
+      const q = filterKeyword.toLowerCase();
+      items = items.filter(n => 
+        n.title.toLowerCase().includes(q) || 
+        n.description.toLowerCase().includes(q)
       );
-    } else if (activeTab !== "すべて") {
-      items = items.filter(n => n.category === activeTab);
-    }
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      items = items.filter(n => n.title.toLowerCase().includes(q) || n.description.toLowerCase().includes(q));
+    } else {
+      if (activeTab === "関連") {
+        items = items.filter(n =>
+          relatedKeywords.some(kw => kw && (n.title.includes(kw) || n.description.includes(kw)))
+        );
+      } else if (activeTab !== "すべて") {
+        items = items.filter(n => n.category === activeTab);
+      }
+      if (search.trim()) {
+        const q = search.trim().toLowerCase();
+        items = items.filter(n => n.title.toLowerCase().includes(q) || n.description.toLowerCase().includes(q));
+      }
     }
     return items;
-  }, [news, activeTab, search, relatedKeywords]);
+  }, [news, activeTab, search, relatedKeywords, filterKeyword]);
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] shadow-sm overflow-hidden">

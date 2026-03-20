@@ -60,8 +60,9 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
       initial={{ opacity: 0, scale: 0.95 }}
       whileInView={{ opacity: 1, scale: 1 }}
       viewport={{ once: true }}
-      whileHover={{ y: -5 }}
-      className="premium-card group relative p-6"
+      whileHover={{ y: -5, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)" }}
+      onClick={() => window.location.href = `/asset/${asset.symbol}`}
+      className="premium-card group relative p-6 cursor-pointer"
     >
       <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-500 group-hover:scale-125 group-hover:-rotate-12 pointer-events-none">
         <CategoryIcon category={asset.category} className="w-24 h-24 text-slate-900 dark:text-slate-100" />

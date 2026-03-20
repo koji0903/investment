@@ -4,17 +4,26 @@ import { usePortfolio } from "@/context/PortfolioContext";
 import { formatCurrency, cn } from "@/lib/utils";
 import { History, ArrowRightLeft } from "lucide-react";
 
-export const TransactionList = () => {
+export const TransactionList = ({ filterAssetId, hideHeader = false }: { filterAssetId?: string, hideHeader?: boolean }) => {
   const { transactions, assets } = usePortfolio();
 
+  const filteredTransactions = filterAssetId 
+    ? transactions.filter(t => t.assetId === filterAssetId || (assets.find(a => a.id === filterAssetId)?.symbol === t.assetId))
+    : transactions;
+
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-6 shadow-sm overflow-hidden flex flex-col">
-      <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-slate-100 shrink-0">
-        <History className="w-5 h-5 text-indigo-500" />
-        最近の取引履歴
-      </h3>
+    <div className={cn(
+      "overflow-hidden flex flex-col",
+      !hideHeader && "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-6 shadow-sm"
+    )}>
+      {!hideHeader && (
+        <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-slate-100 shrink-0">
+          <History className="w-5 h-5 text-indigo-500" />
+          最近の取引履歴
+        </h3>
+      )}
       
-      {transactions.length === 0 ? (
+      {filteredTransactions.length === 0 ? (
         <div className="text-center py-10 text-slate-500 flex flex-col items-center justify-center gap-2 border border-dashed border-slate-300 dark:border-slate-700 rounded-2xl">
           <ArrowRightLeft className="w-8 h-8 opacity-20" />
           <p className="font-medium text-sm">まだ取引履歴がありません</p>
@@ -30,7 +39,7 @@ export const TransactionList = () => {
               </tr>
             </thead>
             <tbody className="text-sm">
-              {transactions.map((t) => {
+              {filteredTransactions.map((t) => {
                 const asset = assets.find((a) => a.id === t.assetId);
                 const isBuy = t.type === "buy";
                 
