@@ -45,8 +45,8 @@ export const PortfolioComposition = () => {
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={110}
-                outerRadius={150}
+                innerRadius="60%"
+                outerRadius="90%"
                 paddingAngle={6}
                 dataKey="value"
                 stroke="none"
@@ -65,13 +65,13 @@ export const PortfolioComposition = () => {
                 height={48}
                 iconType="circle"
                 iconSize={10}
-                formatter={(value) => <span className="text-slate-600 dark:text-slate-400 font-bold ml-2 text-xs uppercase tracking-wider">{value}</span>}
+                formatter={(value) => <span className="text-slate-600 dark:text-slate-400 font-bold ml-2 text-[10px] md:text-xs uppercase tracking-wider">{value}</span>}
               />
             </PieChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none -mt-[48px]">
-            <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-1">Portfolio Value</span>
-            <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{formatCurrency(total)}</span>
+            <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-1">Portfolio</span>
+            <span className="text-2xl md:text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{formatCurrency(total)}</span>
           </div>
         </div>
       )}

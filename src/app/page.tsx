@@ -40,8 +40,8 @@ export default function Home() {
   return (
     <AuthGuard>
       <AlertToast />
-      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 lg:p-12 transition-colors duration-300 font-sans">
-        <div className="max-w-7xl mx-auto space-y-8">
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-8 md:p-8 lg:p-12 transition-colors duration-300 font-sans">
+        <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
           
           {isDemo && (
             <motion.div 
@@ -72,8 +72,8 @@ export default function Home() {
               className="space-y-4"
             >
               <h1 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em]">総資産額</h1>
-              <div className="text-6xl md:text-9xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums leading-none">
-                {isFetching ? <Skeleton className="w-64 h-24 mx-auto opacity-20" /> : formatCurrency(totalAssetsValue)}
+              <div className="text-5xl sm:text-7xl md:text-9xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums leading-none">
+                {isFetching ? <Skeleton className="w-48 sm:w-64 h-16 sm:h-24 mx-auto opacity-20" /> : formatCurrency(totalAssetsValue)}
               </div>
             </motion.div>
 
@@ -82,17 +82,17 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
               className={cn(
-                "px-10 py-5 rounded-[40px] border-2 flex items-center gap-6 transition-all duration-500 shadow-xl",
+                "px-6 py-4 md:px-10 md:py-5 rounded-[32px] md:rounded-[40px] border-2 flex items-center gap-4 md:gap-6 transition-all duration-500 shadow-xl",
                 totalDailyChange >= 0 
                   ? "bg-emerald-50/50 border-emerald-100 text-emerald-600 dark:bg-emerald-500/5 dark:border-emerald-500/20 dark:text-emerald-400 shadow-emerald-500/5" 
                   : "bg-rose-50/50 border-rose-100 text-rose-600 dark:bg-rose-500/5 dark:border-rose-500/20 dark:text-rose-400 shadow-rose-500/5"
               )}
             >
               <div className={cn(
-                "w-14 h-14 rounded-[20px] flex items-center justify-center text-white shadow-lg",
+                "w-10 h-10 md:w-14 md:h-14 rounded-[16px] md:rounded-[20px] flex items-center justify-center text-white shadow-lg shrink-0",
                 totalDailyChange >= 0 ? "bg-emerald-500 shadow-emerald-500/20" : "bg-rose-500 shadow-rose-500/20"
               )}>
-                {totalDailyChange >= 0 ? <TrendingUp size={32} /> : <TrendingDown size={32} />}
+                {totalDailyChange >= 0 ? <TrendingUp size={24} className="md:w-8 md:h-8" /> : <TrendingDown size={24} className="md:w-8 md:h-8" />}
               </div>
               <div className="text-left">
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-0.5">本日の損益</p>
@@ -157,7 +157,7 @@ export default function Home() {
                       <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
                       保有資産一覧
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                       {isFetching ? (
                         <>
                           <AssetCardSkeleton />

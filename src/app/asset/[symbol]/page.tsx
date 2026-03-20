@@ -41,13 +41,13 @@ export default function AssetDetailPage() {
   return (
     <AuthGuard>
       <AlertToast />
-      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 md:p-8 lg:p-12 transition-colors duration-300 font-sans">
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-8 md:p-8 lg:p-12 transition-colors duration-300 font-sans">
         <div className="max-w-7xl mx-auto space-y-10">
           
           <AssetDetailHeader asset={asset} />
 
           {/* Detailed Tab Navigation */}
-          <div className="flex p-1.5 bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-3xl w-fit sticky top-4 z-40 shadow-lg">
+          <div className="flex p-1 bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-2xl md:rounded-3xl w-fit sticky top-2 md:top-4 z-40 shadow-lg mx-auto md:mx-0">
             <DetailTabButton active={activeTab === "overview"} onClick={() => setActiveTab("overview")} Icon={Briefcase} label="概要" />
             <DetailTabButton active={activeTab === "analysis"} onClick={() => setActiveTab("analysis")} Icon={LineChart} label="分析" />
             <DetailTabButton active={activeTab === "news"} onClick={() => setActiveTab("news")} Icon={Newspaper} label="ニュース" />
@@ -112,13 +112,13 @@ function DetailTabButton({ active, onClick, Icon, label }: { active: boolean, on
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-6 py-2.5 rounded-2xl text-sm font-black transition-all duration-300 relative",
+        "flex items-center gap-2 px-3 sm:px-6 py-2 rounded-xl md:rounded-2xl text-[13px] sm:text-sm font-black transition-all duration-300 relative",
         active 
           ? "bg-white dark:bg-slate-800 text-indigo-500 shadow-sm" 
           : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/50 dark:hover:bg-slate-800/50"
       )}
     >
-      <Icon size={18} />
+      <Icon size={16} className="shrink-0" />
       <span>{label}</span>
       {active && (
         <motion.div 
@@ -133,10 +133,10 @@ function DetailTabButton({ active, onClick, Icon, label }: { active: boolean, on
 function SummaryItem({ label, value, unit }: { label: string, value: string, unit?: string }) {
   return (
     <div className="flex justify-between items-end border-b border-slate-50 dark:border-slate-800 pb-2">
-      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</span>
-      <span className="text-lg font-black text-slate-800 dark:text-white tabular-nums">
+      <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</span>
+      <span className="text-base sm:text-lg font-black text-slate-800 dark:text-white tabular-nums">
         {value}
-        {unit && <span className="text-xs ml-1 opacity-60 font-bold">{unit}</span>}
+        {unit && <span className="text-[10px] ml-0.5 opacity-60 font-bold">{unit}</span>}
       </span>
     </div>
   );

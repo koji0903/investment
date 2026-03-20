@@ -29,7 +29,7 @@ export const InvestmentAdvice = () => {
   if (!advice) return null;
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-8 shadow-sm overflow-hidden relative group">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-5 md:p-8 shadow-sm overflow-hidden relative group text-left">
       <div className="absolute top-0 right-0 -translate-y-8 translate-x-8 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform duration-700">
         <Sparkles className="w-64 h-64 text-indigo-500" />
       </div>

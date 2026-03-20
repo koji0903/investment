@@ -159,7 +159,7 @@ export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
         </button>
       </div>
 
-      <div className="flex gap-1 px-6 pt-3 pb-0">
+      <div className="flex gap-1 px-4 md:px-6 pt-3 pb-0 overflow-x-auto no-scrollbar">
         {CATEGORY_TABS.map(tab => (
           <button
             key={tab}
@@ -176,7 +176,7 @@ export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
         ))}
       </div>
 
-      <div className="p-4 max-h-[520px] overflow-y-auto space-y-3 custom-scrollbar">
+      <div className="p-4 md:max-h-[520px] md:overflow-y-auto space-y-3 custom-scrollbar">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Newspaper className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
