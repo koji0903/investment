@@ -34,6 +34,7 @@ import { StrategyActionPoints } from "@/components/StrategyActionPoints";
 import { PortfolioRebalance } from "@/components/PortfolioRebalance";
 import { InvestmentStylePortrait } from "@/components/InvestmentStylePortrait";
 import { ActionTriggerPanel } from "@/components/ActionTriggerPanel";
+import { QuantumOptimizationCard } from "@/components/QuantumOptimizationCard";
 import { AlertList } from "@/components/AlertList";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
@@ -211,6 +212,7 @@ export default function Home() {
                     <RiskDecomposition />
                     <CorrelationMatrix />
                     <PortfolioOptimization />
+                    <QuantumOptimizationCard />
                     <StrategyActionPoints />
                     <InvestmentStrategyCard />
                     <MarketSentiment />
