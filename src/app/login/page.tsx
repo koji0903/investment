@@ -97,22 +97,31 @@ export default function LoginPage() {
       } catch (err: any) {
         // 2. 存在しなければ新規作成
         if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
-          const userCredential = await createUserWithEmailAndPassword(auth, demoEmail, demoPassword);
-          await updateProfile(userCredential.user, { displayName: "Demo Investor" });
-          
-          // 初期化とデモデータ生成
-          await initializeUserData(userCredential.user.uid, demoEmail, "Demo Investor");
-          await generateDemoData(userCredential.user.uid);
-          
-          await signInWithEmailAndPassword(auth, demoEmail, demoPassword);
+          try {
+            const userCredential = await createUserWithEmailAndPassword(auth, demoEmail, demoPassword);
+            await updateProfile(userCredential.user, { displayName: "Demo Investor" });
+            
+            // 初期化とデモデータ生成
+            await initializeUserData(userCredential.user.uid, demoEmail, "Demo Investor");
+            await generateDemoData(userCredential.user.uid);
+            
+            // createUserWithEmailAndPassword で既にログイン状態になるため再ログインは不要
+          } catch (signUpErr: any) {
+            // 他の人が既に同じメールアドレスで作成している場合はログインを再試行（パスワード不一致の可能性が高いが）
+            if (signUpErr.code === "auth/email-already-in-use") {
+               await signInWithEmailAndPassword(auth, demoEmail, demoPassword);
+            } else {
+              throw signUpErr;
+            }
+          }
         } else {
           throw err;
         }
       }
       router.push("/");
     } catch (err: any) {
-      console.error(err);
-      setError("デモログインに失敗しました。時間をおいて再度お試しください。");
+      console.error("Demo login failed:", err);
+      setError(`デモログインに失敗しました (${err.code || "unknown"})。時間をおいて再度お試しください。`);
     } finally {
       setLoading(false);
     }
