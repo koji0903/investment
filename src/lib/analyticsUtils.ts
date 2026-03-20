@@ -309,3 +309,63 @@ export const generateInvestmentAdvice = (
   return { marketStatus, portfolioEvaluation, actionProposal };
 };
 
+export interface ProjectionPoint {
+  year: number;
+  total: number;
+  contributions: number;
+  earnings: number;
+}
+
+export interface ProjectionResult {
+  data: ProjectionPoint[];
+  milestones: {
+    year1: ProjectionPoint;
+    year5: ProjectionPoint;
+    year10: ProjectionPoint;
+  };
+}
+
+export const calculateFutureProjection = (
+  initialCapital: number,
+  monthlyContribution: number,
+  annualYield: number,
+  years: number = 30
+): ProjectionResult => {
+  const data: ProjectionPoint[] = [];
+  const monthlyRate = annualYield / 100 / 12;
+  
+  let currentTotal = initialCapital;
+  let totalContributions = initialCapital;
+
+  // 初期値 (0年目)
+  data.push({
+    year: 0,
+    total: Math.round(currentTotal),
+    contributions: Math.round(totalContributions),
+    earnings: 0
+  });
+
+  for (let year = 1; year <= years; year++) {
+    for (let month = 1; month <= 12; month++) {
+      currentTotal = currentTotal * (1 + monthlyRate) + monthlyContribution;
+      totalContributions += monthlyContribution;
+    }
+    
+    data.push({
+      year,
+      total: Math.round(currentTotal),
+      contributions: Math.round(totalContributions),
+      earnings: Math.round(Math.max(0, currentTotal - totalContributions))
+    });
+  }
+
+  return {
+    data,
+    milestones: {
+      year1: data[1],
+      year5: data[5],
+      year10: data[10]
+    }
+  };
+};
+
