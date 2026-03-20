@@ -536,6 +536,55 @@ export const generateStrategyActions = (
   };
 };
 
+export type InvestmentStyle = "long-term" | "short-term" | "balanced";
+
+export interface StyleAnalysisResult {
+  style: InvestmentStyle;
+  label: string;
+  description: string;
+  traits: string[];
+  metrics: {
+    frequency: number; // 0-100 (High to Low)
+    duration: number; // 0-100 (Short to Long)
+    risk: number; // 0-100 (Safe to Growth)
+  }
+}
+
+export const classifyInvestmentStyle = (
+  assets: AssetCalculated[],
+  riskLevel: string = "moderate"
+): StyleAnalysisResult => {
+  // 1. 簡易メトリクス計算 (デモ用)
+  const frequency = assets.length > 5 ? 30 : 80; // アセット数が多い=分散=長期傾向(仮)
+  const duration = riskLevel === "conservative" ? 90 : riskLevel === "aggressive" ? 20 : 55;
+  const risk = riskLevel === "aggressive" ? 90 : riskLevel === "conservative" ? 15 : 50;
+
+  let style: InvestmentStyle = "balanced";
+  let label = "バランス型運用";
+  let description = "成長性と安定性のバランスを重視する、市場の王道を歩む投資スタイルです。";
+  let traits = ["規律あるリバランス", "確実な利益確定", "セクター分散の徹底"];
+
+  if (duration > 70 && risk < 40) {
+    style = "long-term";
+    label = "長期資産形成型";
+    description = "目先の変動に惑わされず、資産の複利効果を最大化させる堅実な投資スタイルです。";
+    traits = ["長期保有の規律", "配当・成長への着目", "低コスト運用の追求"];
+  } else if (duration < 40 && risk > 60) {
+    style = "short-term";
+    label = "短期トレード型";
+    description = "市場のボラティリティをチャンスに変え、機動的に利益を追求する能動的な投資スタイルです。";
+    traits = ["高い市場即応性", "トレンドへの連動", "機動的な資金配分"];
+  }
+
+  return {
+    style,
+    label,
+    description,
+    traits,
+    metrics: { frequency, duration, risk }
+  };
+};
+
 export interface RebalancePlanItem {
   category: string;
   currentValue: number;
