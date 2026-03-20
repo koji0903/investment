@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { updateRiskTolerance, subscribeRiskTolerance } from "@/lib/db";
+import { updateRiskSettings, subscribeRiskSettings } from "@/lib/db";
 import { useNotify } from "@/context/NotificationContext";
-import { Shield, Check, Info } from "lucide-react";
+import { Shield, Check, Info, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type RiskLevel = "low" | "moderate" | "high";
@@ -34,17 +34,19 @@ export const UserRiskSettings = () => {
   const { user, isDemo } = useAuth();
   const { notify } = useNotify();
   const [risk, setRisk] = useState<RiskLevel>("moderate");
+  const [autoExecute, setAutoExecute] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   
   useEffect(() => {
     if (!user) return;
-    const unsubscribe = subscribeRiskTolerance(user.uid, (level) => {
-      if (level) setRisk(level as RiskLevel);
+    const unsubscribe = subscribeRiskSettings(user.uid, (settings) => {
+      if (settings?.riskTolerance) setRisk(settings.riskTolerance as RiskLevel);
+      if (settings?.autoExecute !== undefined) setAutoExecute(settings.autoExecute);
     });
     return () => unsubscribe();
   }, [user]);
 
-  const handleUpdate = async (level: RiskLevel) => {
+  const handleUpdateRisk = async (level: RiskLevel) => {
     if (isDemo) {
       notify({
         type: "warning",
@@ -56,7 +58,7 @@ export const UserRiskSettings = () => {
     if (!user) return;
     setIsUpdating(true);
     try {
-      await updateRiskTolerance(user.uid, level);
+      await updateRiskSettings(user.uid, { riskTolerance: level });
       setRisk(level);
       notify({
         type: "success",
@@ -67,10 +69,27 @@ export const UserRiskSettings = () => {
       notify({
         type: "error",
         title: "保存失敗",
-        message: "設定の保存に失敗しました。時間をおいて再度お試しください。",
+        message: "設定の保存に失敗しました。",
       });
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const toggleAutoExecute = async () => {
+    if (isDemo) return;
+    if (!user) return;
+    const newValue = !autoExecute;
+    setAutoExecute(newValue);
+    try {
+      await updateRiskSettings(user.uid, { autoExecute: newValue });
+      notify({
+        type: "success",
+        title: newValue ? "自動実行を有効にしました" : "自動実行を無効にしました",
+        message: newValue ? "特定の条件下でAIが自動的に発注を行います。" : "すべての発注にユーザーの承認が必要になります。",
+      });
+    } catch (error) {
+      setAutoExecute(!newValue);
     }
   };
 
@@ -97,7 +116,7 @@ export const UserRiskSettings = () => {
             {RISK_LEVELS.map((level) => (
               <button
                 key={level.id}
-                onClick={() => handleUpdate(level.id)}
+                onClick={() => handleUpdateRisk(level.id)}
                 disabled={isUpdating || isDemo}
                 className={cn(
                   "p-4 rounded-xl border-2 text-left transition-all relative group",
@@ -129,6 +148,41 @@ export const UserRiskSettings = () => {
           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
             設定したリスク許容度に基づいて、AIがあなたのポートフォリオに対する推奨アクション（買い/売り/保持）をカスタマイズします。
           </p>
+        </div>
+
+        <div className="pt-2">
+          <button
+            onClick={toggleAutoExecute}
+            disabled={isDemo}
+            className={cn(
+              "w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all",
+              autoExecute 
+                ? "border-amber-500 bg-amber-500/5 text-amber-600 dark:text-amber-400" 
+                : "border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 text-slate-500"
+            )}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center",
+                autoExecute ? "bg-amber-500 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-400"
+              )}>
+                <Zap size={20} />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-black">自動実行（オプション）</p>
+                <p className="text-[10px] opacity-70">高精度な提案のみ自動で発注を実行します</p>
+              </div>
+            </div>
+            <div className={cn(
+              "w-12 h-6 rounded-full relative transition-colors",
+              autoExecute ? "bg-amber-500" : "bg-slate-300 dark:bg-slate-600"
+            )}>
+              <div className={cn(
+                "absolute top-1 w-4 h-4 bg-white rounded-full transition-all",
+                autoExecute ? "left-7" : "left-1"
+              )} />
+            </div>
+          </button>
         </div>
       </div>
     </div>

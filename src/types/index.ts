@@ -28,3 +28,17 @@ export interface AssetCalculated extends Asset {
   dailyChange: number;
   dailyChangePercentage: number;
 }
+
+export type ProposalStatus = "pending" | "executed" | "rejected";
+
+export interface TradeProposal {
+  id: string;
+  assetSymbol: string;
+  assetName: string;
+  type: TransactionType;
+  quantity: number;
+  price: number;
+  reason: string;
+  status: ProposalStatus;
+  createdAt: string;
+}

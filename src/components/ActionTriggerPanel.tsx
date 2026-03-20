@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
+import { useNotify } from "@/context/NotificationContext";
+import { OrderConfirmationModal } from "@/components/OrderConfirmationModal";
 import { 
   evaluateActionTriggers, 
   calculateMarketCondition, 
@@ -21,7 +23,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export const ActionTriggerPanel = () => {
-  const { calculatedAssets } = usePortfolio();
+  const { calculatedAssets, addTransaction } = usePortfolio();
+  const { notify } = useNotify();
+  const [selectedTrigger, setSelectedTrigger] = useState<ActionTrigger | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const triggers = useMemo(() => {
     const market = calculateMarketCondition(4.0, 0.8, 0.2); // デモ用
@@ -29,6 +34,36 @@ export const ActionTriggerPanel = () => {
   }, [calculatedAssets]);
 
   const activeCount = triggers.length;
+
+  const handleOpenModal = (trigger: ActionTrigger) => {
+    setSelectedTrigger(trigger);
+    setIsModalOpen(true);
+  };
+
+  const handleConfirmOrder = async (autoExecuteNextTime: boolean) => {
+    if (!selectedTrigger) return;
+    
+    // モック発注処理: 対象のAssetを検索して現在価格とシンボルを取得
+    const targetAsset = calculatedAssets.find(a => a.name === selectedTrigger.assetName);
+    const mockPrice = targetAsset?.currentPrice || 1000;
+    
+    // アクション名からTransactionTypeへ変換
+    const txType = (selectedTrigger.action === "Buy" || selectedTrigger.action === "Rebalance") ? "buy" : "sell";
+    const quantity = 10;
+    
+    await addTransaction({
+      type: txType as "buy" | "sell",
+      assetId: targetAsset?.symbol || selectedTrigger.assetName,
+      price: mockPrice,
+      quantity: quantity
+    });
+    
+    notify({
+      type: "success",
+      title: "発注完了",
+      message: `${selectedTrigger.assetName} の${txType === 'buy' ? '買い' : '売り'}注文が完了しました。${autoExecuteNextTime ? '(次回から条件合致で自動実行)' : ''}`
+    });
+  };
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-sm relative group">
@@ -79,7 +114,7 @@ export const ActionTriggerPanel = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <AnimatePresence>
               {triggers.map((trigger, idx) => (
-                <TriggerCard key={trigger.id} trigger={trigger} index={idx} />
+                <TriggerCard key={trigger.id} trigger={trigger} index={idx} onClick={() => handleOpenModal(trigger)} />
               ))}
             </AnimatePresence>
           </div>
@@ -99,11 +134,18 @@ export const ActionTriggerPanel = () => {
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">AIが世界中の情報を分析中</p>
         </div>
       </div>
+      
+      <OrderConfirmationModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onConfirm={handleConfirmOrder} 
+        triggerContext={selectedTrigger} 
+      />
     </div>
   );
 };
 
-const TriggerCard = ({ trigger, index }: { trigger: ActionTrigger, index: number }) => {
+const TriggerCard = ({ trigger, index, onClick }: { trigger: ActionTrigger, index: number, onClick: () => void }) => {
   const isHigh = trigger.urgency === "high";
   const colors = {
     opportunity: "bg-emerald-500/10 border-emerald-500/20 text-emerald-500",
@@ -166,9 +208,20 @@ const TriggerCard = ({ trigger, index }: { trigger: ActionTrigger, index: number
           </p>
         </div>
 
-        <button className="h-full flex items-center p-2 text-slate-300 hover:text-indigo-500 transition-colors">
-          <ArrowRight size={20} />
-        </button>
+        <div className="flex items-center pl-2">
+          {['Buy', 'Sell', 'Rebalance'].includes(trigger.action as string) ? (
+            <button 
+              onClick={onClick} 
+              className="flex items-center justify-center whitespace-nowrap px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-black transition-colors"
+            >
+              注文へ進む
+            </button>
+          ) : (
+            <button className="h-full flex items-center p-2 text-slate-300 hover:text-indigo-500 transition-colors">
+              <ArrowRight size={20} />
+            </button>
+          )}
+        </div>
       </div>
     </motion.div>
   );

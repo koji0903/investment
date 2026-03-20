@@ -15,7 +15,7 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Asset, Transaction } from "@/types";
+import { Asset, Transaction, TradeProposal } from "@/types";
 import { AlertRule } from "@/types/alert";
 
 /**
@@ -28,6 +28,8 @@ const getTransactionsCol = (uid: string, portfolioId: string) =>
   collection(db, "users", uid, "portfolios", portfolioId, "transactions");
 
 const getAlertsCol = (uid: string) => collection(db, "users", uid, "alerts");
+
+const getProposalsCol = (uid: string) => collection(db, "users", uid, "proposals");
 
 // --- Assets ---
 
@@ -98,6 +100,117 @@ export const removeAlert = async (uid: string, alertId: string) => {
   return deleteDoc(doc(db, "users", uid, "alerts", alertId));
 };
 
+// --- Trade Proposals ---
+
+export const subscribeTradeProposals = (uid: string, callback: (proposals: TradeProposal[]) => void) => {
+  const q = query(getProposalsCol(uid), orderBy("createdAt", "desc"));
+  return onSnapshot(q, (snapshot) => {
+    const proposals = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt
+      };
+    }) as TradeProposal[];
+    callback(proposals.filter(p => p.status === "pending"));
+  });
+};
+
+export const executeTradeProposal = async (uid: string, proposal: TradeProposal, portfolioId: string = "default") => {
+  const batch = writeBatch(db);
+  const proposalRef = doc(db, "users", uid, "proposals", proposal.id);
+  const transCol = getTransactionsCol(uid, portfolioId);
+  const assetsCol = getAssetsCol(uid, portfolioId);
+
+  // 1. プロポーザルを完了ステータスに更新
+  batch.update(proposalRef, { status: "executed", executedAt: serverTimestamp() });
+
+  // 2. トランザクションレコードの作成
+  const transRef = doc(transCol);
+  batch.set(transRef, {
+    assetId: "", // シンボルベースで後で照合するか、新規作成
+    assetSymbol: proposal.assetSymbol,
+    assetName: proposal.assetName,
+    type: proposal.type,
+    quantity: proposal.quantity,
+    price: proposal.price,
+    date: serverTimestamp(),
+    isFromProposal: true,
+    proposalId: proposal.id
+  });
+
+  // 3. アセットの更新または新規作成
+  // 既存アセットの検索
+  const assetsQuery = query(assetsCol, where("symbol", "==", proposal.assetSymbol));
+  const assetsSnap = await getDocs(assetsQuery);
+
+  if (!assetsSnap.empty) {
+    const assetDoc = assetsSnap.docs[0];
+    const assetData = assetDoc.data();
+    const currentQty = assetData.quantity || 0;
+    const currentPrice = assetData.currentPrice || proposal.price;
+    const currentAvgCost = assetData.averageCost || proposal.price;
+
+    let newQty = currentQty;
+    let newAvgCost = currentAvgCost;
+
+    if (proposal.type === "buy") {
+      newQty = currentQty + proposal.quantity;
+      newAvgCost = (currentAvgCost * currentQty + proposal.price * proposal.quantity) / newQty;
+    } else {
+      newQty = Math.max(0, currentQty - proposal.quantity);
+    }
+
+    batch.update(assetDoc.ref, {
+      quantity: newQty,
+      averageCost: newAvgCost,
+      updatedAt: serverTimestamp()
+    });
+  } else if (proposal.type === "buy") {
+    // 新規アセット
+    const newAssetRef = doc(assetsCol);
+    batch.set(newAssetRef, {
+      symbol: proposal.assetSymbol,
+      name: proposal.assetName,
+      category: "株", // デフォルト。AIが判定しても良い
+      currentPrice: proposal.price,
+      quantity: proposal.quantity,
+      averageCost: proposal.price,
+      updatedAt: serverTimestamp()
+    });
+    // トランザクションのassetIdを更新
+    batch.update(transRef, { assetId: newAssetRef.id });
+  }
+
+  return batch.commit();
+};
+
+export const rejectTradeProposal = async (uid: string, proposalId: string) => {
+  return updateDoc(doc(db, "users", uid, "proposals", proposalId), {
+    status: "rejected",
+    rejectedAt: serverTimestamp()
+  });
+};
+
+export const addDemoProposal = async (uid: string) => {
+  const proposal: Omit<TradeProposal, "id"> = {
+    assetSymbol: "NVDA",
+    assetName: "NVIDIA Corp",
+    type: "buy",
+    quantity: 5,
+    price: 920.5,
+    reason: "強力なGPU需要とAI市場の拡大により、短期的な上昇トレンドが継続すると予想されます。テクニカル指標も買いサインを示しています。",
+    status: "pending",
+    createdAt: new Date().toISOString()
+  };
+
+  return addDoc(getProposalsCol(uid), {
+    ...proposal,
+    createdAt: serverTimestamp()
+  });
+};
+
 // --- Analysis ---
 
 export const subscribeAnalysis = (uid: string, portfolioId: string = "default", callback: (analysis: any) => void) => {
@@ -130,16 +243,16 @@ export const subscribeBehavior = (uid: string, portfolioId: string = "default", 
   });
 };
 
-export const updateRiskTolerance = async (uid: string, riskTolerance: "low" | "moderate" | "high") => {
-  return setDoc(doc(db, "users", uid, "settings", "general"), { riskTolerance }, { merge: true });
+export const updateRiskSettings = async (uid: string, settings: { riskTolerance?: string, autoExecute?: boolean }) => {
+  return setDoc(doc(db, "users", uid, "settings", "general"), { ...settings, updatedAt: serverTimestamp() }, { merge: true });
 };
 
-export const subscribeRiskTolerance = (uid: string, callback: (risk: string) => void) => {
+export const subscribeRiskSettings = (uid: string, callback: (settings: any) => void) => {
   return onSnapshot(doc(db, "users", uid, "settings", "general"), (doc) => {
     if (doc.exists()) {
-      callback(doc.data().riskTolerance || "moderate");
+      callback(doc.data());
     } else {
-      callback("moderate");
+      callback({ riskTolerance: "moderate", autoExecute: false });
     }
   });
 };

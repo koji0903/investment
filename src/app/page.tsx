@@ -37,7 +37,9 @@ import { ActionTriggerPanel } from "@/components/ActionTriggerPanel";
 import { QuantumOptimizationCard } from "@/components/QuantumOptimizationCard";
 import { ScenarioStrategyOptimization } from "@/components/ScenarioStrategyOptimization";
 import { BrokerIntegrationPanel } from "@/components/BrokerIntegrationPanel";
+import { BacktestSimulator } from "@/components/BacktestSimulator";
 import { AlertList } from "@/components/AlertList";
+import { SemiAutoTrading } from "@/components/SemiAutoTrading";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -208,6 +210,7 @@ export default function Home() {
               {activeTab === "analysis" && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                   <div className="lg:col-span-2 space-y-6 md:space-y-8">
+                    <SemiAutoTrading />
                     <InvestmentStylePortrait />
                     <MarketCondition />
                     <ScenarioComparison />
@@ -215,6 +218,7 @@ export default function Home() {
                     <CorrelationMatrix />
                     <PortfolioOptimization />
                     <ScenarioStrategyOptimization />
+                    <BacktestSimulator />
                     <QuantumOptimizationCard />
                     <StrategyActionPoints />
                     <InvestmentStrategyCard />
