@@ -59,7 +59,7 @@ type TabType = "overview" | "analysis" | "tools";
 
 export default function Home() {
   const { calculatedAssets, totalAssetsValue, totalProfitAndLoss, totalDailyChange, lastUpdated, isFetching } = usePortfolio();
-  const { isDemo } = useAuth();
+  const { isDemo, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
   return (
@@ -234,35 +234,22 @@ export default function Home() {
               )}
 
               {activeTab === "analysis" && (
-                <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 md:gap-8">
-                  <div className="xl:col-span-3 space-y-6 md:space-y-8">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8">
+                  <div className="xl:col-span-2 space-y-6 md:space-y-8">
                     <InvestmentRuleMonitor />
                     <InvestmentAdvice />
                     <RiskAnalysis />
                     <PortfolioOptimization />
-                    <FXMarketAnalysis />
-                    <WinPatternAnalysis />
                     <TradingAutomation />
-                    <StrategyTemplates />
-                    <InvestmentReportComponent />
-                    <SemiAutoTrading />
-                    <InvestmentStylePortrait />
-                    <MarketCondition />
                     <ScenarioComparison />
-                    <RiskDecomposition />
-                    <CorrelationMatrix />
                     <ScenarioStrategyOptimization />
                     <BacktestSimulator />
                     <QuantumOptimizationCard />
                     <StrategyActionPoints />
-                    <InvestmentStrategyCard />
-                    <MarketSentiment />
-                    <BehaviorInsight />
-                    <SkillCoach />
+                    <SemiAutoTrading />
                     <PortfolioRebalance />
                   </div>
                   <div className="xl:col-span-1 space-y-6 md:space-y-8">
-                    {/* サイドバーには比較的小さな情報や補助的なツールを置く */}
                     <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-600/20">
                       <h3 className="text-lg font-black mb-2">AI 投資家アシスタント</h3>
                       <p className="text-xs font-bold text-indigo-100 leading-relaxed mb-4">
@@ -272,6 +259,19 @@ export default function Home() {
                         設定を確認する
                       </button>
                     </div>
+                    
+                    <MarketCondition />
+                    <MarketSentiment />
+                    <FXMarketAnalysis />
+                    <WinPatternAnalysis />
+                    <InvestmentStylePortrait />
+                    <InvestmentStrategyCard />
+                    <StrategyTemplates />
+                    <RiskDecomposition />
+                    <CorrelationMatrix />
+                    <BehaviorInsight />
+                    <SkillCoach />
+                    <InvestmentReportComponent />
                   </div>
                 </div>
               )}
