@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 export const InvestmentStylePortrait = () => {
   const { calculatedAssets } = usePortfolio();
-  const { riskLevel } = useAuth(); // AuthContextやユーザー設定から
+  const {} = useAuth(); // AuthContextなどは将来的に拡張可能
 
   const analysis = useMemo(() => {
     return classifyInvestmentStyle(calculatedAssets, "moderate"); // デモ用
