@@ -31,6 +31,7 @@ import { MarketCondition } from "@/components/MarketCondition";
 import { SkillCoach } from "@/components/SkillCoach";
 import { MarketAnalysisDashboard } from "@/components/MarketAnalysisDashboard";
 import { StrategyActionPoints } from "@/components/StrategyActionPoints";
+import { PortfolioRebalance } from "@/components/PortfolioRebalance";
 import { AlertList } from "@/components/AlertList";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
@@ -211,6 +212,7 @@ export default function Home() {
                     <MarketSentiment />
                     <BehaviorInsight />
                     <SkillCoach />
+                    <PortfolioRebalance />
                   </div>
                   <div className="space-y-6 md:space-y-8">
                     <InvestmentAdvice />

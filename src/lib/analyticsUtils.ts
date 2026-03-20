@@ -536,6 +536,35 @@ export const generateStrategyActions = (
   };
 };
 
+export interface RebalancePlanItem {
+  category: string;
+  currentValue: number;
+  targetValue: number;
+  adjustmentAmount: number;
+  currentRatio: number;
+  targetRatio: number;
+}
+
+export const calculateRebalancePlan = (
+  optimization: OptimizationResult,
+  totalValue: number
+): RebalancePlanItem[] => {
+  return optimization.segments.map(segment => {
+    const currentValue = totalValue * (segment.currentRatio / 100);
+    const targetValue = totalValue * (segment.targetRatio / 100);
+    const adjustmentAmount = targetValue - currentValue;
+
+    return {
+      category: segment.category,
+      currentValue,
+      targetValue,
+      adjustmentAmount,
+      currentRatio: segment.currentRatio,
+      targetRatio: segment.targetRatio
+    };
+  }).sort((a, b) => Math.abs(b.adjustmentAmount) - Math.abs(a.adjustmentAmount));
+};
+
 export interface TradingPatternInsight {
   type: "success" | "failure";
   title: string;
