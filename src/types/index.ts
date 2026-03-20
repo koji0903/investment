@@ -83,3 +83,12 @@ export interface RiskRule {
   enabled: boolean;
   actionType: "alert" | "suggest_sell";
 }
+
+export interface TradingRule {
+  id: string;
+  strategy: "sma_crossover" | "trend_follow";
+  shortPeriod: number;
+  longPeriod: number;
+  enabled: boolean;
+  autoPropose: boolean;
+}

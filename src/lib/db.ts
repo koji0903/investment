@@ -15,7 +15,7 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Asset, Transaction, TradeProposal, InvestmentReport, NotificationSettings, RiskRule } from "@/types";
+import { Asset, Transaction, TradeProposal, InvestmentReport, NotificationSettings, RiskRule, TradingRule } from "@/types";
 import { AlertRule } from "@/types/alert";
 
 /**
@@ -291,6 +291,34 @@ export const subscribeRiskRules = (uid: string, callback: (rules: RiskRule) => v
 export const updateRiskRules = async (uid: string, rules: Partial<RiskRule>) => {
   const docRef = getRiskRulesDoc(uid);
   return setDoc(docRef, rules, { merge: true });
+};
+
+// --- Trading Rules ---
+
+const getTradingRulesDoc = (uid: string) => doc(db, "users", uid, "settings", "tradingRules");
+
+export const subscribeTradingRules = (uid: string, callback: (rules: TradingRule[]) => void) => {
+  return onSnapshot(collection(db, "users", uid, "settings", "tradingRules", "items"), (snapshot) => {
+    const rules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TradingRule[];
+    if (rules.length === 0) {
+      // 初期値 (デフォルト)
+      callback([{
+        id: "default-sma",
+        strategy: "sma_crossover",
+        shortPeriod: 5,
+        longPeriod: 25,
+        enabled: true,
+        autoPropose: true
+      }]);
+    } else {
+      callback(rules);
+    }
+  });
+};
+
+export const updateTradingRule = async (uid: string, ruleId: string, rule: Partial<TradingRule>) => {
+  const docRef = doc(db, "users", uid, "settings", "tradingRules", "items", ruleId);
+  return setDoc(docRef, rule, { merge: true });
 };
 
 // --- Analysis ---
