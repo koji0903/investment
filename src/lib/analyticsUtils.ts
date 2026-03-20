@@ -459,6 +459,83 @@ export const generateAIMarketAnalysis = (
   };
 };
 
+export interface StrategyAction {
+  type: "buy" | "sell" | "hold";
+  assetName: string;
+  category: string;
+  amount?: string;
+  priority: "High" | "Medium" | "Low";
+  reason: string;
+}
+
+export interface StrategyActionResult {
+  actions: StrategyAction[];
+  summary: string;
+}
+
+export const generateStrategyActions = (
+  optimization: OptimizationResult,
+  condition: MarketConditionResult,
+  riskLevel: string = "moderate"
+): StrategyActionResult => {
+  const actions: StrategyAction[] = [];
+  
+  optimization.segments.forEach(segment => {
+    const diff = segment.targetRatio - segment.currentRatio;
+    
+    // リバランスが必要な場合 (閾値5%)
+    if (Math.abs(diff) > 5) {
+      const type = diff > 0 ? "buy" : "sell";
+      
+      // 優先度の判定 (マクロ環境との整合性)
+      let priority: "High" | "Medium" | "Low" = "Medium";
+      if (type === "buy" && condition.strategy === "Attack") priority = "High";
+      if (type === "sell" && condition.strategy === "Defense") priority = "High";
+      if (Math.abs(diff) > 15) priority = "High";
+
+      // 理由の生成
+      let reason = "";
+      if (type === "buy") {
+        reason = `${segment.category}の保有比率が目標を${Math.abs(diff).toFixed(1)}%下回っています。${condition.strategy === "Attack" ? "現在の強気相場を活かし、" : ""}ポートフォリオの重心を目標値へ戻すための買い増しを推奨します。`;
+      } else {
+        reason = `${segment.category}が目標比率を${Math.abs(diff).toFixed(1)}%超過しています。${condition.strategy === "Defense" ? "マーケットの不確実性が高まっており、" : ""}利益確定によるリスクコントロールを優先すべき局面です。`;
+      }
+
+      actions.push({
+        type,
+        assetName: segment.category,
+        category: segment.category,
+        priority,
+        reason
+      });
+    }
+  });
+
+  // 何もアクションがない場合
+  if (actions.length === 0) {
+    actions.push({
+      type: "hold",
+      assetName: "Portfolio",
+      category: "ALL",
+      priority: "Low",
+      reason: "現在、全アセットクラスが目標配分内に収まっています。市場環境も許容範囲内であり、現状維持による静観が最も合理的な戦略です。"
+    });
+  }
+
+  const highPriorityCount = actions.filter(a => a.priority === "High").length;
+  let summary = highPriorityCount > 0 
+    ? `緊急性の高いアクションが${highPriorityCount}件あります。ポートフォリオのバランスが著しく崩れているため、速やかな調整を検討してください。`
+    : "ポートフォリオの状態は良好です。定期的なウォッチを継続しつつ、次の大きな市場変動に備えましょう。";
+
+  return {
+    actions: actions.sort((a, b) => {
+      const pMap = { High: 0, Medium: 1, Low: 2 };
+      return pMap[a.priority] - pMap[b.priority];
+    }),
+    summary
+  };
+};
+
 export interface TradingPatternInsight {
   type: "success" | "failure";
   title: string;

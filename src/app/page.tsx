@@ -30,6 +30,7 @@ import { CorrelationMatrix } from "@/components/CorrelationMatrix";
 import { MarketCondition } from "@/components/MarketCondition";
 import { SkillCoach } from "@/components/SkillCoach";
 import { MarketAnalysisDashboard } from "@/components/MarketAnalysisDashboard";
+import { StrategyActionPoints } from "@/components/StrategyActionPoints";
 import { AlertList } from "@/components/AlertList";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
@@ -205,6 +206,7 @@ export default function Home() {
                     <RiskDecomposition />
                     <CorrelationMatrix />
                     <PortfolioOptimization />
+                    <StrategyActionPoints />
                     <InvestmentStrategyCard />
                     <MarketSentiment />
                     <BehaviorInsight />
