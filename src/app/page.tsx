@@ -45,6 +45,7 @@ import { NotificationSettingsComponent } from "@/components/NotificationSettings
 import { StrategyTemplates } from "@/components/StrategyTemplates";
 import { RiskManagementPanel } from "@/components/RiskManagementPanel";
 import { TradingAutomation } from "@/components/TradingAutomation";
+import { PositionSizing } from "@/components/PositionSizing";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -248,6 +249,7 @@ export default function Home() {
                   <div className="lg:col-span-2 space-y-6 md:space-y-8">
                     <BrokerIntegrationPanel />
                     <RiskManagementPanel />
+                    <PositionSizing />
                     <NotificationSettingsComponent />
                     <TransactionForm />
                     <TransactionList />
