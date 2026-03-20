@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { v4 as uuidv4 } from "uuid";
+// Native randomUUID instead of uuid library to minimize dependencies
 
 export type NotificationType = "success" | "error" | "info" | "warning";
 
@@ -29,7 +29,7 @@ export const NotificationProvider = ({ children }: { children: React.ReactNode }
   }, []);
 
   const notify = useCallback((notif: Omit<Notification, "id">) => {
-    const id = uuidv4();
+    const id = crypto.randomUUID();
     const newNotif = { ...notif, id };
     setNotifications((prev) => [newNotif, ...prev]);
 
