@@ -33,6 +33,7 @@ import { MarketAnalysisDashboard } from "@/components/MarketAnalysisDashboard";
 import { StrategyActionPoints } from "@/components/StrategyActionPoints";
 import { PortfolioRebalance } from "@/components/PortfolioRebalance";
 import { InvestmentStylePortrait } from "@/components/InvestmentStylePortrait";
+import { ActionTriggerPanel } from "@/components/ActionTriggerPanel";
 import { AlertList } from "@/components/AlertList";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
@@ -133,6 +134,7 @@ export default function Home() {
               {activeTab === "overview" && (
                 <div className="space-y-12">
                   <MarketAnalysisDashboard />
+                  <ActionTriggerPanel />
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Left Column: Visualization & AI Advice */}
                     <div className="lg:col-span-2 space-y-8">

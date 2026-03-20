@@ -585,6 +585,69 @@ export const classifyInvestmentStyle = (
   };
 };
 
+export interface ActionTrigger {
+  id: string;
+  type: "opportunity" | "warning" | "strategic";
+  title: string;
+  assetName: string;
+  action: string;
+  reason: string;
+  urgency: "high" | "medium" | "low";
+}
+
+export const evaluateActionTriggers = (
+  assets: AssetCalculated[],
+  market: MarketConditionResult
+): ActionTrigger[] => {
+  const triggers: ActionTrigger[] = [];
+  const totalValue = assets.reduce((sum, a) => sum + a.evaluatedValue, 0);
+
+  assets.forEach(asset => {
+    const ratio = totalValue > 0 ? (asset.evaluatedValue / totalValue) * 100 : 0;
+
+    // 1. 押し目買い (Oversold Buy)
+    if (market.label === "Bullish" && asset.dailyChangePercentage <= -3 && ratio < 8) {
+      triggers.push({
+        id: `buy-${asset.id}`,
+        type: "opportunity",
+        title: "絶好の押し目買いチャンス",
+        assetName: asset.name,
+        action: "買い増しを検討",
+        reason: "力強い強気相場の中での一時的な調整局面です。ポートフォリオの重心を目標へ戻す絶好のタイミングと言えます。",
+        urgency: "high"
+      });
+    }
+
+    // 2. 利益確定 (Profit Taking)
+    if (market.strategy === "Defense" && asset.profitPercentage >= 15 && ratio >= 15) {
+      triggers.push({
+        id: `sell-${asset.id}`,
+        type: "strategic",
+        title: "戦略的利益確定の推奨",
+        assetName: asset.name,
+        action: "一部利益確定（利食い）",
+        reason: "市場の警戒感が高まる中、含み益の乗った資産が過剰に膨らんでいます。キャッシュポジションの確保を優先すべきです。",
+        urgency: "medium"
+      });
+    }
+
+    // 3. 防衛的評価 (Defensive Check)
+    if (market.label === "Bearish" && asset.dailyChangePercentage <= -8) {
+      triggers.push({
+        id: `stop-${asset.id}`,
+        type: "warning",
+        title: "緊急防衛ラインの検討",
+        assetName: asset.name,
+        action: "ポジションの縮小を検討",
+        reason: "弱気相場での急激な下落は、さらなる深掘りのリスクを孕んでいます。資産保全を最優先に、損切りを含めた検討が必要です。",
+        urgency: "high"
+      });
+    }
+  });
+
+  return triggers;
+};
+
 export interface RebalancePlanItem {
   category: string;
   currentValue: number;
