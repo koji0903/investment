@@ -199,6 +199,7 @@ export default function Home() {
                     <ScenarioComparison />
                     <RiskDecomposition />
                     <CorrelationMatrix />
+                    <PortfolioOptimization />
                     <InvestmentStrategyCard />
                     <MarketSentiment />
                     <BehaviorInsight />

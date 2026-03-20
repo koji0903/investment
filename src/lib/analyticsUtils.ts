@@ -273,6 +273,83 @@ export const generateDemoCorrelations = (assets: AssetCalculated[]): Correlation
   return results;
 };
 
+export interface OptimizationSegment {
+  category: string;
+  currentRatio: number; // 0-100
+  targetRatio: number; // 0-100
+  currentValue: number;
+  targetValue: number;
+  delta: number; // target - current
+  color: string;
+}
+
+export interface OptimizationResult {
+  segments: OptimizationSegment[];
+  rationalAdvice: string;
+  riskToleranceLevel: string;
+}
+
+// カテゴリごとの特性（最適化用）
+const CATEGORY_BENCHMARKS: Record<string, { return: number, risk: number, color: string }> = {
+  "株": { return: 7, risk: 20, color: "#6366f1" },
+  "投資信託": { return: 4, risk: 10, color: "#10b981" },
+  "仮想通貨": { return: 25, risk: 80, color: "#f43f5e" },
+  "FX": { return: 10, risk: 35, color: "#f59e0b" },
+};
+
+// リスク許容度に応じた理想的な配分モデル (%)
+const RISK_MODELS: Record<string, Record<string, number>> = {
+  "low": { "株": 20, "投資信託": 70, "仮想通貨": 0, "FX": 10 },
+  "moderate": { "株": 40, "投資信託": 40, "仮想通貨": 5, "FX": 15 },
+  "high": { "株": 50, "投資信託": 10, "仮想通貨": 20, "FX": 20 },
+};
+
+export const calculateOptimalPortfolio = (
+  assets: AssetCalculated[],
+  riskTolerance: "low" | "moderate" | "high" = "moderate"
+): OptimizationResult => {
+  const totalValue = assets.reduce((sum, a) => sum + Math.max(0, a.evaluatedValue), 0);
+  const targetModel = RISK_MODELS[riskTolerance];
+  
+  // 現在のカテゴリ別合計
+  const categoryTotals: Record<string, number> = {};
+  assets.forEach(a => {
+    categoryTotals[a.category] = (categoryTotals[a.category] || 0) + Math.max(0, a.evaluatedValue);
+  });
+
+  const segments: OptimizationSegment[] = Object.keys(CATEGORY_BENCHMARKS).map(cat => {
+    const currentVal = categoryTotals[cat] || 0;
+    const currentRatio = totalValue > 0 ? (currentVal / totalValue) * 100 : 0;
+    const targetRatio = targetModel[cat] || 0;
+    const targetValue = (totalValue * targetRatio) / 100;
+
+    return {
+      category: cat,
+      currentRatio: Number(currentRatio.toFixed(1)),
+      targetRatio,
+      currentValue: Math.round(currentVal),
+      targetValue: Math.round(targetValue),
+      delta: Math.round(targetValue - currentVal),
+      color: CATEGORY_BENCHMARKS[cat].color
+    };
+  });
+
+  let rationalAdvice = "";
+  if (riskTolerance === "low") {
+    rationalAdvice = "元本保護を最優先とし、ボラティリティの低い投資信託へのシフトを推奨します。仮想通貨などの高リスク資産は控えましょう。";
+  } else if (riskTolerance === "high") {
+    rationalAdvice = "長期的な資産形成のため、株式や仮想通貨の比率を高め、積極的にリスクプレミアムを取りに行く配分です。";
+  } else {
+    rationalAdvice = "リスクとリターンのバランスが取れた標準的な配分です。市場平均の成長を享受しつつ、下落リスクも適切に管理します。";
+  }
+
+  return {
+    segments,
+    rationalAdvice,
+    riskToleranceLevel: riskTolerance
+  };
+};
+
 export interface AssetOptimization {
   category: string;
   currentRatio: number; // 0-100

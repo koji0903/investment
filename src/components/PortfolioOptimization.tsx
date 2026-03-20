@@ -1,101 +1,208 @@
 "use client";
 
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
-import { calculateOptimization } from "@/lib/analyticsUtils";
-import { Lightbulb, ArrowRight, TrendingDown, TrendingUp, CheckCircle } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { calculateOptimalPortfolio, formatCurrency, OptimizationSegment } from "@/lib/analyticsUtils";
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  ResponsiveContainer, 
+  Tooltip,
+  ArrowRight
+} from "recharts";
 import { cn } from "@/lib/utils";
+import { Cpu, Repeat, ArrowRight as ArrowRightIcon, Zap, Target, TrendingUp } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const PortfolioOptimization = () => {
   const { calculatedAssets } = usePortfolio();
-  
-  const optimizations = useMemo(() => calculateOptimization(calculatedAssets), [calculatedAssets]);
+  // 注意: 本来はFirestoreなどからユーザーのリスク許容度を取得するが、
+  // ここではデモとして moderate をデフォルトとする
+  const riskTolerance: "low" | "moderate" | "high" = "moderate"; 
 
-  if (optimizations.length === 0) {
-    return null;
-  }
+  const optimization = useMemo(() => {
+    return calculateOptimalPortfolio(calculatedAssets, riskTolerance);
+  }, [calculatedAssets, riskTolerance]);
+
+  const currentAllocationData = useMemo(() => {
+    return optimization.segments
+      .filter(s => s.currentValue > 0)
+      .map(s => ({
+        name: s.category,
+        value: s.currentRatio,
+        color: s.color
+      }));
+  }, [optimization]);
+
+  const targetAllocationData = useMemo(() => {
+    return optimization.segments
+      .filter(s => s.targetRatio > 0)
+      .map(s => ({
+        name: s.category,
+        value: s.targetRatio,
+        color: s.color
+      }));
+  }, [optimization]);
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-4 md:p-6 shadow-sm overflow-hidden relative">
-      <div className="absolute top-0 right-0 -translate-y-4 translate-x-4 opacity-5 pointer-events-none mix-blend-overlay">
-        <Lightbulb className="w-32 h-32 md:w-48 md:h-48" />
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-6 md:p-8 shadow-sm overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-sky-500 rounded-2xl text-white shadow-lg shadow-sky-500/20">
+            <Cpu size={20} />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-800 dark:text-white">AI ポートフォリオ最適化</h2>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Portfolio Optimization</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-50 dark:bg-slate-800/60 rounded-full border border-slate-100 dark:border-slate-800">
+          <Target size={14} className="text-sky-500" />
+          <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
+            目標: {riskTolerance === "low" ? "安定重視" : riskTolerance === "high" ? "積極成長" : "バランス"}
+          </span>
+        </div>
       </div>
 
-      <div className="relative z-10 block">
-        <h3 className="text-lg md:text-xl font-bold mb-2 flex items-center gap-2 text-slate-800 dark:text-slate-100">
-          <Lightbulb className="w-5 h-5 text-amber-500" />
-          AI ポートフォリオ最適化
-        </h3>
-        <p className="text-[10px] md:text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
-          理想的なモデル配分と比較し、リスク分散のためのアクションを提案します。
-        </p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-12">
+        {/* Comparison Charts */}
+        <div className="space-y-8">
+          <div className="grid grid-cols-2 gap-4 h-[240px]">
+            {/* Current */}
+            <div className="flex flex-col items-center">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">現在</p>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={currentAllocationData}
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {currentAllocationData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.8} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg">
+                            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{payload[0].name}</p>
+                            <p className="text-sm font-black text-slate-800 dark:text-white">{payload[0].value}%</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
 
-        <div className="space-y-4 md:space-y-6">
-          {optimizations.map((opt) => {
-            const isExcess = opt.status === "Excess";
-            const isDeficit = opt.status === "Deficit";
-            const isOptimal = opt.status === "Optimal";
-
-            let StatusIcon = CheckCircle;
-            let statusColor = "text-emerald-500";
-            let barColor = "bg-emerald-500 dark:bg-emerald-400";
-            let badgeBg = "bg-emerald-50 dark:bg-emerald-500/10";
-            
-            if (isExcess) {
-              StatusIcon = TrendingDown;
-              statusColor = "text-amber-500";
-              barColor = "bg-amber-500 dark:bg-amber-400";
-              badgeBg = "bg-amber-50 dark:bg-amber-500/10";
-            } else if (isDeficit) {
-              StatusIcon = TrendingUp;
-              statusColor = "text-blue-500";
-              barColor = "bg-blue-500 dark:bg-blue-400";
-              badgeBg = "bg-blue-50 dark:bg-blue-500/10";
-            }
-
-            return (
-              <div key={opt.category} className="flex flex-col md:flex-row md:items-center gap-4 bg-slate-50 dark:bg-slate-800/30 p-3.5 md:p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
-                {/* 左側：カテゴリと比率バー */}
-                <div className="flex-1 w-full md:min-w-[200px]">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-bold text-slate-800 dark:text-slate-200 text-sm md:text-base">{opt.category}</span>
-                    <span className="text-[10px] md:text-xs font-medium text-slate-500 dark:text-slate-400">
-                      現在 <span className="text-slate-800 dark:text-slate-200">{opt.currentRatio.toFixed(1)}%</span> / 理想 {opt.targetRatio}%
-                    </span>
-                  </div>
-                  {/* Progress Bar Background */}
-                  <div className="h-2 w-full bg-slate-200 dark:bg-slate-700/50 rounded-full overflow-hidden relative">
-                    <div 
-                      className={cn("absolute top-0 left-0 h-full rounded-full transition-all duration-1000", barColor)}
-                      style={{ width: `${Math.min(100, opt.currentRatio)}%` }}
-                    />
-                    {/* 理想ラインのマーカー */}
-                    <div 
-                      className="absolute top-0 bottom-0 w-0.5 bg-slate-800 dark:bg-slate-300 z-10"
-                      style={{ left: `${opt.targetRatio}%` }}
-                    />
-                  </div>
+            {/* Target */}
+            <div className="flex flex-col items-center relative">
+              <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 z-10 hidden md:block">
+                <div className="p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-full shadow-md text-slate-400">
+                  <ArrowRightIcon size={16} />
                 </div>
+              </div>
+              <p className="text-[10px] font-black text-sky-500 uppercase tracking-[0.2em] mb-4">目標配分</p>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={targetAllocationData}
+                    innerRadius={45}
+                    outerRadius={80} // ターゲットを少し大きくして強調
+                    paddingAngle={2}
+                    dataKey="value"
+                  >
+                    {targetAllocationData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg">
+                            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{payload[0].name}</p>
+                            <p className="text-sm font-black text-sky-500">{payload[0].value}%</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-                <div className="hidden md:flex items-center text-slate-300 dark:text-slate-600 px-2 shrink-0">
-                  <ArrowRight className="w-5 h-5" />
-                </div>
+          <div className="p-5 bg-sky-50/50 dark:bg-sky-500/5 rounded-[28px] border border-sky-100 dark:border-sky-500/10">
+            <h4 className="text-xs font-black text-sky-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <TrendingUp size={14} />
+              AI最適化インサイト
+            </h4>
+            <p className="text-[12px] font-bold text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              {optimization.rationalAdvice}
+              現在、ポートフォリオの一部で目標とするバランスからの乖離が見られます。
+              効率的なリスク・リターン特性を維持するため、以下の調整を推奨します。
+            </p>
+          </div>
+        </div>
 
-                {/* 右側：アクション提案 */}
-                <div className={cn("flex-1 p-3 rounded-xl border flex items-start gap-3 w-full", badgeBg, "border-transparent")}>
-                  <StatusIcon className={cn("w-5 h-5 shrink-0 mt-0.5", statusColor)} />
+        {/* Action List */}
+        <div className="space-y-6">
+          <h3 className="text-sm font-black text-slate-700 dark:text-slate-300 px-2 flex items-center gap-2">
+            <Repeat size={16} className="text-indigo-500" />
+            リバランス調整案
+          </h3>
+          <div className="space-y-3">
+            {optimization.segments.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).map((s, index) => (
+              <motion.div 
+                key={s.category}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/60"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-1.5 h-10 rounded-full" style={{ backgroundColor: s.color }} />
                   <div>
-                    <span className={cn("text-[10px] font-bold uppercase tracking-wider mb-1 block", statusColor)}>
-                      {isOptimal ? "適正" : (isExcess ? "Sell (売却推奨)" : "Buy (買い増し推奨)")}
-                    </span>
-                    <p className="text-xs md:text-sm font-black text-slate-700 dark:text-slate-300">
-                      {opt.actionText}
+                    <label className="text-xs font-black text-slate-800 dark:text-white">{s.category}</label>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">
+                      現在 {s.currentRatio}% → 目標 {s.targetRatio}%
                     </p>
                   </div>
                 </div>
-              </div>
-            );
-          })}
+                <div className="text-right">
+                  <div className={cn(
+                    "text-[13px] font-black flex items-center justify-end gap-1",
+                    s.delta > 0 ? "text-emerald-500" : s.delta < 0 ? "text-rose-500" : "text-slate-400"
+                  )}>
+                    {s.delta > 0 ? "+" : ""}{formatCurrency(s.delta)}
+                    {s.delta !== 0 && (
+                      <span className="text-[10px] bg-current opacity-10 px-1.5 py-0.5 rounded uppercase">
+                        {s.delta > 0 ? "追加" : "削減"}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">調整見込額</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+          
+          <div className="mt-6 flex items-start gap-2 p-3 bg-amber-50/30 dark:bg-amber-500/5 rounded-xl border border-amber-100/50 dark:border-amber-500/10">
+            <Zap size={14} className="text-amber-500 mt-0.5 shrink-0" />
+            <p className="text-[10px] text-amber-600 dark:text-amber-400/80 leading-relaxed font-bold">
+              目標配分への調整は、新規資金の投入時や利益確定のタイミングで段階的に行うことをお勧めします。
+            </p>
+          </div>
         </div>
       </div>
     </div>
