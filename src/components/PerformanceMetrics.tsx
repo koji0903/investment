@@ -55,7 +55,7 @@ export const PerformanceMetrics = () => {
           <CheckCircle2 className={cn("w-4 h-4", isGood ? "text-emerald-500" : "text-slate-300 dark:text-slate-600")} />
         </div>
         <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-extrabold text-slate-800 dark:text-slate-100">{value}</span>
+          <span className="text-2xl md:text-3xl font-extrabold text-slate-800 dark:text-slate-100">{value}</span>
           <span className="text-sm font-bold text-slate-400">{unit}</span>
         </div>
         <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1.5 rounded-lg w-fit">
@@ -66,13 +66,13 @@ export const PerformanceMetrics = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-6 shadow-sm">
-      <h3 className="text-xl font-bold mb-5 flex items-center gap-2 text-slate-800 dark:text-slate-100">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-4 md:p-6 shadow-sm">
+      <h3 className="text-lg md:text-xl font-bold mb-5 flex items-center gap-2 text-slate-800 dark:text-slate-100">
         <Activity className="w-5 h-5 text-indigo-500" />
         パフォーマンス分析
       </h3>
       
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
         <MetricCard 
           title="勝率" 
           value={metrics.winRate.toFixed(1)} 

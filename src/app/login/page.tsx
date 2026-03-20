@@ -120,17 +120,17 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center p-4 font-sans">
       <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
-        <div className="p-8">
-          <div className="flex justify-center mb-8">
+        <div className="p-6 md:p-8">
+          <div className="flex justify-center mb-6 md:mb-8">
             <div className="p-3 bg-indigo-500 rounded-2xl shadow-lg shadow-indigo-500/20">
               <LogIn className="w-8 h-8 text-white" />
             </div>
           </div>
 
-          <h1 className="text-3xl font-black text-center text-slate-800 dark:text-slate-100 mb-2">
+          <h1 className="text-2xl md:text-3xl font-black text-center text-slate-800 dark:text-slate-100 mb-2">
             {isLogin ? "Welcome Back" : "Create Account"}
           </h1>
-          <p className="text-center text-slate-500 dark:text-slate-400 mb-8 text-sm">
+          <p className="text-center text-slate-500 dark:text-slate-400 mb-6 md:mb-8 text-xs md:text-sm">
             {isLogin ? "資産状況をチェックしましょう" : "新しい投資体験をここから始めましょう"}
           </p>
 

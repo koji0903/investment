@@ -49,58 +49,58 @@ export const TransactionForm = () => {
           </span>
         )}
       </h3>
-      <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end", isDemo && "pointer-events-none")}>
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-bold text-slate-400 ml-1">銘柄 / シンボル</label>
+      <div className={cn("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-end", isDemo && "pointer-events-none")}>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-bold text-slate-500 ml-1">銘柄 / シンボル</label>
           <input 
             list="assets-list"
             value={assetId}
             onChange={(e) => setAssetId(e.target.value)}
             disabled={isDemo}
             placeholder="AAPL, 7203.T等"
-            className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900"
+            className="p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900 transition-all font-medium"
           />
           <datalist id="assets-list">
             {assets.map(a => <option key={a.id} value={a.symbol || a.id}>{a.name}</option>)}
           </datalist>
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">売買区分</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-bold text-slate-500 ml-1">売買区分</label>
           <select 
             value={type} 
             onChange={(e) => setType(e.target.value as TransactionType)}
             disabled={isDemo}
-            className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[var(--color-primary-500)] outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900"
+            className="p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[var(--color-primary-500)] outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900 transition-all font-bold"
             style={{ color: type === "buy" ? "var(--color-success-600)" : "var(--color-danger-600)" }}
           >
             <option value="buy">買付</option>
             <option value="sell">売却</option>
           </select>
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">数量</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-bold text-slate-500 ml-1">数量</label>
           <input 
             type="number" step="any" min="0" value={quantity || ""} onChange={(e) => setQuantity(Number(e.target.value))}
             placeholder="0"
             disabled={isDemo}
-            className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[var(--color-primary-500)] outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900"
+            className="p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[var(--color-primary-500)] outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900 transition-all font-medium"
           />
         </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-slate-500 dark:text-slate-400">単価 (¥)</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-bold text-slate-500 ml-1">単価 (¥)</label>
           <input 
             type="number" step="any" min="0" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))}
             placeholder="0"
             disabled={isDemo}
-            className="p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[var(--color-primary-500)] outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900"
+            className="p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[var(--color-primary-500)] outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900 transition-all font-medium"
           />
         </div>
         <button 
           type="submit" 
           disabled={isDemo}
           className={cn(
-            "p-2.5 rounded-xl text-white font-bold transition-colors",
-            isDemo ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700" : "bg-indigo-600 hover:bg-indigo-500"
+            "p-3 rounded-xl text-white font-black text-sm transition-all sm:col-span-2 lg:col-span-1 shadow-md",
+            isDemo ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700" : "bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98]"
           )}
         >
           {isDemo ? "閲覧制限中" : "登録する"}

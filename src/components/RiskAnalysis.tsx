@@ -44,10 +44,10 @@ export const RiskAnalysis = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-6 shadow-sm flex flex-col md:flex-row gap-8">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-4 md:p-6 shadow-sm flex flex-col md:flex-row gap-6 md:gap-8">
       
       {/* メーターエリア */}
-      <div className={cn("flex-shrink-0 flex flex-col items-center justify-center p-6 rounded-3xl border min-w-[200px]", BgClass)}>
+      <div className={cn("flex-shrink-0 flex flex-col items-center justify-center p-6 rounded-3xl border w-full md:w-auto md:min-w-[200px]", BgClass)}>
         <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
           <Icon className={cn("w-5 h-5", ColorClass.split(" ")[0])} />
           総合リスクスコア

@@ -16,21 +16,21 @@ export const PortfolioOptimization = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-6 shadow-sm overflow-hidden relative">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-4 md:p-6 shadow-sm overflow-hidden relative">
       <div className="absolute top-0 right-0 -translate-y-4 translate-x-4 opacity-5 pointer-events-none mix-blend-overlay">
-        <Lightbulb className="w-48 h-48" />
+        <Lightbulb className="w-32 h-32 md:w-48 md:h-48" />
       </div>
 
       <div className="relative z-10 block">
-        <h3 className="text-xl font-bold mb-2 flex items-center gap-2 text-slate-800 dark:text-slate-100">
+        <h3 className="text-lg md:text-xl font-bold mb-2 flex items-center gap-2 text-slate-800 dark:text-slate-100">
           <Lightbulb className="w-5 h-5 text-amber-500" />
           AI ポートフォリオ最適化
         </h3>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          理想的なモデル配分（株40% / 投信40% / 仮想通貨10% / FX10%）と現在の保有状態を比較し、リスク分散のためのアクションを提案します。
+        <p className="text-[10px] md:text-sm text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+          理想的なモデル配分と比較し、リスク分散のためのアクションを提案します。
         </p>
 
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           {optimizations.map((opt) => {
             const isExcess = opt.status === "Excess";
             const isDeficit = opt.status === "Deficit";
@@ -54,12 +54,12 @@ export const PortfolioOptimization = () => {
             }
 
             return (
-              <div key={opt.category} className="flex flex-col md:flex-row md:items-center gap-4 bg-slate-50 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <div key={opt.category} className="flex flex-col md:flex-row md:items-center gap-4 bg-slate-50 dark:bg-slate-800/30 p-3.5 md:p-4 rounded-2xl border border-slate-100 dark:border-slate-800">
                 {/* 左側：カテゴリと比率バー */}
-                <div className="flex-1 min-w-[200px]">
+                <div className="flex-1 w-full md:min-w-[200px]">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="font-bold text-slate-800 dark:text-slate-200">{opt.category}</span>
-                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                    <span className="font-bold text-slate-800 dark:text-slate-200 text-sm md:text-base">{opt.category}</span>
+                    <span className="text-[10px] md:text-xs font-medium text-slate-500 dark:text-slate-400">
                       現在 <span className="text-slate-800 dark:text-slate-200">{opt.currentRatio.toFixed(1)}%</span> / 理想 {opt.targetRatio}%
                     </span>
                   </div>
@@ -82,13 +82,13 @@ export const PortfolioOptimization = () => {
                 </div>
 
                 {/* 右側：アクション提案 */}
-                <div className={cn("flex-1 p-3 rounded-xl border flex items-start gap-3", badgeBg, "border-transparent")}>
+                <div className={cn("flex-1 p-3 rounded-xl border flex items-start gap-3 w-full", badgeBg, "border-transparent")}>
                   <StatusIcon className={cn("w-5 h-5 shrink-0 mt-0.5", statusColor)} />
                   <div>
-                    <span className={cn("text-xs font-bold uppercase tracking-wider mb-1 block", statusColor)}>
+                    <span className={cn("text-[10px] font-bold uppercase tracking-wider mb-1 block", statusColor)}>
                       {isOptimal ? "適正" : (isExcess ? "Sell (売却推奨)" : "Buy (買い増し推奨)")}
                     </span>
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <p className="text-xs md:text-sm font-black text-slate-700 dark:text-slate-300">
                       {opt.actionText}
                     </p>
                   </div>
