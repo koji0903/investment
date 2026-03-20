@@ -1095,3 +1095,74 @@ export const calculateScenarioComparison = (
   return comparisonData;
 };
 
+export interface ScenarioStrategy {
+  id: "bull" | "bear" | "uncertain";
+  scenario: "上昇トレンド（強気相場）" | "下落トレンド（弱気相場）" | "不確実性高（波乱含み）";
+  probability: number;
+  description: string;
+  recommendedStrategy: string;
+  targetAllocation: { category: string; ratio: number }[];
+  expectedImpact: string;
+}
+
+export const generateScenarioStrategies = (
+  currentMarketScore: number = 50
+): ScenarioStrategy[] => {
+  // 簡易的な確率計算
+  let bullProb = 33;
+  let bearProb = 33;
+  let uncertProb = 34;
+
+  if (currentMarketScore >= 65) {
+    bullProb = 60; bearProb = 15; uncertProb = 25;
+  } else if (currentMarketScore <= 35) {
+    bullProb = 15; bearProb = 60; uncertProb = 25;
+  } else {
+    bullProb = 30; bearProb = 30; uncertProb = 40;
+  }
+
+  return [
+    {
+      id: "bull",
+      scenario: "上昇トレンド（強気相場）",
+      probability: bullProb,
+      description: "株価が全体的に上昇しやすい環境です。経済指標も良好で、積極的な投資が報われやすい時期です。",
+      recommendedStrategy: "成長が期待できる株式や投資信託の比率を増やし、利益を積極的に狙う運用が適しています。",
+      targetAllocation: [
+        { category: "株", ratio: 50 },
+        { category: "投資信託", ratio: 30 },
+        { category: "仮想通貨", ratio: 10 },
+        { category: "FX", ratio: 10 }
+      ],
+      expectedImpact: "資産が大きく増加する可能性がありますが、一時的な価格変動にもご注意ください。"
+    },
+    {
+      id: "uncertain",
+      scenario: "不確実性高（波乱含み）",
+      probability: uncertProb,
+      description: "先行きが予想しづらく、価格が上下に大きく振れやすい環境です。国内外の関連ニュースに注意が必要です。",
+      recommendedStrategy: "値動きの異なる資産をバランスよく持ち、どんな状況にも対応できる「全方位型の分散投資」が安心です。",
+      targetAllocation: [
+        { category: "株", ratio: 30 },
+        { category: "投資信託", ratio: 50 },
+        { category: "仮想通貨", ratio: 5 },
+        { category: "FX", ratio: 15 }
+      ],
+      expectedImpact: "急激なご資産の減少を防ぎつつ、緩やかな成長を目指すことができます。"
+    },
+    {
+      id: "bear",
+      scenario: "下落トレンド（弱気相場）",
+      probability: bearProb,
+      description: "全体的に価格が下がりやすい環境です。景気の減速やネガティブなニュースが多い時期です。",
+      recommendedStrategy: "価格変動が少ない安全性の高い資産（現金や安定した投資信託）の比率を高め、資産をお守りすることを最優先とします。",
+      targetAllocation: [
+        { category: "株", ratio: 15 },
+        { category: "投資信託", ratio: 75 },
+        { category: "仮想通貨", ratio: 0 },
+        { category: "FX", ratio: 10 }
+      ],
+      expectedImpact: "一時的に増やすことは難しいですが、大切なご資産を大きく減らすリスクを最小限に抑えられます。"
+    }
+  ];
+};
