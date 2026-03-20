@@ -98,3 +98,12 @@ export interface PositionSizingSettings {
   riskPerTradePct: number;       // 1トレードあたりの許容リスク率 (%)
   enabled: boolean;
 }
+
+export interface WinPattern {
+  id: string;
+  category: AssetCategory;
+  count: number;
+  averageReturn: number;
+  commonFactor: string; // "長期保有", "ボラティリティ低", 等
+  insight: string;
+}

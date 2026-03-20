@@ -46,6 +46,7 @@ import { StrategyTemplates } from "@/components/StrategyTemplates";
 import { RiskManagementPanel } from "@/components/RiskManagementPanel";
 import { TradingAutomation } from "@/components/TradingAutomation";
 import { PositionSizing } from "@/components/PositionSizing";
+import { WinPatternAnalysis } from "@/components/WinPatternAnalysis";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -216,6 +217,7 @@ export default function Home() {
               {activeTab === "analysis" && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                   <div className="lg:col-span-2 space-y-6 md:space-y-8">
+                    <WinPatternAnalysis />
                     <TradingAutomation />
                     <StrategyTemplates />
                     <InvestmentReportComponent />
