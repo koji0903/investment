@@ -3,34 +3,54 @@
 import { useState } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { useAuth } from "@/context/AuthContext";
+import { useNotify } from "@/context/NotificationContext";
 import { TransactionType } from "@/types";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const TransactionForm = () => {
   const { assets, addTransaction } = usePortfolio();
   const { isDemo } = useAuth();
+  const { notify } = useNotify();
   
   const [assetId, setAssetId] = useState<string>("");
   const [type, setType] = useState<TransactionType>("buy");
   const [quantity, setQuantity] = useState<number>(0);
   const [price, setPrice] = useState<number>(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!assetId || quantity <= 0 || price <= 0) return;
     
-    addTransaction({
-      assetId: assetId.trim().toUpperCase(),
-      type,
-      quantity,
-      price,
-    });
-    
-    // Reset form
-    setAssetId("");
-    setQuantity(0);
-    setPrice(0);
+    setIsSubmitting(true);
+    try {
+      await addTransaction({
+        assetId: assetId.trim().toUpperCase(),
+        type,
+        quantity,
+        price,
+      });
+      
+      notify({
+        type: "success",
+        title: "取引登録完了",
+        message: `${assetId.trim().toUpperCase()} の ${type === "buy" ? "買付" : "売却"} を登録しました。`,
+      });
+
+      // Reset form
+      setAssetId("");
+      setQuantity(0);
+      setPrice(0);
+    } catch (err) {
+      notify({
+        type: "error",
+        title: "エラー",
+        message: "取引の登録に失敗しました。",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -56,7 +76,7 @@ export const TransactionForm = () => {
             list="assets-list"
             value={assetId}
             onChange={(e) => setAssetId(e.target.value)}
-            disabled={isDemo}
+            disabled={isDemo || isSubmitting}
             placeholder="AAPL, 7203.T等"
             className="p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900 transition-all font-medium"
           />
@@ -69,7 +89,7 @@ export const TransactionForm = () => {
           <select 
             value={type} 
             onChange={(e) => setType(e.target.value as TransactionType)}
-            disabled={isDemo}
+            disabled={isDemo || isSubmitting}
             className="p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[var(--color-primary-500)] outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900 transition-all font-bold"
             style={{ color: type === "buy" ? "var(--color-success-600)" : "var(--color-danger-600)" }}
           >
@@ -82,7 +102,7 @@ export const TransactionForm = () => {
           <input 
             type="number" step="any" min="0" value={quantity || ""} onChange={(e) => setQuantity(Number(e.target.value))}
             placeholder="0"
-            disabled={isDemo}
+            disabled={isDemo || isSubmitting}
             className="p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[var(--color-primary-500)] outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900 transition-all font-medium"
           />
         </div>
@@ -91,19 +111,29 @@ export const TransactionForm = () => {
           <input 
             type="number" step="any" min="0" value={price || ""} onChange={(e) => setPrice(Number(e.target.value))}
             placeholder="0"
-            disabled={isDemo}
+            disabled={isDemo || isSubmitting}
             className="p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-[var(--color-primary-500)] outline-none disabled:bg-slate-100 dark:disabled:bg-slate-900 transition-all font-medium"
           />
         </div>
         <button 
           type="submit" 
-          disabled={isDemo}
+          disabled={isDemo || isSubmitting}
           className={cn(
-            "p-3 rounded-xl text-white font-black text-sm transition-all sm:col-span-2 lg:col-span-1 shadow-md",
-            isDemo ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700" : "bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98]"
+            "p-3 rounded-xl text-white font-black text-sm transition-all sm:col-span-2 lg:col-span-1 shadow-md flex items-center justify-center gap-2",
+            isDemo ? "bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-300 dark:border-slate-700" : "bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98]",
+            isSubmitting && "opacity-80"
           )}
         >
-          {isDemo ? "閲覧制限中" : "登録する"}
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              処理中...
+            </>
+          ) : isDemo ? (
+            "閲覧制限中"
+          ) : (
+            "登録する"
+          )}
         </button>
       </div>
     </form>

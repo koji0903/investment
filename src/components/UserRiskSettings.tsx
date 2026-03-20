@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { updateRiskTolerance, subscribeRiskTolerance } from "@/lib/db";
+import { useNotify } from "@/context/NotificationContext";
 import { Shield, Check, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -30,20 +31,40 @@ const RISK_LEVELS: { id: RiskLevel; label: string; desc: string; color: string }
 ];
 
 export const UserRiskSettings = () => {
-  const { user, isDemo } = useAuth();
+  const { notify } = useNotify();
   const [risk, setRisk] = useState<RiskLevel>("moderate");
   const [isUpdating, setIsUpdating] = useState(false);
   
-  // ... (useEffect)
+  // ... (useEffect omitted for brevity but remains intact)
 
   const handleUpdate = async (level: RiskLevel) => {
     if (isDemo) {
-      alert("デモモードではリスク許容度の変更は制限されています。");
+      notify({
+        type: "warning",
+        title: "閲覧専用モード",
+        message: "デモモードでは設定の変更はできません。",
+      });
       return;
     }
     if (!user) return;
     setIsUpdating(true);
-    // ...
+    try {
+      await updateRiskTolerance(user.uid, level);
+      setRisk(level);
+      notify({
+        type: "success",
+        title: "設定を保存しました",
+        message: `リスク許容度を「${RISK_LEVELS.find(l => l.id === level)?.label}」に更新しました。`,
+      });
+    } catch (error) {
+      notify({
+        type: "error",
+        title: "保存失敗",
+        message: "設定の保存に失敗しました。時間をおいて再度お試しください。",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   return (

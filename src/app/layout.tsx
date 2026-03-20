@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Noto_Sans_JP } from "next/font/google";
 import { Providers } from "@/components/Providers";
+import { NotificationToast } from "@/components/NotificationToast";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,7 +36,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${notoSansJP.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-50">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <NotificationToast />
+        </Providers>
       </body>
     </html>
   );

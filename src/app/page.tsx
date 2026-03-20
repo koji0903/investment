@@ -7,6 +7,7 @@ import { DemoDataLoader } from "@/components/DemoDataLoader";
 import { DemoStory } from "@/components/DemoStory";
 import { AlertToast } from "@/components/AlertToast";
 import { AssetCard } from "@/components/AssetCard";
+import { AssetCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionList } from "@/components/TransactionList";
 import { AssetTrendChart } from "@/components/AssetTrendChart";
@@ -72,7 +73,7 @@ export default function Home() {
             >
               <h1 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em]">総資産額</h1>
               <div className="text-6xl md:text-9xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums leading-none">
-                {formatCurrency(totalAssetsValue)}
+                {isFetching ? <Skeleton className="w-64 h-24 mx-auto opacity-20" /> : formatCurrency(totalAssetsValue)}
               </div>
             </motion.div>
 
@@ -121,25 +122,70 @@ export default function Home() {
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
               {activeTab === "overview" && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  {/* Left Column: Visualization & AI Advice */}
-                  <div className="lg:col-span-2 space-y-8">
-                    <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative group">
-                      <div className="flex items-center justify-between mb-8">
-                        <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
-                          <span className="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
-                          ポートフォリオ構成
-                        </h2>
+                <div className="space-y-12">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Left Column: Visualization & AI Advice */}
+                    <div className="lg:col-span-2 space-y-8">
+                      <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative group">
+                        <div className="flex items-center justify-between mb-8">
+                          <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                            <span className="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+                            ポートフォリオ構成
+                          </h2>
+                        </div>
+                        {isFetching ? (
+                          <div className="h-[400px] flex items-center justify-center">
+                            <Skeleton className="w-64 h-64 rounded-full opacity-10" />
+                          </div>
+                        ) : (
+                          <PortfolioComposition />
+                        )}
                       </div>
-                      <PortfolioComposition />
+                      
+                      <InvestmentAdvice />
                     </div>
-                    
-                    <InvestmentAdvice />
+
+                    {/* Right Column: Alerts */}
+                    <div className="space-y-8">
+                      <AlertList />
+                    </div>
                   </div>
 
-                  {/* Right Column: Alerts */}
-                  <div className="space-y-8">
-                    <AlertList />
+                  {/* Bottom: Assets Grid */}
+                  <div className="space-y-6">
+                    <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3 px-2">
+                      <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+                      保有資産一覧
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {isFetching ? (
+                        <>
+                          <AssetCardSkeleton />
+                          <AssetCardSkeleton />
+                          <AssetCardSkeleton />
+                        </>
+                      ) : calculatedAssets.length === 0 ? (
+                        <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[32px] space-y-4">
+                          <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400">
+                            <DollarSign size={40} />
+                          </div>
+                          <div>
+                            <p className="text-xl font-black text-slate-800 dark:text-white">資産がまだ登録されていません</p>
+                            <p className="text-sm font-bold text-slate-500 mt-2">銘柄を登録して、ポートフォリオ分析を始めましょう。</p>
+                          </div>
+                          <button 
+                            onClick={() => setActiveTab("tools")}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-3 rounded-full shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+                          >
+                            最初の銘柄を登録する
+                          </button>
+                        </div>
+                      ) : (
+                        calculatedAssets.map(asset => (
+                          <AssetCard key={asset.id} asset={asset} />
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

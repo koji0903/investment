@@ -6,9 +6,10 @@ import { getPerformanceMetrics, getMetricComment } from "@/lib/analyticsUtils";
 import { generateTrendData } from "@/lib/chartUtils";
 import { Target, TrendingUp, AlertTriangle, Activity, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "./ui/Skeleton";
 
 export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filterAssetId?: string, hideHeader?: boolean }) => {
-  const { calculatedAssets, totalAssetsValue, analysis } = usePortfolio();
+  const { calculatedAssets, totalAssetsValue, analysis, isFetching } = usePortfolio();
   
   const targetAssets = useMemo(() => {
     if (!filterAssetId) return calculatedAssets;
@@ -20,7 +21,6 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
     return targetAssets.reduce((sum, a) => sum + a.evaluatedValue, 0);
   }, [targetAssets, totalAssetsValue, filterAssetId]);
 
-  // 過去データの再生成または再利用
   const trendData = useMemo(() => {
     return generateTrendData(targetValue, 30);
   }, [targetValue]);
@@ -28,8 +28,6 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
   const metrics = useMemo(() => {
     const clientMetrics = getPerformanceMetrics(targetAssets, trendData);
     
-    // Cloud Functions からのデータがあれば優先（オフロード）
-    // 個別資産の場合は一旦クライアント計算のみとする
     if (analysis && !filterAssetId) {
       return {
         ...clientMetrics,
@@ -40,6 +38,23 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
     
     return clientMetrics;
   }, [targetAssets, trendData, analysis, filterAssetId]);
+
+  if (isFetching && targetAssets.length === 0) {
+    return (
+      <div className={cn(
+        "flex flex-col gap-6",
+        !hideHeader && "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-4 md:p-6 shadow-sm"
+      )}>
+        {!hideHeader && <Skeleton className="w-48 h-8 mb-2" />}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
 
   const MetricCard = ({ 
     title, 
@@ -69,7 +84,7 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
           <span className="text-2xl md:text-3xl font-extrabold text-slate-800 dark:text-slate-100">{value}</span>
           <span className="text-sm font-bold text-slate-400">{unit}</span>
         </div>
-        <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1.5 rounded-lg w-fit">
+        <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1.5 rounded-lg w-fit text-left">
           {getMetricComment(type, metrics[type])}
         </div>
       </div>
@@ -78,7 +93,7 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
 
   return (
     <div className={cn(
-      "flex flex-col",
+      "flex flex-col text-left",
       !hideHeader && "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-4 md:p-6 shadow-sm"
     )}>
       {!hideHeader && (

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import type { NewsItem } from "@/app/api/news/route";
+import { NewsItemSkeleton, Skeleton } from "./ui/Skeleton";
 import { Newspaper, Search, AlertTriangle, AlertCircle, MinusCircle, ExternalLink, RefreshCw, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -54,37 +55,35 @@ const formatRelativeTime = (dateStr: string) => {
 };
 
 export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
-  const { calculatedAssets } = usePortfolio();
+  const { calculatedAssets, isFetching } = usePortfolio();
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
   const [fetchedAt, setFetchedAt] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>("すべて");
   const [search, setSearch] = useState("");
 
-  // 保有資産の銘柄名をキーワードとして使用
   const relatedKeywords = useMemo(() => 
     calculatedAssets.map(a => a.name).filter(Boolean), 
     [calculatedAssets]
   );
 
   const fetchNews = async () => {
-    setIsLoading(true);
+    setIsLoadingNews(true);
     try {
       const res = await fetch("/api/news");
       const data = await res.json();
       setNews(data.news ?? []);
       setFetchedAt(data.fetchedAt);
     } catch {
-      // フェッチ失敗時はダミーデータを利用
       setNews(getDummyNews());
     } finally {
-      setIsLoading(false);
+      setIsLoadingNews(false);
     }
   };
 
   useEffect(() => {
     fetchNews();
-    const interval = setInterval(fetchNews, 5 * 60 * 1000); // 5分ごと自動更新
+    const interval = setInterval(fetchNews, 5 * 60 * 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -112,9 +111,23 @@ export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
     return items;
   }, [news, activeTab, search, relatedKeywords, filterKeyword]);
 
+  if ((isFetching || isLoadingNews) && news.length === 0) {
+    return (
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] overflow-hidden shadow-sm">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+          <Skeleton className="w-32 h-6" />
+        </div>
+        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+          <NewsItemSkeleton />
+          <NewsItemSkeleton />
+          <NewsItemSkeleton />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] shadow-sm overflow-hidden">
-      {/* ヘッダー */}
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] shadow-sm overflow-hidden text-left">
       <div className="flex flex-col lg:flex-row lg:items-center gap-4 px-6 pt-6 pb-4 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Newspaper className="w-5 h-5 text-slate-600 dark:text-slate-300 shrink-0" />
@@ -126,8 +139,7 @@ export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
             </span>
           )}
         </div>
-        {/* 検索バー */}
-        <div className="relative w-full sm:w-56">
+        <div className="relative w-full sm:w-56 text-left">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
@@ -139,15 +151,14 @@ export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
         </div>
         <button
           onClick={fetchNews}
-          disabled={isLoading}
+          disabled={isLoadingNews}
           className="shrink-0 p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition disabled:opacity-40"
           title="ニュースを更新"
         >
-          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+          <RefreshCw className={cn("w-4 h-4", isLoadingNews && "animate-spin")} />
         </button>
       </div>
 
-      {/* タブ */}
       <div className="flex gap-1 px-6 pt-3 pb-0">
         {CATEGORY_TABS.map(tab => (
           <button
@@ -165,13 +176,8 @@ export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
         ))}
       </div>
 
-      {/* ニュース一覧 */}
       <div className="p-4 max-h-[520px] overflow-y-auto space-y-3 custom-scrollbar">
-        {isLoading ? (
-          Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="animate-pulse bg-slate-100 dark:bg-slate-800/50 rounded-xl h-24" />
-          ))
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Newspaper className="w-10 h-10 text-slate-300 dark:text-slate-600 mb-3" />
             <p className="text-sm text-slate-400">該当するニュースが見つかりませんでした</p>
@@ -211,7 +217,6 @@ export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
   );
 };
 
-// RSSが取得できない場合のダミーデータ
 function getDummyNews(): NewsItem[] {
   return [
     { id: "1", title: "日経平均が小反発、米株高を受けて買い先行", url: "#", publishedAt: new Date().toISOString(), source: "Yahoo Finance", category: "株式", importance: "medium", sentiment: "positive", description: "東京株式市場で日経平均株価は小幅に反発。前日の米国株式市場での上昇を受けて買い注文が先行した。" },

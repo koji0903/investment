@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useMemo, useEffect } from "
 import { Asset, AssetCalculated, Transaction } from "@/types";
 import { calculateAssetValues } from "@/lib/dummyData";
 import { useAuth } from "@/context/AuthContext";
+import { useNotify } from "@/context/NotificationContext";
 import { subscribeAssets, subscribeTransactions, subscribeAnalysis, subscribeBehavior, subscribeStrategy, saveTransaction, saveAsset, generateDemoData } from "@/lib/db";
 import { updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -32,6 +33,8 @@ interface PortfolioContextType {
   addTransaction: (transaction: Omit<Transaction, "id" | "date">) => Promise<void>;
   lastUpdated: string | null;
   isFetching: boolean;
+  fetchError: string | null;
+  retryFetch: () => void;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -47,6 +50,8 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   const [strategy, setStrategy] = useState<any>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const { notify } = useNotify();
 
   // デモデータの自動生成
   useEffect(() => {
@@ -99,9 +104,10 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   useEffect(() => {
     if (!user || assets.length === 0) return;
 
-    const fetchMarketData = async () => {
+    const fetchMarketData = async (retryCount = 0) => {
       try {
         setIsFetching(true);
+        setFetchError(null);
         const res = await fetch("/api/market-data");
         if (!res.ok) throw new Error("API Fetch Error");
         const data = await res.json();
@@ -112,13 +118,23 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         }
       } catch (error) {
         console.error("Failed to fetch market data", error);
+        if (retryCount < 2) {
+          setTimeout(() => fetchMarketData(retryCount + 1), 3000);
+        } else {
+          setFetchError("価格データの取得に失敗しました");
+          notify({
+            type: "error",
+            title: "接続エラー",
+            message: "最新の時価情報を取得できませんでした。自動的に再試行します。",
+          });
+        }
       } finally {
         setIsFetching(false);
       }
     };
 
-    fetchMarketData();
-    const interval = setInterval(fetchMarketData, 60000);
+    fetchMarketData(0);
+    const interval = setInterval(() => fetchMarketData(0), 60000);
 
     return () => clearInterval(interval);
   }, [user, assets.length]);
@@ -209,6 +225,8 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         addTransaction,
         lastUpdated,
         isFetching,
+        fetchError,
+        retryFetch: () => fetchMarketData(0),
       }}
     >
       {children}
