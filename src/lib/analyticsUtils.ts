@@ -350,6 +350,59 @@ export const calculateOptimalPortfolio = (
   };
 };
 
+export interface MarketConditionResult {
+  score: number; // 0-100 (0: Extreme Bear, 100: Extreme Bull)
+  label: "Bullish" | "Neutral" | "Bearish";
+  strategy: "Attack" | "Defense";
+  description: string;
+  factors: {
+    equity: number; // -10 to +10
+    yield: number;  // -10 to +10
+    fx: number;     // -10 to +10
+  };
+}
+
+export const calculateMarketCondition = (
+  equityTrend: number, // % from SMA200 (e.g., +5)
+  yieldSpread: number, // 10Y - 2Y (e.g., 0.5)
+  fxVolatility: number // % change in USD/JPY 
+): MarketConditionResult => {
+  // 1. 各ファクターのスコアリング (-10 to 10)
+  const equityScore = Math.min(10, Math.max(-10, equityTrend * 2));
+  const yieldScore = Math.min(10, Math.max(-10, (yieldSpread - 0.5) * 20));
+  const fxScore = Math.min(10, Math.max(-10, (1 - Math.abs(fxVolatility)) * 10 - 5));
+
+  // 2. 総合スコア (0-100)
+  const totalRaw = (equityScore + yieldScore + fxScore) / 3; // -10 to 10
+  const score = Math.round(((totalRaw + 10) / 20) * 100);
+
+  let label: MarketConditionResult["label"] = "Neutral";
+  let strategy: MarketConditionResult["strategy"] = "Defense";
+  let description = "市場は方向性を模索しています。慎重な取引を推奨します。";
+
+  if (score >= 65) {
+    label = "Bullish";
+    strategy = "Attack";
+    description = "強い市場トレンドが継続しています。積極的に利益プレミアムを取りに行くチャンスです。";
+  } else if (score <= 35) {
+    label = "Bearish";
+    strategy = "Defense";
+    description = "市場の警戒感が高まっています。キャッシュ比率を高め、資産防衛を優先すべき局面です。";
+  }
+
+  return {
+    score,
+    label,
+    strategy,
+    description,
+    factors: {
+      equity: equityScore,
+      yield: yieldScore,
+      fx: fxScore
+    }
+  };
+};
+
 export interface AssetOptimization {
   category: string;
   currentRatio: number; // 0-100
