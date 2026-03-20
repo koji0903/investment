@@ -86,7 +86,7 @@ export default function Home() {
             </div>
           </header>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <StatsCard label="総資産額" value={formatCurrency(totalAssetsValue)} Icon={DollarSign} color="indigo" />
             <StatsCard 
               label="通算損益" 
@@ -95,7 +95,6 @@ export default function Home() {
               color={totalProfitAndLoss >= 0 ? "emerald" : "rose"} 
               isTrend
             />
-            <PerformanceMetrics />
             <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-6 rounded-[32px] shadow-xl shadow-indigo-500/20 relative overflow-hidden group border border-white/10">
                <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
                <div className="relative z-10 flex flex-col h-full justify-between">
@@ -108,6 +107,10 @@ export default function Home() {
                  <h2 className="text-4xl font-black text-white">84<span className="text-lg opacity-60 ml-1">/100</span></h2>
                </div>
             </div>
+          </div>
+
+          <div className="w-full">
+            <PerformanceMetrics />
           </div>
 
           {/* Tab Navigation */}
@@ -193,23 +196,23 @@ function StatsCard({ label, value, Icon, color, isTrend = false }: { label: stri
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group transition-all hover:shadow-xl hover:border-indigo-500/30">
+    <div className="bg-white dark:bg-slate-900 p-5 md:p-8 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden group transition-all hover:shadow-xl hover:border-indigo-500/30">
       <div className={cn(
         "absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-500 group-hover:scale-150 group-hover:-rotate-12 pointer-events-none",
         isTrend && (value.includes("+") ? "text-emerald-500" : "text-rose-500")
       )}>
-        <Icon className="w-32 h-32" />
+        <Icon className="w-24 h-24 md:w-32 md:h-32" />
       </div>
       <div className="relative z-10">
         <div className={cn(
-          "w-12 h-12 rounded-2xl flex items-center justify-center mb-4 text-white shadow-lg bg-gradient-to-br",
+          "w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center mb-3 md:mb-4 text-white shadow-lg bg-gradient-to-br",
           colorMap[color]
         )}>
-          <Icon size={24} />
+          <Icon size={20} className="md:w-6 md:h-6" />
         </div>
-        <p className="text-xs font-black text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-widest">{label}</p>
+        <p className="text-[10px] md:text-xs font-black text-slate-400 dark:text-slate-500 mb-1 uppercase tracking-widest">{label}</p>
         <h2 className={cn(
-          "text-2xl md:text-3xl font-black tracking-tight",
+          "text-xl md:text-3xl font-black tracking-tight",
           isTrend ? (value.includes("+") ? "text-emerald-500" : "text-rose-500") : "text-slate-900 dark:text-white"
         )}>
           {value}
@@ -224,13 +227,13 @@ function TabButton({ active, onClick, Icon, label }: { active: boolean, onClick:
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-6 py-2.5 rounded-2xl text-sm font-black transition-all duration-300 relative",
+        "flex items-center gap-1.5 md:gap-2 px-3 md:px-6 py-2 md:py-2.5 rounded-2xl text-[10px] sm:text-xs md:text-sm font-black transition-all duration-300 relative whitespace-nowrap",
         active 
           ? "bg-white dark:bg-slate-800 text-indigo-500 shadow-sm" 
           : "text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/50 dark:hover:bg-slate-800/50"
       )}
     >
-      <Icon size={18} />
+      <Icon size={16} className="md:w-[18px] md:h-[18px]" />
       <span>{label}</span>
       {active && (
         <motion.div 
