@@ -87,14 +87,14 @@ export const InvestmentStylePortrait = () => {
             <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tight">
               {analysis.label}
             </h3>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Investment Identity</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">あなたの投資タイプ分析</p>
           </div>
 
           <div className="w-full space-y-4 pt-4">
             {[
-              { label: "Frequency", value: analysis.metrics.frequency, icon: Activity },
-              { label: "Hold Duration", value: analysis.metrics.duration, icon: Calendar },
-              { label: "Risk Appetite", value: analysis.metrics.risk, icon: BarChart },
+              { label: "取引頻度 (多さ)", value: analysis.metrics.frequency, icon: Activity },
+              { label: "平均保有期間", value: analysis.metrics.duration, icon: Calendar },
+              { label: "リスク許容度 (積極性)", value: analysis.metrics.risk, icon: BarChart },
             ].map(m => (
               <div key={m.label} className="space-y-1.5">
                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -118,7 +118,7 @@ export const InvestmentStylePortrait = () => {
           <div className="space-y-4">
             <div className="flex items-center gap-2">
               <Sparkles size={16} className="text-indigo-500" />
-              <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none">AI 投資スタイル分析</h2>
+              <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none">AI 投資スタイル分析結果</h2>
             </div>
             <p className="text-lg font-black text-slate-800 dark:text-white leading-snug">
               「{analysis.description}」
@@ -126,7 +126,7 @@ export const InvestmentStylePortrait = () => {
           </div>
 
           <div className="space-y-6">
-            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">主な行動特性 (TRAITS)</h4>
+            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">診断されたあなたの行動特性 (Traits)</h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {analysis.traits.map((trait, i) => (
                 <motion.div 

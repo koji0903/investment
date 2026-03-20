@@ -64,7 +64,7 @@ export const QuantumOptimizationCard = () => {
               <Cpu size={20} className={cn(isOptimizing && "animate-pulse")} />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-800 dark:text-white">量子アニーリング最適化</h2>
+              <h2 className="text-xl font-black text-slate-800 dark:text-white">量子AIによる資産配分最適化</h2>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Global Optimal Solver v2.0</p>
             </div>
           </div>
@@ -75,7 +75,7 @@ export const QuantumOptimizationCard = () => {
             className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
           >
             <RefreshCw size={14} className={cn("text-indigo-500", isOptimizing && "animate-spin")} />
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Recalculate</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">再計算を実行</span>
           </button>
         </div>
 
@@ -104,7 +104,7 @@ export const QuantumOptimizationCard = () => {
                 </div>
               </div>
               <div className="text-center space-y-2">
-                <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest">Global Optima Searching...</p>
+                <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-widest">AIが最適な組み合わせを計算中...</p>
                 <div className="flex gap-1 justify-center">
                   {[0, 1, 2].map(i => (
                     <motion.div 
@@ -126,17 +126,17 @@ export const QuantumOptimizationCard = () => {
             >
               {/* Stats Overview */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <StatBox label="Sharpe Ratio" value={result.sharpeRatio.toFixed(2)} icon={TrendingUp} color="text-emerald-500" />
-                <StatBox label="Iterations" value={result.iterations.toString()} icon={RefreshCw} color="text-indigo-500" />
-                <StatBox label="Confidence" value={`${result.confidence.toFixed(1)}%`} icon={CheckCircle2} color="text-purple-500" />
+                <StatBox label="投資効率 (期待リターン)" value={result.sharpeRatio.toFixed(2)} icon={TrendingUp} color="text-emerald-500" />
+                <StatBox label="AI計算試行数" value={result.iterations.toString()} icon={RefreshCw} color="text-indigo-500" />
+                <StatBox label="AI確信度" value={`${result.confidence.toFixed(1)}%`} icon={CheckCircle2} color="text-purple-500" />
               </div>
 
               {/* Comparison Table */}
               <div className="overflow-hidden rounded-[28px] border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                 <div className="grid grid-cols-3 p-4 bg-slate-100/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Category</span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Current</span>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Quantum Target</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">資産カテゴリ</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">現在の比率</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">AI推奨の配分</span>
                 </div>
                 <div className="divide-y divide-slate-100 dark:divide-slate-800">
                   {result.segments.map((seg, i) => (
@@ -159,12 +159,12 @@ export const QuantumOptimizationCard = () => {
                 </div>
                 <div className="flex items-center justify-between gap-6">
                   <div className="space-y-1">
-                    <p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest">Strategic Verdict</p>
+                    <p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest">AI診断結果</p>
                     <h4 className="text-base font-black leading-snug">
-                      量子的な探索により、局所解を回避した効率的フロンティアが算出されました。
+                      膨大な組み合わせの中から、リスクを抑えつつ収益を最大化する「黄金比」が見つかりました。
                     </h4>
                     <p className="text-xs font-bold text-indigo-100 opacity-80 mt-2">
-                      現在のリスク許容度において、この配分は期待リターンとボラティリティの均衡が最も最適化された状態です。
+                      現在のご希望のリスク設定において、この配分が最も効率的で安定した運用が期待できる構成です。
                     </p>
                   </div>
                   <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 group-hover/action:translate-x-1 transition-transform border border-white/20">
@@ -180,12 +180,12 @@ export const QuantumOptimizationCard = () => {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <Lock size={12} className="text-slate-400" />
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">End-to-End Encrypted Solver</span>
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">高度な暗号化による安全な計算</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Info size={12} className="text-indigo-500" />
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Monte Carlo Validated</span>
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">検証済みアルゴリズム</span>
           </div>
         </div>
       </div>

@@ -54,14 +54,14 @@ export const ActionTriggerPanel = () => {
               )}
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-800 dark:text-white">AI 投資アクショントリガー</h2>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Real-time Opportunity Detection</p>
+              <h2 className="text-xl font-black text-slate-800 dark:text-white">AI 投資タイミングのお知らせ</h2>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">AIが24時間市場を監視しています</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/5 rounded-xl border border-indigo-100 dark:border-indigo-500/10">
             <Timer size={14} className="text-indigo-500" />
-            <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">Market Scan: ACTIVE</span>
+            <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest leading-none">AI監視：稼働中</span>
           </div>
         </div>
 
@@ -71,8 +71,8 @@ export const ActionTriggerPanel = () => {
               <Sparkles size={32} />
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-black text-slate-800 dark:text-white">現在、特別なアクショントリガーはありません</p>
-              <p className="text-xs font-bold text-slate-400">市場価格とポートフォリオを24時間スキャンしています。</p>
+              <p className="text-sm font-black text-slate-800 dark:text-white">現在、特別なアクションは必要ありません。良好な状態です。</p>
+              <p className="text-xs font-bold text-slate-400">AIが市場とあなたのポートフォリオを24時間お守りします。</p>
             </div>
           </div>
         ) : (
@@ -89,14 +89,14 @@ export const ActionTriggerPanel = () => {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/5 rounded-full">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-tighter">Oversold Scan</span>
+              <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-500 uppercase tracking-tighter">割安銘柄の探索</span>
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1 bg-rose-500/5 rounded-full">
               <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-              <span className="text-[9px] font-black text-rose-600 dark:text-rose-500 uppercase tracking-tighter">Exit Signal Check</span>
+              <span className="text-[9px] font-black text-rose-600 dark:text-rose-500 uppercase tracking-tighter">売り時シグナル監視</span>
             </div>
           </div>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">AI is watching 128 global factors</p>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest hidden sm:block">AIが世界中の情報を分析中</p>
         </div>
       </div>
     </div>
@@ -116,6 +116,20 @@ const TriggerCard = ({ trigger, index }: { trigger: ActionTrigger, index: number
     warning: AlertTriangle,
     strategic: Zap
   }[trigger.type];
+
+    const typeLabel = {
+      opportunity: "チャンス",
+      warning: "警戒",
+      strategic: "戦略的見直し"
+    }[trigger.type] || trigger.type;
+
+    const actionLabel = {
+      Buy: "買い",
+      Sell: "売り",
+      Hold: "保有継続",
+      Rebalance: "リバランス",
+      Review: "確認"
+    }[trigger.action as string] || trigger.action;
 
   return (
     <motion.div 
@@ -142,8 +156,9 @@ const TriggerCard = ({ trigger, index }: { trigger: ActionTrigger, index: number
             <h4 className="text-sm font-black text-slate-800 dark:text-white leading-tight">
               {trigger.title}
             </h4>
-            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">
-              {trigger.assetName} • {trigger.action}
+            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-500/10 rounded">{typeLabel}</span>
+              <span>{trigger.assetName} • {actionLabel}</span>
             </p>
           </div>
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2 pr-4">
