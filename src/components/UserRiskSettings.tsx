@@ -31,11 +31,18 @@ const RISK_LEVELS: { id: RiskLevel; label: string; desc: string; color: string }
 ];
 
 export const UserRiskSettings = () => {
+  const { user, isDemo } = useAuth();
   const { notify } = useNotify();
   const [risk, setRisk] = useState<RiskLevel>("moderate");
   const [isUpdating, setIsUpdating] = useState(false);
   
-  // ... (useEffect omitted for brevity but remains intact)
+  useEffect(() => {
+    if (!user) return;
+    const unsubscribe = subscribeRiskTolerance(user.uid, (level) => {
+      if (level) setRisk(level as RiskLevel);
+    });
+    return () => unsubscribe();
+  }, [user]);
 
   const handleUpdate = async (level: RiskLevel) => {
     if (isDemo) {
