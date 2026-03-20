@@ -68,8 +68,13 @@ export const BacktestSimulator = () => {
   const [asset, setAsset] = useState(ASSET_CHOICES[0]);
   const [strategyType, setStrategyType] = useState<StrategyType>("trend_follow");
   const [periodDays, setPeriodDays] = useState<90 | 180 | 365 | 730>(365);
+  const [shortWindow, setShortWindow] = useState(20);
+  const [longWindow, setLongWindow] = useState(60);
+  const [takeProfitPct, setTakeProfitPct] = useState(15);
+  const [stopLossPct, setStopLossPct] = useState(8);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<BacktestResult | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   const handleRun = useCallback(async () => {
     setIsLoading(true);
@@ -82,10 +87,10 @@ export const BacktestSimulator = () => {
       initialCapital: 1000000,
       strategyType,
       periodDays,
-      shortWindow: 20,
-      longWindow: 60,
-      takeProfitPct: 15,
-      stopLossPct: 8
+      shortWindow,
+      longWindow,
+      takeProfitPct,
+      stopLossPct
     };
 
     const res = runBacktest(config);
@@ -169,6 +174,37 @@ export const BacktestSimulator = () => {
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest block">短期移動平均 (日)</label>
+                <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{shortWindow}日</span>
+              </div>
+              <input type="range" min="5" max="50" step="1" value={shortWindow} onChange={e => setShortWindow(Number(e.target.value))} className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-violet-600" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest block">長期移動平均 (日)</label>
+                <span className="text-xs font-bold text-violet-600 dark:text-violet-400">{longWindow}日</span>
+              </div>
+              <input type="range" min="30" max="200" step="1" value={longWindow} onChange={e => setLongWindow(Number(e.target.value))} className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-violet-600" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest block">利確ライン (%)</label>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{takeProfitPct}%</span>
+              </div>
+              <input type="range" min="1" max="50" step="1" value={takeProfitPct} onChange={e => setTakeProfitPct(Number(e.target.value))} className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <label className="text-[11px] font-black text-slate-500 uppercase tracking-widest block">損切りライン (%)</label>
+                <span className="text-xs font-bold text-rose-600 dark:text-rose-400">{stopLossPct}%</span>
+              </div>
+              <input type="range" min="1" max="30" step="1" value={stopLossPct} onChange={e => setStopLossPct(Number(e.target.value))} className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500" />
             </div>
           </div>
 
@@ -284,6 +320,70 @@ export const BacktestSimulator = () => {
                 <p className="text-[10px] font-bold text-slate-400 text-center">
                   初期投資額: {formatCurrency(result.config.initialCapital)}　｜　検証期間: {result.dailyResults.length}日間
                 </p>
+              </div>
+
+              {/* 取引履歴トグル */}
+              <div className="space-y-4">
+                <button
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="flex items-center gap-2 text-sm font-black text-slate-600 dark:text-slate-300 hover:text-violet-600 transition-colors"
+                >
+                  <ChevronDown size={16} className={cn("transition-transform", showHistory && "rotate-180")} />
+                  取引履歴を表示 ({result.tradeHistory.length} 件)
+                </button>
+
+                <AnimatePresence>
+                  {showHistory && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-700 text-[10px] text-slate-400 font-black uppercase tracking-widest">
+                              <th className="px-4 py-3">日付</th>
+                              <th className="px-4 py-3">種別</th>
+                              <th className="px-4 py-3 text-right">価格</th>
+                              <th className="px-4 py-3 text-right">数量</th>
+                              <th className="px-4 py-3 text-right">損益</th>
+                            </tr>
+                          </thead>
+                          <tbody className="font-bold">
+                            {result.tradeHistory.map((trade, idx) => (
+                              <tr key={idx} className="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                                <td className="px-4 py-3 text-slate-500">{trade.date}</td>
+                                <td className="px-4 py-3">
+                                  <span className={cn(
+                                    "px-2 py-0.5 rounded-md text-[9px] font-black uppercase",
+                                    trade.type === "buy" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400" : "bg-rose-100 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400"
+                                  )}>
+                                    {trade.type === "buy" ? "買い入" : "売り出"}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(trade.price)}</td>
+                                <td className="px-4 py-3 text-right tabular-nums">{trade.quantity}</td>
+                                <td className={cn(
+                                  "px-4 py-3 text-right tabular-nums",
+                                  trade.profit && trade.profit > 0 ? "text-emerald-500" : trade.profit ? "text-rose-500" : "text-slate-400"
+                                )}>
+                                  {trade.profit ? (
+                                    <div className="flex flex-col items-end">
+                                      <span>{trade.profit > 0 ? "+" : ""}{formatCurrency(trade.profit)}</span>
+                                      <span className="text-[9px] opacity-70">({trade.profitPct}%)</span>
+                                    </div>
+                                  ) : "-"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
             </motion.div>

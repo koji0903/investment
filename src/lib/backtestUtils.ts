@@ -25,9 +25,19 @@ export interface DailyResult {
   longMA: number;
 }
 
+export interface TradeHistory {
+  type: "buy" | "sell";
+  date: string;
+  price: number;
+  quantity: number;
+  profit?: number;        // 売却時のみ
+  profitPct?: number;     // 売却時のみ
+}
+
 export interface BacktestResult {
   config: StrategyConfig;
   dailyResults: DailyResult[];
+  tradeHistory: TradeHistory[]; // 取引履歴の追加
   totalReturn: number;       // 総リターン (%)
   totalProfitJpy: number;    // 総利益 (円)
   winRate: number;           // 勝率 (%)
@@ -95,6 +105,7 @@ export function runBacktest(config: StrategyConfig): BacktestResult {
   let winTrades = 0;
   let maxDrawdown = 0;
   let maxDrawdownJpy = 0;
+  const tradeHistory: TradeHistory[] = [];
 
   // 保有比率: 1回のエントリーで資金の100%を投入するシンプルモデル
   for (let i = config.longWindow; i < prices.length; i++) {
@@ -132,12 +143,32 @@ export function runBacktest(config: StrategyConfig): BacktestResult {
       inPosition = true;
       entryPrice = price;
       entryEquity = equity;
+      const date = new Date();
+      date.setDate(date.getDate() - (config.periodDays - (i - config.longWindow)));
+      tradeHistory.push({
+        type: "buy",
+        date: `${date.getMonth() + 1}/${date.getDate()}`,
+        price,
+        quantity: Math.floor(equity / price)
+      });
     } else if (signal === "sell" && inPosition) {
       const returnPct = (price - entryPrice) / entryPrice;
+      const profit = (equity * returnPct) * 0.999;
       equity = equity * (1 + returnPct) * 0.999; // 0.1%の手数料控除
       inPosition = false;
       totalTrades++;
       if (equity > entryEquity) winTrades++;
+
+      const date = new Date();
+      date.setDate(date.getDate() - (config.periodDays - (i - config.longWindow)));
+      tradeHistory.push({
+        type: "sell",
+        date: `${date.getMonth() + 1}/${date.getDate()}`,
+        price,
+        quantity: tradeHistory[tradeHistory.length - 1].quantity,
+        profit: Math.round(profit),
+        profitPct: Math.round(returnPct * 10000) / 100
+      });
     }
 
     // 含み益を反映した評価額
@@ -182,6 +213,7 @@ export function runBacktest(config: StrategyConfig): BacktestResult {
   return {
     config,
     dailyResults,
+    tradeHistory,
     totalReturn,
     totalProfitJpy,
     winRate,
