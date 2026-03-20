@@ -107,3 +107,12 @@ export interface WinPattern {
   commonFactor: string; // "長期保有", "ボラティリティ低", 等
   insight: string;
 }
+
+export interface RuleViolation {
+  id: string;
+  type: "nanpin" | "overtrading";
+  severity: "low" | "medium" | "high";
+  message: string;
+  details: string;
+  createdAt: string;
+}
