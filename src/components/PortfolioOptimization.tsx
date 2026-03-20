@@ -13,7 +13,6 @@ import {
   Tooltip,
   ArrowRight
 } from "recharts";
-import { cn } from "@/lib/utils";
 import { Cpu, Repeat, ArrowRight as ArrowRightIcon, Zap, Target, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
