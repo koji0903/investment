@@ -14,11 +14,18 @@ export const calculateAssetValues = (asset: Asset): AssetCalculated => {
   const profitAndLoss = evaluatedValue - totalCost;
   const profitPercentage = totalCost > 0 ? (profitAndLoss / totalCost) * 100 : 0;
 
+  // デモ用に前日比をシミュレーション (1%〜3%の変動)
+  const seed = asset.id.charCodeAt(0);
+  const dailyChangePercentage = ((seed % 50) / 10) - 2.5; // -2.5% 〜 +2.5%
+  const dailyChange = evaluatedValue * (dailyChangePercentage / 100);
+
   return {
     ...asset,
     evaluatedValue,
     profitAndLoss,
     profitPercentage,
+    dailyChange,
+    dailyChangePercentage,
   };
 };
 

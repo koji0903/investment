@@ -25,4 +25,6 @@ export interface AssetCalculated extends Asset {
   evaluatedValue: number;
   profitAndLoss: number;
   profitPercentage: number;
+  dailyChange: number;
+  dailyChangePercentage: number;
 }

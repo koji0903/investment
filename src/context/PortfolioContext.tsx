@@ -28,6 +28,7 @@ interface PortfolioContextType {
   strategy: any;
   totalAssetsValue: number;
   totalProfitAndLoss: number;
+  totalDailyChange: number;
   addTransaction: (transaction: Omit<Transaction, "id" | "date">) => Promise<void>;
   lastUpdated: string | null;
   isFetching: boolean;
@@ -188,6 +189,10 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     return calculatedAssets.reduce((total, asset) => total + asset.profitAndLoss, 0);
   }, [calculatedAssets]);
 
+  const totalDailyChange = useMemo(() => {
+    return calculatedAssets.reduce((total, asset) => total + asset.dailyChange, 0);
+  }, [calculatedAssets]);
+
   return (
     <PortfolioContext.Provider
       value={{
@@ -200,6 +205,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         strategy,
         totalAssetsValue,
         totalProfitAndLoss,
+        totalDailyChange,
         addTransaction,
         lastUpdated,
         isFetching,

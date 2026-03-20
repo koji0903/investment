@@ -32,46 +32,46 @@ export const PortfolioComposition = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] p-6 shadow-sm flex flex-col h-full">
-      <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-slate-100 shrink-0">
-        <PieChartIcon className="w-5 h-5 text-indigo-500" />
-        ポートフォリオ比率
-      </h3>
-      
+    <div className="flex flex-col h-[400px] w-full">
       {data.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
           データがありません
         </div>
       ) : (
-        <div className="flex-1 min-h-[300px] w-full relative">
+        <div className="flex-1 w-full relative">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={data}
                 cx="50%"
                 cy="50%"
-                innerRadius={70}
-                outerRadius={100}
-                paddingAngle={4}
+                innerRadius={110}
+                outerRadius={150}
+                paddingAngle={6}
                 dataKey="value"
                 stroke="none"
               >
                 {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={entry.color}
+                    className="hover:opacity-80 transition-opacity duration-300 outline-none" 
+                  />
                 ))}
               </Pie>
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
               <Legend 
                 verticalAlign="bottom" 
-                height={36}
+                height={48}
                 iconType="circle"
-                formatter={(value) => <span className="text-slate-700 dark:text-slate-300 font-medium ml-1.5">{value}</span>}
+                iconSize={10}
+                formatter={(value) => <span className="text-slate-600 dark:text-slate-400 font-bold ml-2 text-xs uppercase tracking-wider">{value}</span>}
               />
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none -mt-[36px]">
-            <span className="text-xs text-slate-500 font-medium">評価額合計</span>
-            <span className="text-lg font-bold text-slate-900 dark:text-white mt-0.5">{formatCurrency(total)}</span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none -mt-[48px]">
+            <span className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mb-1">Portfolio Value</span>
+            <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{formatCurrency(total)}</span>
           </div>
         </div>
       )}

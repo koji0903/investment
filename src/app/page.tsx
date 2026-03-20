@@ -23,6 +23,7 @@ import { EconomicCalendar } from "@/components/EconomicCalendar";
 import { NewsPanel } from "@/components/NewsPanel";
 import { BehaviorInsight } from "@/components/BehaviorInsight";
 import { InvestmentStrategyCard } from "@/components/InvestmentStrategyCard";
+import { AlertList } from "@/components/AlertList";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -31,7 +32,7 @@ import { motion, AnimatePresence } from "framer-motion";
 type TabType = "overview" | "analysis" | "tools";
 
 export default function Home() {
-  const { calculatedAssets, totalAssetsValue, totalProfitAndLoss, lastUpdated, isFetching } = usePortfolio();
+  const { calculatedAssets, totalAssetsValue, totalProfitAndLoss, totalDailyChange, lastUpdated, isFetching } = usePortfolio();
   const { isDemo } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
@@ -62,56 +63,47 @@ export default function Home() {
 
           {isDemo && <DemoStory />}
 
-          <header className="flex flex-col md:flex-row justify-between gap-6">
-            <div className="flex flex-col items-center md:items-start text-center md:text-left">
-              <h1 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 dark:text-white mb-3 italic">
-                INVESTMENT <span className="text-indigo-500 not-italic">PORTFOLIO</span>
-              </h1>
-              <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 font-bold bg-white dark:bg-slate-900 px-4 py-2 rounded-full shadow-sm border border-slate-100 dark:border-slate-800">
-                <Clock className="w-4 h-4 text-indigo-500" />
-                <span className="text-xs md:text-sm uppercase tracking-wider">最終更新: {lastUpdated || "取得中..."}</span>
-                {isFetching && <RefreshCw className="w-4 h-4 animate-spin text-indigo-500" />}
+          {/* 3-Second awareness Hero Section */}
+          <header className="flex flex-col items-center text-center space-y-6 pt-12 pb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <h1 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em]">総資産額</h1>
+              <div className="text-6xl md:text-9xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums leading-none">
+                {formatCurrency(totalAssetsValue)}
               </div>
-            </div>
-            
-            <div className="flex items-center justify-center gap-6">
-               <div className="flex flex-col items-center md:items-end">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Market Status</span>
-                  <div className="bg-emerald-500/10 text-emerald-500 px-3 py-1.5 rounded-full border border-emerald-500/20 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                    <span className="text-xs font-black uppercase">Live Connection</span>
-                  </div>
-               </div>
-               {!isDemo && <DemoDataLoader />}
-            </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+              className={cn(
+                "px-10 py-5 rounded-[40px] border-2 flex items-center gap-6 transition-all duration-500 shadow-xl",
+                totalDailyChange >= 0 
+                  ? "bg-emerald-50/50 border-emerald-100 text-emerald-600 dark:bg-emerald-500/5 dark:border-emerald-500/20 dark:text-emerald-400 shadow-emerald-500/5" 
+                  : "bg-rose-50/50 border-rose-100 text-rose-600 dark:bg-rose-500/5 dark:border-rose-500/20 dark:text-rose-400 shadow-rose-500/5"
+              )}
+            >
+              <div className={cn(
+                "w-14 h-14 rounded-[20px] flex items-center justify-center text-white shadow-lg",
+                totalDailyChange >= 0 ? "bg-emerald-500 shadow-emerald-500/20" : "bg-rose-500 shadow-rose-500/20"
+              )}>
+                {totalDailyChange >= 0 ? <TrendingUp size={32} /> : <TrendingDown size={32} />}
+              </div>
+              <div className="text-left">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-0.5">本日の損益</p>
+                <p className="text-3xl md:text-4xl font-black tabular-nums leading-tight">
+                  {totalDailyChange >= 0 ? "+" : ""}{formatCurrency(totalDailyChange)}
+                  <span className="text-lg ml-3 opacity-80 font-bold">
+                    ({totalDailyChange >= 0 ? "+" : ""}{(totalDailyChange / (totalAssetsValue - totalDailyChange) * 100).toFixed(2)}%)
+                  </span>
+                </p>
+              </div>
+            </motion.div>
           </header>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <StatsCard label="総資産額" value={formatCurrency(totalAssetsValue)} Icon={DollarSign} color="indigo" />
-            <StatsCard 
-              label="通算損益" 
-              value={`${totalProfitAndLoss >= 0 ? "+" : ""}${formatCurrency(totalProfitAndLoss)}`} 
-              Icon={totalProfitAndLoss >= 0 ? TrendingUp : TrendingDown} 
-              color={totalProfitAndLoss >= 0 ? "emerald" : "rose"} 
-              isTrend
-            />
-            <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-6 rounded-[32px] shadow-xl shadow-indigo-500/20 relative overflow-hidden group border border-white/10">
-               <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-               <div className="relative z-10 flex flex-col h-full justify-between">
-                 <div>
-                   <div className="p-2 bg-white/20 w-fit rounded-xl mb-3 backdrop-blur-md">
-                    <Sparkles className="w-5 h-5 text-amber-300" />
-                   </div>
-                   <p className="text-xs font-bold text-indigo-100/80 uppercase tracking-widest">AI 投資スコア</p>
-                 </div>
-                 <h2 className="text-4xl font-black text-white">84<span className="text-lg opacity-60 ml-1">/100</span></h2>
-               </div>
-            </div>
-          </div>
-
-          <div className="w-full">
-            <PerformanceMetrics />
-          </div>
 
           {/* Tab Navigation */}
           <div className="flex p-1.5 bg-slate-200/50 dark:bg-slate-900/50 backdrop-blur-xl border border-white/20 dark:border-slate-800 rounded-3xl w-fit mx-auto md:mx-0 sticky top-4 z-40 shadow-lg">
@@ -129,23 +121,25 @@ export default function Home() {
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
               {activeTab === "overview" && (
-                <div className="space-y-8">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8 min-h-[400px]">
-                    <AssetTrendChart />
-                    <PortfolioComposition />
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                  {/* Left Column: Visualization & AI Advice */}
+                  <div className="lg:col-span-2 space-y-8">
+                    <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative group">
+                      <div className="flex items-center justify-between mb-8">
+                        <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                          <span className="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+                          ポートフォリオ構成
+                        </h2>
+                      </div>
+                      <PortfolioComposition />
+                    </div>
+                    
+                    <InvestmentAdvice />
                   </div>
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-2">
-                        <span className="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
-                        保有資産一覧
-                      </h2>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                      {calculatedAssets.map((asset) => (
-                        <AssetCard key={asset.id} asset={asset} />
-                      ))}
-                    </div>
+
+                  {/* Right Column: Alerts */}
+                  <div className="space-y-8">
+                    <AlertList />
                   </div>
                 </div>
               )}
