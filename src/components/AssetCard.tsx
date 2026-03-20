@@ -15,6 +15,7 @@ import {
 import { getAssetSentiment, SentimentResult } from "@/lib/sentimentUtils";
 import { NewsItem } from "@/app/api/news/route";
 import { useAuth } from "@/context/AuthContext";
+import { motion } from "framer-motion";
 
 interface AssetCardProps {
   asset: AssetCalculated;
@@ -55,28 +56,31 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
   }, [asset.name]);
   
   return (
-    <div className="group relative overflow-hidden rounded-[var(--radius-card)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 transition-all duration-300 hover:shadow-[var(--shadow-card-hover)] dark:hover:border-slate-700">
-      <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity duration-300 pointer-events-none">
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.95 }}
+      whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }}
+      whileHover={{ y: -5 }}
+      className="premium-card group relative p-6"
+    >
+      <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-500 group-hover:scale-125 group-hover:-rotate-12 pointer-events-none">
         <CategoryIcon category={asset.category} className="w-24 h-24 text-slate-900 dark:text-slate-100" />
       </div>
 
-      <div className="relative z-10 flex flex-col gap-4">
+      <div className="relative z-10 flex flex-col gap-5">
         <div className="flex items-start justify-between">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <span className="inline-flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-xs font-semibold text-slate-800 dark:text-slate-200">
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center justify-center rounded-full bg-indigo-50 dark:bg-indigo-950/30 px-2.5 py-0.5 text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest border border-indigo-100 dark:border-indigo-500/20">
                 {asset.category}
               </span>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-tight">
-                {asset.name}
-              </h3>
               {sentiment && (
                 <div 
                   className={cn(
-                    "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold",
-                    sentiment.type === "bullish" ? "bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400" :
-                    sentiment.type === "bearish" ? "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400" :
-                    "bg-slate-50 text-slate-600 dark:bg-slate-500/10 dark:text-slate-400"
+                    "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider",
+                    sentiment.type === "bullish" ? "bg-rose-50 border-rose-100 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400" :
+                    sentiment.type === "bearish" ? "bg-blue-50 border-blue-100 text-blue-600 dark:bg-blue-500/10 dark:border-blue-500/20 dark:text-blue-400" :
+                    "bg-slate-50 border-slate-100 text-slate-600 dark:bg-slate-500/10 dark:border-slate-500/20 dark:text-slate-400"
                   )}
                   title={`センチメント: ${sentiment.label} (スコア: ${sentiment.score})`}
                 >
@@ -87,42 +91,46 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
                 </div>
               )}
             </div>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
+              {asset.name}
+            </h3>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-4">
           <div className="flex flex-col">
-            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">評価額</span>
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em] mb-1">評価額</span>
+            <span className="text-2xl font-black gradient-text">
               {formatCurrency(asset.evaluatedValue)}
             </span>
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">損益</span>
+
+          <div className="flex flex-col p-3 rounded-2xl bg-slate-50/50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/50">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.1em] mb-1">損益</span>
             <div className={cn(
-              "flex items-center gap-1 font-bold",
-              isProfit ? "text-[var(--color-success-600)] dark:text-[var(--color-success-500)]" : "text-[var(--color-danger-600)] dark:text-[var(--color-danger-500)]"
+              "flex items-center gap-2 font-black",
+              isProfit ? "text-emerald-500" : "text-rose-500"
             )}>
-              {isProfit ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-              <span>{isProfit ? "+" : ""}{formatCurrency(asset.profitAndLoss)}</span>
-              <span className="text-xs font-semibold opacity-80 backdrop-blur-sm rounded-full px-1.5 py-0.5 bg-current/10">
-                ({isProfit ? "+" : ""}{asset.profitPercentage.toFixed(2)}%)
+              {isProfit ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+              <span className="text-lg">{isProfit ? "+" : ""}{formatCurrency(asset.profitAndLoss)}</span>
+              <span className="text-xs font-bold opacity-80 bg-current/10 px-2 py-0.5 rounded-full">
+                {isProfit ? "+" : ""}{asset.profitPercentage.toFixed(2)}%
               </span>
             </div>
           </div>
         </div>
 
-        <div className="pt-4 mt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-sm">
-          <div className="flex flex-col">
-            <span className="text-slate-500 dark:text-slate-400">現在価格</span>
-            <span className="font-semibold">{formatCurrency(asset.currentPrice)}</span>
+        <div className="pt-4 flex justify-between items-center text-[11px] border-t border-slate-100 dark:border-slate-800">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-slate-400 dark:text-slate-500 font-bold">現在価格</span>
+            <span className="font-black text-slate-700 dark:text-slate-300">{formatCurrency(asset.currentPrice)}</span>
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-slate-500 dark:text-slate-400">保有数量</span>
-            <span className="font-semibold">{asset.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-slate-400 dark:text-slate-500 font-bold">保有数量</span>
+            <span className="font-black text-slate-700 dark:text-slate-300">{asset.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
