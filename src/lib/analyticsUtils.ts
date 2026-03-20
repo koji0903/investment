@@ -369,3 +369,47 @@ export const calculateFutureProjection = (
   };
 };
 
+export interface ScenarioConfig {
+  id: string;
+  name: string;
+  initialCapital: number;
+  monthlyContribution: number;
+  annualYield: number;
+  color: string;
+}
+
+export interface ComparisonPoint {
+  year: number;
+  [scenarioId: string]: number;
+}
+
+export const getScenarioRiskLevel = (yield_: number): "Low" | "Moderate" | "High" => {
+  if (yield_ <= 4) return "Low";
+  if (yield_ <= 8) return "Moderate";
+  return "High";
+};
+
+export const calculateScenarioComparison = (
+  scenarios: ScenarioConfig[],
+  years: number = 30
+): ComparisonPoint[] => {
+  if (scenarios.length === 0) return [];
+
+  const results = scenarios.map(s => ({
+    id: s.id,
+    data: calculateFutureProjection(s.initialCapital, s.monthlyContribution, s.annualYield, years).data
+  }));
+
+  const comparisonData: ComparisonPoint[] = [];
+
+  for (let i = 0; i <= years; i++) {
+    const point: ComparisonPoint = { year: i };
+    results.forEach(res => {
+      point[res.id] = res.data[i].total;
+    });
+    comparisonData.push(point);
+  }
+
+  return comparisonData;
+};
+
