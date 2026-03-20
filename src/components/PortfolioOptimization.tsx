@@ -10,8 +10,7 @@ import {
   Pie, 
   Cell, 
   ResponsiveContainer, 
-  Tooltip,
-  ArrowRight
+  Tooltip
 } from "recharts";
 import { Cpu, Repeat, ArrowRight as ArrowRightIcon, Zap, Target, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
