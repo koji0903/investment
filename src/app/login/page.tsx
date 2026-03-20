@@ -11,6 +11,7 @@ import { initializeUserData, generateDemoData } from "@/lib/db";
 import { useRouter } from "next/navigation";
 import { LogIn, UserPlus, Mail, Lock, Loader2, ArrowRight, AlertTriangle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);

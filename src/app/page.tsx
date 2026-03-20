@@ -130,7 +130,7 @@ export default function Home() {
               <BehaviorInsight />
               <InvestmentStrategyCard />
               <TransactionForm />
-              <TransactionHistory />
+              <TransactionList />
             </div>
             <div className="space-y-6 md:space-y-8">
               <InvestmentAdvice />
