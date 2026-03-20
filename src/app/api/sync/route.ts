@@ -20,100 +20,84 @@ export async function POST(request: Request) {
     if (providerType === 'stock') {
       newAssets = [
         {
-          id: `sync-stock-${Date.now()}-1`,
-          symbol: "7974.T",
-          name: "任天堂",
+          symbol: "7203.T", // トヨタ
+          name: "トヨタ自動車",
           category: "株",
           quantity: 100,
-          averagePrice: 7500,
-          currentPrice: 8200,
-          evaluatedValue: 820000,
-          currency: "JPY",
+          averageCost: 3100,
+          currentPrice: 3500,
         },
         {
-          id: `sync-stock-${Date.now()}-2`,
-          symbol: "9984.T",
+          symbol: "9984.T", // SBG
           name: "ソフトバンクグループ",
           category: "株",
           quantity: 200,
-          averagePrice: 8000,
+          averageCost: 7800,
           currentPrice: 8500,
-          evaluatedValue: 1700000,
-          currency: "JPY",
         }
       ];
       newTransactions = [
         {
-          id: `tx-sync-stock-${Date.now()}`,
           date: now.toISOString(),
           type: "dividend",
-          assetId: "7974.T",
-          assetName: "任天堂",
-          amount: 15000,
-          price: 150,
+          assetId: "7203.T",
           quantity: 100,
-          currency: "JPY"
+          price: 45, // 配当
         }
       ];
     } else if (providerType === 'crypto') {
       newAssets = [
         {
-          id: `sync-crypto-${Date.now()}-1`,
           symbol: "BTC",
           name: "Bitcoin",
           category: "仮想通貨",
-          quantity: 0.15,
-          averagePrice: 5000000,
+          quantity: 0.12,
+          averageCost: 8200000,
           currentPrice: 9500000,
-          evaluatedValue: 1425000,
-          currency: "JPY",
+        },
+        {
+          symbol: "ETH",
+          name: "Ethereum",
+          category: "仮想通貨",
+          quantity: 1.5,
+          averageCost: 380000,
+          currentPrice: 450000,
         }
       ];
       newTransactions = [
         {
-          id: `tx-sync-crypto-${Date.now()}`,
           date: now.toISOString(),
           type: "buy",
           assetId: "BTC",
-          assetName: "Bitcoin",
-          amount: 50000,
+          quantity: 0.02,
           price: 9000000,
-          quantity: 0.0055,
-          currency: "JPY"
         }
       ];
     } else if (providerType === 'fx') {
       newAssets = [
         {
-          id: `sync-fx-${Date.now()}-1`,
-          symbol: "USD/JPY",
-          name: "米ドル/円",
+          symbol: "USDJPY",
+          name: "ドル/円 (L)",
           category: "FX",
           quantity: 10000,
-          averagePrice: 140.5,
+          averageCost: 148.5,
           currentPrice: 150.2,
-          evaluatedValue: 1502000,
-          currency: "JPY",
         }
       ];
       newTransactions = [
         {
-          id: `tx-sync-fx-${Date.now()}`,
           date: now.toISOString(),
-          type: "buy", // swap point equivalent roughly
-          assetId: "USD/JPY",
-          assetName: "米ドル/円 (スワップ付与)",
-          amount: 2500,
+          type: "buy",
+          assetId: "USDJPY",
+          quantity: 0, // スワップ付与
           price: 150.2,
-          quantity: 0,
-          currency: "JPY"
         }
       ];
     }
 
     return NextResponse.json({
       success: true,
-      message: `${providerType.toUpperCase()} APIからのデータ同期が完了しました。`,
+      message: `${providerType.toUpperCase()} 連携データを取得しました。`,
       syncedAt: now.toISOString(),
       data: {
         assets: newAssets,

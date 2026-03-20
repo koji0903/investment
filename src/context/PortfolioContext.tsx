@@ -5,7 +5,18 @@ import { Asset, AssetCalculated, Transaction } from "@/types";
 import { calculateAssetValues } from "@/lib/dummyData";
 import { useAuth } from "@/context/AuthContext";
 import { useNotify } from "@/context/NotificationContext";
-import { subscribeAssets, subscribeTransactions, subscribeAnalysis, subscribeBehavior, subscribeStrategy, saveTransaction, saveAsset, generateDemoData } from "@/lib/db";
+import { 
+  subscribeAssets, 
+  subscribeTransactions, 
+  subscribeAnalysis, 
+  subscribeBehavior, 
+  subscribeStrategy, 
+  subscribeBrokerConnections,
+  updateBrokerConnection,
+  saveTransaction, 
+  saveAsset, 
+  generateDemoData 
+} from "@/lib/db";
 import { updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -27,6 +38,7 @@ interface PortfolioContextType {
   analysis: AnalysisSummary | null;
   behavior: any;
   strategy: any;
+  brokerConnections: BrokerConnection[];
   totalAssetsValue: number;
   totalProfitAndLoss: number;
   totalDailyChange: number;
@@ -49,6 +61,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   const [analysis, setAnalysis] = useState<AnalysisSummary | null>(null);
   const [behavior, setBehavior] = useState<any>(null);
   const [strategy, setStrategy] = useState<any>(null);
+  const [brokerConnections, setBrokerConnections] = useState<BrokerConnection[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -92,12 +105,17 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       setStrategy(data);
     });
 
+    const unsubBroker = subscribeBrokerConnections(user.uid, (data) => {
+      setBrokerConnections(data);
+    });
+
     return () => {
       unsubAssets();
       unsubTx();
       unsubAnalysis();
       unsubBehavior();
       unsubStrategy();
+      unsubBroker();
     };
   }, [user, portfolioId]);
 
@@ -269,6 +287,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         analysis,
         behavior,
         strategy,
+        brokerConnections,
         totalAssetsValue,
         totalProfitAndLoss,
         totalDailyChange,

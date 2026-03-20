@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
-import { RefreshCw, Link as LinkIcon, AlertCircle, CheckCircle2, Bitcoin, LineChart, Landmark } from "lucide-react";
-import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
+import { useNotify } from "@/context/NotificationContext";
 import { usePortfolio } from "@/context/PortfolioContext";
+import { updateBrokerConnection } from "@/lib/db";
+import { ProviderType, BrokerConnection } from "@/types";
 
 type ProviderType = 'stock' | 'crypto' | 'fx';
 
@@ -45,55 +45,55 @@ const PROVIDERS: ProviderConfig[] = [
 ];
 
 export const BrokerIntegrationPanel = () => {
-  const { syncExternalData } = usePortfolio();
+  const { user, isDemo } = useAuth();
+  const { brokerConnections, syncExternalData } = usePortfolio();
+  const { notify } = useNotify();
   
-  // デモ用: ローカルステートで接続状態を管理（本番ではDBやContextから取得）
-  const [connections, setConnections] = useState<Record<ProviderType, boolean>>({
-    stock: false,
-    crypto: false,
-    fx: false
-  });
-  
-  const [syncing, setSyncing] = useState<Record<ProviderType, boolean>>({
-    stock: false,
-    crypto: false,
-    fx: false
-  });
+  const [syncing, setSyncing] = useState<Record<string, boolean>>({});
 
-  const [lastSynced, setLastSynced] = useState<Record<ProviderType, string | null>>({
-    stock: null,
-    crypto: null,
-    fx: null
-  });
+  const handleToggleConnection = async (providerId: string, currentStatus: boolean) => {
+    if (isDemo || !user) {
+      notify({ type: "info", title: "制限事項", message: "デモモードでは連携設定の変更は保存されません。" });
+      return;
+    }
 
-  const handleToggleConnection = (providerId: ProviderType) => {
-    setConnections(prev => ({
-      ...prev,
-      [providerId]: !prev[providerId]
-    }));
+    try {
+      await updateBrokerConnection(user.uid, providerId, {
+        isConnected: !currentStatus,
+        status: !currentStatus ? "active" : "disconnected"
+      });
+      notify({
+        type: "success",
+        title: !currentStatus ? "連携を開始しました" : "連携を終了しました",
+        message: `${providerId.toUpperCase()} との接続設定を更新しました。`,
+      });
+    } catch (error) {
+      notify({ type: "error", title: "更新失敗", message: "連携状態の更新に失敗しました。" });
+    }
   };
 
   const handleSync = async (providerId: ProviderType) => {
-    if (!connections[providerId]) return;
+    const connection = brokerConnections.find(c => c.id === providerId);
+    if (!connection?.isConnected) return;
     
     setSyncing(prev => ({ ...prev, [providerId]: true }));
     
     try {
-      // PortfolioContextの同期関数を呼び出し
       if (syncExternalData) {
         await syncExternalData(providerId);
-      } else {
-        // Fallback for demo if context is not updated yet
-        await new Promise(resolve => setTimeout(resolve, 2000));
       }
       
-      const now = new Date();
-      setLastSynced(prev => ({
-        ...prev,
-        [providerId]: `${now.getMonth() + 1}月${now.getDate()}日 ${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`
-      }));
+      if (user && !isDemo) {
+        await updateBrokerConnection(user.uid, providerId, {
+          lastSyncedAt: new Date().toISOString(),
+          status: "active"
+        });
+      }
     } catch (error) {
       console.error("Sync failed", error);
+      if (user && !isDemo) {
+        await updateBrokerConnection(user.uid, providerId, { status: "error" });
+      }
     } finally {
       setSyncing(prev => ({ ...prev, [providerId]: false }));
     }
@@ -121,9 +121,9 @@ export const BrokerIntegrationPanel = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {PROVIDERS.map((provider) => {
             const Icon = provider.icon;
-            const isConnected = connections[provider.id];
+            const connection = brokerConnections.find(c => c.id === provider.id);
+            const isConnected = connection?.isConnected || false;
             const isSyncing = syncing[provider.id];
-            const lastSyncTime = lastSynced[provider.id];
 
             return (
               <div 
@@ -176,15 +176,15 @@ export const BrokerIntegrationPanel = () => {
                 </div>
 
                 <div className="space-y-3 mt-auto">
-                  {lastSyncTime && isConnected && (
+                  {connection?.lastSyncedAt && connection.isConnected && (
                     <div className="text-[10px] font-bold text-slate-400 text-center">
-                      最終取得: {lastSyncTime}
+                      最終取得: {new Date(connection.lastSyncedAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </div>
                   )}
                   
                   <div className="grid grid-cols-2 gap-2">
                     <button 
-                      onClick={() => handleToggleConnection(provider.id)}
+                      onClick={() => handleToggleConnection(provider.id, isConnected)}
                       className={cn(
                         "py-2.5 rounded-xl text-xs font-black transition-all",
                         isConnected 

@@ -15,7 +15,18 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Asset, Transaction, TradeProposal, InvestmentReport, NotificationSettings, RiskRule, TradingRule, PositionSizingSettings } from "@/types";
+import { 
+  Asset, 
+  Transaction, 
+  TradeProposal, 
+  InvestmentReport, 
+  NotificationSettings, 
+  RiskRule, 
+  TradingRule, 
+  PositionSizingSettings, 
+  BrokerConnection, 
+  ProviderType 
+} from "@/types";
 import { AlertRule } from "@/types/alert";
 
 /**
@@ -470,4 +481,33 @@ export const clearPortfolioData = async (uid: string, portfolioId: string = "def
   transSnap.docs.forEach(d => batch.delete(d.ref));
 
   return batch.commit();
+};
+
+/**
+ * 金融機関連携の状態を購読する
+ */
+export const subscribeBrokerConnections = (uid: string, onUpdate: (data: BrokerConnection[]) => void) => {
+  const q = query(collection(db, "users", uid, "settings", "brokerConnections", "items"));
+  return onSnapshot(q, (snapshot) => {
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BrokerConnection));
+    if (data.length === 0) {
+      // 初期データ作成
+      const initial: BrokerConnection[] = [
+        { id: "stock", providerId: "stock", name: "証券口座", isConnected: false, lastSyncedAt: null, status: "disconnected" },
+        { id: "crypto", providerId: "crypto", name: "暗号資産", isConnected: false, lastSyncedAt: null, status: "disconnected" },
+        { id: "fx", providerId: "fx", name: "FX（外国為替）", isConnected: false, lastSyncedAt: null, status: "disconnected" }
+      ];
+      onUpdate(initial);
+    } else {
+      onUpdate(data);
+    }
+  });
+};
+
+/**
+ * 金融機関連携の状態を更新する
+ */
+export const updateBrokerConnection = async (uid: string, connectionId: string, update: Partial<BrokerConnection>) => {
+  const docRef = doc(db, "users", uid, "settings", "brokerConnections", "items", connectionId);
+  await setDoc(docRef, update, { merge: true });
 };

@@ -116,3 +116,14 @@ export interface RuleViolation {
   details: string;
   createdAt: string;
 }
+
+export type ProviderType = 'stock' | 'crypto' | 'fx';
+
+export interface BrokerConnection {
+  id: string;
+  providerId: ProviderType;
+  name: string;
+  isConnected: boolean;
+  lastSyncedAt: string | null;
+  status: "active" | "error" | "disconnected";
+}
