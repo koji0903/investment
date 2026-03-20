@@ -42,3 +42,16 @@ export interface TradeProposal {
   status: ProposalStatus;
   createdAt: string;
 }
+
+export interface InvestmentReport {
+  id: string;
+  type: "weekly" | "monthly";
+  date: string;         // レポート対象日
+  totalValue: number;
+  performancePct: number;
+  profitAndLoss: number;
+  summary: string;
+  advice: { title: string; text: string }[];
+  assetDistribution: { name: string; value: number }[];
+  createdAt: string;
+}

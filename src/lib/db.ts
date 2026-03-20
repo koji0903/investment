@@ -15,7 +15,7 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Asset, Transaction, TradeProposal } from "@/types";
+import { Asset, Transaction, TradeProposal, InvestmentReport } from "@/types";
 import { AlertRule } from "@/types/alert";
 
 /**
@@ -30,6 +30,8 @@ const getTransactionsCol = (uid: string, portfolioId: string) =>
 const getAlertsCol = (uid: string) => collection(db, "users", uid, "alerts");
 
 const getProposalsCol = (uid: string) => collection(db, "users", uid, "proposals");
+
+const getReportsCol = (uid: string) => collection(db, "users", uid, "reports");
 
 // --- Assets ---
 
@@ -207,6 +209,30 @@ export const addDemoProposal = async (uid: string) => {
 
   return addDoc(getProposalsCol(uid), {
     ...proposal,
+    createdAt: serverTimestamp()
+  });
+};
+
+// --- Investment Reports ---
+
+export const subscribeReports = (uid: string, callback: (reports: InvestmentReport[]) => void) => {
+  const q = query(getReportsCol(uid), orderBy("date", "desc"));
+  return onSnapshot(q, (snapshot) => {
+    const reports = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt
+      };
+    }) as InvestmentReport[];
+    callback(reports);
+  });
+};
+
+export const saveReport = async (uid: string, report: Omit<InvestmentReport, "id" | "createdAt">) => {
+  return addDoc(getReportsCol(uid), {
+    ...report,
     createdAt: serverTimestamp()
   });
 };
