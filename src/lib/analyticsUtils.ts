@@ -203,6 +203,76 @@ export const calculatePortfolioRisk = (assets: AssetCalculated[]): PortfolioRisk
   };
 };
 
+export const calculatePearsonCorrelation = (x: number[], y: number[]): number => {
+  const n = x.length;
+  if (n !== y.length || n === 0) return 0;
+
+  const avgX = x.reduce((sum, val) => sum + val, 0) / n;
+  const avgY = y.reduce((sum, val) => sum + val, 0) / n;
+
+  let num = 0;
+  let denX = 0;
+  let denY = 0;
+
+  for (let i = 0; i < n; i++) {
+    const dx = x[i] - avgX;
+    const dy = y[i] - avgY;
+    num += dx * dy;
+    denX += dx * dx;
+    denY += dy * dy;
+  }
+
+  const den = Math.sqrt(denX) * Math.sqrt(denY);
+  return den === 0 ? 0 : num / den;
+};
+
+export interface CorrelationResult {
+  assetId1: string;
+  assetId2: string;
+  assetName1: string;
+  assetName2: string;
+  correlation: number;
+}
+
+// デモ用の相関データ生成 (歴史的データがない場合のフォールバック)
+export const generateDemoCorrelations = (assets: AssetCalculated[]): CorrelationResult[] => {
+  const results: CorrelationResult[] = [];
+  
+  for (let i = 0; i < assets.length; i++) {
+    for (let j = 0; j < assets.length; j++) {
+      const a1 = assets[i];
+      const a2 = assets[j];
+      
+      let correlation = 0;
+      if (i === j) {
+        correlation = 1;
+      } else {
+        // カテゴリに基づいた疑似的な相関関係
+        if (a1.category === a2.category) {
+          correlation = 0.7 + Math.random() * 0.2; // 同一カテゴリは高相関
+        } else if (
+          (a1.category === "株" && a2.category === "投資信託") ||
+          (a1.category === "仮想通貨" && a2.category === "FX")
+        ) {
+          correlation = 0.4 + Math.random() * 0.3; // 関連性あり
+        } else {
+          correlation = -0.2 + Math.random() * 0.5; // 低相関・逆相関
+        }
+      }
+
+      results.push({
+        assetId1: a1.id,
+        assetId2: a2.id,
+        assetName1: a1.name,
+        assetName2: a2.name,
+        correlation: Number(correlation.toFixed(2))
+      });
+    }
+  }
+  
+  return results;
+};
+
 export interface AssetOptimization {
   category: string;
   currentRatio: number; // 0-100

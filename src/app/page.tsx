@@ -26,6 +26,7 @@ import { BehaviorInsight } from "@/components/BehaviorInsight";
 import { InvestmentStrategyCard } from "@/components/InvestmentStrategyCard";
 import { ScenarioComparison } from "@/components/ScenarioComparison";
 import { RiskDecomposition } from "@/components/RiskDecomposition";
+import { CorrelationMatrix } from "@/components/CorrelationMatrix";
 import { AlertList } from "@/components/AlertList";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
@@ -197,6 +198,7 @@ export default function Home() {
                   <div className="lg:col-span-2 space-y-6 md:space-y-8">
                     <ScenarioComparison />
                     <RiskDecomposition />
+                    <CorrelationMatrix />
                     <InvestmentStrategyCard />
                     <MarketSentiment />
                     <BehaviorInsight />
