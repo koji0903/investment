@@ -101,43 +101,43 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   }, [user, portfolioId]);
 
   // 外部APIからの価格フェッチ
-  useEffect(() => {
+  const fetchMarketData = React.useCallback(async (retryCount = 0) => {
     if (!user || assets.length === 0) return;
+    
+    try {
+      setIsFetching(true);
+      setFetchError(null);
+      const res = await fetch("/api/market-data");
+      if (!res.ok) throw new Error("API Fetch Error");
+      const data = await res.json();
 
-    const fetchMarketData = async (retryCount = 0) => {
-      try {
-        setIsFetching(true);
-        setFetchError(null);
-        const res = await fetch("/api/market-data");
-        if (!res.ok) throw new Error("API Fetch Error");
-        const data = await res.json();
-
-        if (data.prices) {
-          setPrices(data.prices);
-          if (data.timestamp) setLastUpdated(data.timestamp);
-        }
-      } catch (error) {
-        console.error("Failed to fetch market data", error);
-        if (retryCount < 2) {
-          setTimeout(() => fetchMarketData(retryCount + 1), 3000);
-        } else {
-          setFetchError("価格データの取得に失敗しました");
-          notify({
-            type: "error",
-            title: "接続エラー",
-            message: "最新の時価情報を取得できませんでした。自動的に再試行します。",
-          });
-        }
-      } finally {
-        setIsFetching(false);
+      if (data.prices) {
+        setPrices(data.prices);
+        if (data.timestamp) setLastUpdated(data.timestamp);
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch market data", error);
+      if (retryCount < 2) {
+        setTimeout(() => fetchMarketData(retryCount + 1), 3000);
+      } else {
+        setFetchError("価格データの取得に失敗しました");
+        notify({
+          type: "error",
+          title: "接続エラー",
+          message: "最新の時価情報を取得できませんでした。自動的に再試行します。",
+        });
+      }
+    } finally {
+      setIsFetching(false);
+    }
+  }, [user, assets.length, notify]);
 
+  useEffect(() => {
     fetchMarketData(0);
     const interval = setInterval(() => fetchMarketData(0), 60000);
 
     return () => clearInterval(interval);
-  }, [user, assets.length]);
+  }, [fetchMarketData]);
 
   const addTransaction = async (newTx: Omit<Transaction, "id" | "date">) => {
     if (isDemo) {

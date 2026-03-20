@@ -26,7 +26,7 @@ export const PortfolioRebalance = () => {
   
   // モック用のリスクパラメータ (本来はコンテキストから)
   const rebalancePlan = useMemo(() => {
-    const optimization = calculateOptimalPortfolio(calculatedAssets, "aggressive");
+    const optimization = calculateOptimalPortfolio(calculatedAssets, "high");
     return calculateRebalancePlan(optimization, totalAssetsValue);
   }, [calculatedAssets, totalAssetsValue]);
 

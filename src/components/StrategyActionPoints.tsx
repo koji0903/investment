@@ -27,9 +27,9 @@ export const StrategyActionPoints = () => {
   
   // モック用の市場・リスクパラメータ (本来はコンテキストから)
   const strategyResult = useMemo(() => {
-    const optimization = calculateOptimalPortfolio(calculatedAssets, "aggressive");
+    const optimization = calculateOptimalPortfolio(calculatedAssets, "high");
     const market = calculateMarketCondition(4.5, 0.8, 0.3);
-    return generateStrategyActions(optimization, market, "aggressive");
+    return generateStrategyActions(optimization, market, "high");
   }, [calculatedAssets]);
 
   return (
