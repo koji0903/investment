@@ -3,7 +3,8 @@
 import React, { useMemo } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { useAuth } from "@/context/AuthContext";
-import { calculateOptimalPortfolio, formatCurrency, OptimizationSegment } from "@/lib/analyticsUtils";
+import { calculateOptimalPortfolio, OptimizationSegment } from "@/lib/analyticsUtils";
+import { formatCurrency, cn } from "@/lib/utils";
 import { 
   PieChart, 
   Pie, 

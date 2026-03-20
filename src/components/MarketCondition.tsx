@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { calculateMarketCondition, formatCurrency } from "@/lib/analyticsUtils";
+import { calculateMarketCondition } from "@/lib/analyticsUtils";
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -13,7 +13,7 @@ import {
   ArrowRightCircle
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 
 export const MarketCondition = () => {
   // デモ用の入力データ (本来はAPIやコンテキストから取得)

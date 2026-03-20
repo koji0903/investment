@@ -4,9 +4,9 @@ import React, { useState, useMemo } from "react";
 import { 
   calculateScenarioComparison, 
   ScenarioConfig, 
-  getScenarioRiskLevel,
-  formatCurrency
+  getScenarioRiskLevel
 } from "@/lib/analyticsUtils";
+import { formatCurrency, cn } from "@/lib/utils";
 import { 
   LineChart, 
   Line, 
@@ -18,7 +18,6 @@ import {
   Legend
 } from "recharts";
 import { usePortfolio } from "@/context/PortfolioContext";
-import { cn } from "@/lib/utils";
 import { Layers, Plus, Trash2, TrendingUp, AlertCircle, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
