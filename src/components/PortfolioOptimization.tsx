@@ -60,7 +60,7 @@ export const PortfolioOptimization = () => {
         <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-50 dark:bg-slate-800/60 rounded-full border border-slate-100 dark:border-slate-800">
           <Target size={14} className="text-sky-500" />
           <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">
-            目標: {riskTolerance === "low" ? "安定重視" : riskTolerance === "high" ? "積極成長" : "バランス"}
+            目標: {(riskTolerance as string) === "low" ? "安定重視" : (riskTolerance as string) === "high" ? "積極成長" : "バランス"}
           </span>
         </div>
       </div>
