@@ -72,18 +72,34 @@ export default function Home() {
             <motion.div 
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-indigo-600 text-white px-4 py-3 md:px-6 md:py-3 rounded-2xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-3"
+              className="bg-indigo-600 text-white px-4 py-3 md:px-6 md:py-4 rounded-2xl shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 border border-indigo-400/30"
             >
               <div className="flex items-center gap-3 text-center md:text-left">
-                <Sparkles className="w-5 h-5 text-amber-300 shrink-0" />
-                <span className="font-bold text-xs md:text-sm text-indigo-50">閲覧専用デモモード実行中</span>
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                  <Sparkles className="w-5 h-5 text-amber-300" />
+                </div>
+                <div>
+                  <span className="font-black text-sm md:text-base text-white block">閲覧専用デモモード実行中</span>
+                  <span className="text-[10px] md:text-xs text-indigo-100 font-medium">データの保存などは行えません。すべての機能を利用するにはログインしてください。</span>
+                </div>
               </div>
-              <button 
-                onClick={() => window.location.href = "/login"}
-                className="bg-white/20 hover:bg-white/30 text-white text-[10px] md:text-xs font-black px-4 py-1.5 rounded-full transition-all w-full md:w-auto backdrop-blur-sm border border-white/20"
-              >
-                ログインして始める
-              </button>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <button 
+                  onClick={() => window.location.href = "/login"}
+                  className="flex-1 md:flex-none bg-white text-indigo-600 hover:bg-indigo-50 text-[11px] md:text-xs font-black px-6 py-2.5 rounded-xl transition-all shadow-md active:scale-95"
+                >
+                  ログインして始める
+                </button>
+                <button 
+                  onClick={async () => {
+                    await logout();
+                    window.location.href = "/login";
+                  }}
+                  className="flex-1 md:flex-none bg-indigo-500/30 hover:bg-indigo-500/50 text-white text-[11px] md:text-xs font-black px-6 py-2.5 rounded-xl transition-all border border-white/20 backdrop-blur-sm active:scale-95"
+                >
+                  デモを終了
+                </button>
+              </div>
             </motion.div>
           )}
 
