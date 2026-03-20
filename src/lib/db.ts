@@ -15,7 +15,7 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Asset, Transaction, TradeProposal, InvestmentReport } from "@/types";
+import { Asset, Transaction, TradeProposal, InvestmentReport, NotificationSettings } from "@/types";
 import { AlertRule } from "@/types/alert";
 
 /**
@@ -235,6 +235,36 @@ export const saveReport = async (uid: string, report: Omit<InvestmentReport, "id
     ...report,
     createdAt: serverTimestamp()
   });
+};
+
+// --- Notification Settings ---
+
+const getNotificationSettingsDoc = (uid: string) => doc(db, "users", uid, "settings", "notifications");
+
+export const subscribeNotificationSettings = (uid: string, callback: (settings: NotificationSettings) => void) => {
+  return onSnapshot(getNotificationSettingsDoc(uid), (doc) => {
+    if (doc.exists()) {
+      callback(doc.data() as NotificationSettings);
+    } else {
+      // 初期値
+      callback({
+        lineEnabled: false,
+        lineToken: "",
+        emailEnabled: false,
+        emailAddress: "",
+        triggers: {
+          alerts: true,
+          strategy: true,
+          market: true
+        }
+      });
+    }
+  });
+};
+
+export const updateNotificationSettings = async (uid: string, settings: Partial<NotificationSettings>) => {
+  const docRef = getNotificationSettingsDoc(uid);
+  return setDoc(docRef, settings, { merge: true });
 };
 
 // --- Analysis ---

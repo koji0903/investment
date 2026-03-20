@@ -55,3 +55,15 @@ export interface InvestmentReport {
   assetDistribution: { name: string; value: number }[];
   createdAt: string;
 }
+
+export interface NotificationSettings {
+  lineEnabled: boolean;
+  lineToken: string;
+  emailEnabled: boolean;
+  emailAddress: string;
+  triggers: {
+    alerts: boolean;
+    strategy: boolean;
+    market: boolean;
+  };
+}

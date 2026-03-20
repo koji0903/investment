@@ -41,6 +41,7 @@ import { BacktestSimulator } from "@/components/BacktestSimulator";
 import { AlertList } from "@/components/AlertList";
 import { SemiAutoTrading } from "@/components/SemiAutoTrading";
 import { InvestmentReportComponent } from "@/components/InvestmentReport";
+import { NotificationSettingsComponent } from "@/components/NotificationSettings";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
