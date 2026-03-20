@@ -293,7 +293,7 @@ export const BacktestSimulator = () => {
                       dataKey="date"
                       tick={{ fontSize: 10, fontWeight: 700, fill: "#94a3b8" }}
                       tickLine={false}
-                      interval={Math.floor(result.dailyResults.length / 5)}
+                      interval={result ? Math.floor(result.dailyResults.length / 5) : 5}
                     />
                     <YAxis
                       tickFormatter={(v) => `${(v / 10000).toFixed(0)}万`}
@@ -302,7 +302,7 @@ export const BacktestSimulator = () => {
                       axisLine={false}
                     />
                     <Tooltip
-                      formatter={(v: number) => [formatCurrency(v), "評価額"]}
+                      formatter={(v: any) => [formatCurrency(v), "評価額"] as [string, string]}
                       labelFormatter={(l) => `日付: ${l}`}
                       contentStyle={{ fontSize: 12, fontWeight: 700, borderRadius: 12, border: "1px solid #e2e8f0" }}
                     />
