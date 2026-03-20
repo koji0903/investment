@@ -31,6 +31,7 @@ interface PortfolioContextType {
   totalProfitAndLoss: number;
   totalDailyChange: number;
   addTransaction: (transaction: Omit<Transaction, "id" | "date">) => Promise<void>;
+  syncExternalData?: (providerType: 'stock' | 'crypto' | 'fx') => Promise<void>;
   lastUpdated: string | null;
   isFetching: boolean;
   fetchError: string | null;
@@ -139,6 +140,55 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     return () => clearInterval(interval);
   }, [fetchMarketData]);
 
+  const syncExternalData = async (providerType: 'stock' | 'crypto' | 'fx') => {
+    if (isDemo || !user) {
+      alert("デモモードまたは未ログイン時は連携データを保存できません。");
+      return;
+    }
+    
+    try {
+      notify({
+        type: "success",
+        title: "連携開始",
+        message: "外部データを取得しています。しばらくお待ちください...",
+      });
+
+      const res = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerType })
+      });
+      
+      if (!res.ok) throw new Error("Sync failed");
+      const data = await res.json();
+      
+      if (data.success && data.data) {
+        // 保存処理: Assets
+        for (const asset of data.data.assets) {
+          await saveAsset(user.uid, asset, portfolioId);
+        }
+        
+        // 保存処理: Transactions
+        for (const tx of data.data.transactions) {
+          await saveTransaction(user.uid, tx, portfolioId);
+        }
+
+        notify({
+          type: "success",
+          title: "連携完了",
+          message: data.message || "最新のデータを同期しました。",
+        });
+      }
+    } catch (error) {
+      console.error("External sync error:", error);
+      notify({
+        type: "error",
+        title: "連携エラー",
+        message: "データの取得に失敗しました。時間をおいて再度お試しください。",
+      });
+    }
+  };
+
   const addTransaction = async (newTx: Omit<Transaction, "id" | "date">) => {
     if (isDemo) {
       alert("デモモードでは取引の追加・編集は制限されています。");
@@ -223,6 +273,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         totalProfitAndLoss,
         totalDailyChange,
         addTransaction,
+        syncExternalData,
         lastUpdated,
         isFetching,
         fetchError,

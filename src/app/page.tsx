@@ -36,6 +36,7 @@ import { InvestmentStylePortrait } from "@/components/InvestmentStylePortrait";
 import { ActionTriggerPanel } from "@/components/ActionTriggerPanel";
 import { QuantumOptimizationCard } from "@/components/QuantumOptimizationCard";
 import { ScenarioStrategyOptimization } from "@/components/ScenarioStrategyOptimization";
+import { BrokerIntegrationPanel } from "@/components/BrokerIntegrationPanel";
 import { AlertList } from "@/components/AlertList";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
@@ -233,6 +234,7 @@ export default function Home() {
               {activeTab === "tools" && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
                   <div className="lg:col-span-2 space-y-6 md:space-y-8">
+                    <BrokerIntegrationPanel />
                     <TransactionForm />
                     <TransactionList />
                   </div>
