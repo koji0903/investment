@@ -56,6 +56,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     try {
+      if (isDemo) {
+        setIsDemo(false);
+        setUser(null);
+        return;
+      }
       await firebaseSignOut(auth);
     } catch (error) {
       console.error("Logout error", error);
