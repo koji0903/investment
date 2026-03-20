@@ -403,6 +403,96 @@ export const calculateMarketCondition = (
   };
 };
 
+export interface TradingPatternInsight {
+  type: "success" | "failure";
+  title: string;
+  description: string;
+  category: string;
+  impactScore: number; // 0-10 (Importance)
+}
+
+export interface TradingAnalysisResult {
+  insights: TradingPatternInsight[];
+  skillScore: number; // 0-100 
+  summary: string;
+}
+
+export const analyzeTradingPatterns = (
+  assets: AssetCalculated[]
+): TradingAnalysisResult => {
+  const totalValue = assets.reduce((sum, a) => sum + Math.max(0, a.evaluatedValue), 0);
+  const insights: TradingPatternInsight[] = [];
+  
+  // 1. カテゴリ別の勝率・利益率を簡易分析
+  const categoryStats: Record<string, { totalPL: number, count: number, losses: number }> = {};
+  assets.forEach(a => {
+    if (!categoryStats[a.category]) {
+      categoryStats[a.category] = { totalPL: 0, count: 0, losses: 0 };
+    }
+    categoryStats[a.category].totalPL += a.profitAndLoss;
+    categoryStats[a.category].count += 1;
+    if (a.profitAndLoss < 0) {
+      categoryStats[a.category].losses += 1;
+    }
+  });
+
+  // 成功パターンの抽出
+  Object.entries(categoryStats).forEach(([cat, stats]) => {
+    if (stats.totalPL > 200000 && stats.losses / stats.count < 0.3) {
+      insights.push({
+        type: "success",
+        title: `${cat}の選定眼`,
+        description: `${cat}クラスにおいて、安定して高い利益を創出できています。ボトムアップの銘柄選定が機能している成功パターンです。`,
+        category: cat,
+        impactScore: 8
+      });
+    }
+  });
+
+  // 失敗パターンの抽出
+  Object.entries(categoryStats).forEach(([cat, stats]) => {
+    if (stats.totalPL < -50000 || (stats.losses / stats.count > 0.6 && stats.count >= 2)) {
+      insights.push({
+        type: "failure",
+        title: `${cat}のキャッチアップミス`,
+        description: `${cat}での含み損が目立ちます。急騰後の高値掴み、または規律のないナンピン買いが悪化させている可能性があります。`,
+        category: cat,
+        impactScore: 9
+      });
+    }
+  });
+
+  // 分散不全のチェック
+  const highestWeight = totalValue > 0 ? Math.max(...assets.map(a => (a.evaluatedValue / totalValue) * 100)) : 0;
+  if (highestWeight > 40) {
+    insights.push({
+      type: "failure",
+      title: "単一銘柄への過剰集中",
+      description: "ポートフォリオの40%以上が特定の銘柄に集中しており、個別リスクに対して極めて脆弱な状態です。利益確定による分散を推奨します。",
+      category: "ALL",
+      impactScore: 10
+    });
+  }
+
+  // スコア計算
+  const successCount = insights.filter(i => i.type === "success").length;
+  const failureCount = insights.filter(i => i.type === "failure").length;
+  const skillScore = Math.min(100, Math.max(0, 50 + (successCount * 10) - (failureCount * 15)));
+
+  let summary = "投資スキルは着実に向上しています。自身の強みを理解し、弱点を規律でカバーすることが次のステップです。";
+  if (skillScore < 40) {
+    summary = "現在は「試行錯誤」のフェーズです。大きな損失を避けるための損切りルールを徹底し、規律あるトレードを意識しましょう。";
+  } else if (skillScore > 80) {
+    summary = "非常に高いレベルの投資スキルを発揮しています。市場環境の変化に合わせた機動的なリバランスが継続的な成功の鍵となります。";
+  }
+
+  return {
+    insights: insights.sort((a, b) => b.impactScore - a.impactScore),
+    skillScore,
+    summary
+  };
+};
+
 export interface AssetOptimization {
   category: string;
   currentRatio: number; // 0-100
