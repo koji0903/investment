@@ -75,3 +75,11 @@ export interface StrategyTemplate {
   allocation: Partial<Record<AssetCategory, number>>;
   riskLevel: "low" | "moderate" | "high";
 }
+
+export interface RiskRule {
+  maxLossPct: number;
+  stopLossPct: number;
+  maxDrawdownPct: number;
+  enabled: boolean;
+  actionType: "alert" | "suggest_sell";
+}

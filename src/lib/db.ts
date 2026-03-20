@@ -15,7 +15,7 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { Asset, Transaction, TradeProposal, InvestmentReport, NotificationSettings } from "@/types";
+import { Asset, Transaction, TradeProposal, InvestmentReport, NotificationSettings, RiskRule } from "@/types";
 import { AlertRule } from "@/types/alert";
 
 /**
@@ -265,6 +265,32 @@ export const subscribeNotificationSettings = (uid: string, callback: (settings: 
 export const updateNotificationSettings = async (uid: string, settings: Partial<NotificationSettings>) => {
   const docRef = getNotificationSettingsDoc(uid);
   return setDoc(docRef, settings, { merge: true });
+};
+
+// --- Risk Rules ---
+
+const getRiskRulesDoc = (uid: string) => doc(db, "users", uid, "settings", "riskRules");
+
+export const subscribeRiskRules = (uid: string, callback: (rules: RiskRule) => void) => {
+  return onSnapshot(getRiskRulesDoc(uid), (doc) => {
+    if (doc.exists()) {
+      callback(doc.data() as RiskRule);
+    } else {
+      // 初期値
+      callback({
+        maxLossPct: 15,
+        stopLossPct: 10,
+        maxDrawdownPct: 20,
+        enabled: true,
+        actionType: "alert"
+      });
+    }
+  });
+};
+
+export const updateRiskRules = async (uid: string, rules: Partial<RiskRule>) => {
+  const docRef = getRiskRulesDoc(uid);
+  return setDoc(docRef, rules, { merge: true });
 };
 
 // --- Analysis ---
