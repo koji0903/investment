@@ -5,21 +5,23 @@ import { Transaction, RuleViolation } from "@/types";
  */
 export const detectRuleViolations = (transactions: Transaction[]): RuleViolation[] => {
   const violations: RuleViolation[] = [];
-  const sortedTransactions = [...transactions].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const sortedTransactions = [...transactions].sort((a, b) => {
+    const dateA = a.date ? new Date(a.date).getTime() : 0;
+    const dateB = b.date ? new Date(b.date).getTime() : 0;
+    return dateB - dateA;
+  });
 
   // 1. ナンピン検知 (同一銘柄で、前回より低い価格での連続買い)
   const buyTransactions = transactions.filter(t => t.type === "buy");
   const assetGroups: Record<string, Transaction[]> = {};
   
   buyTransactions.forEach(t => {
-    if (!assetGroups[t.assetSymbol]) assetGroups[t.assetSymbol] = [];
-    assetGroups[t.assetSymbol].push(t);
+    if (!assetGroups[t.assetId]) assetGroups[t.assetId] = [];
+    assetGroups[t.assetId].push(t);
   });
 
   Object.entries(assetGroups).forEach(([symbol, ts]) => {
-    const sortedTs = ts.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const sortedTs = ts.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     for (let i = 1; i < sortedTs.length; i++) {
       const prev = sortedTs[i-1];
       const curr = sortedTs[i];
@@ -32,7 +34,7 @@ export const detectRuleViolations = (transactions: Transaction[]): RuleViolation
           severity: "medium",
           message: `${symbol} のナンピン買いを検知`,
           details: `前回提示価格 (${prev.price}円) より低い価格 (${curr.price}円) で買い増しされています。根拠のないナンピンは損失拡大のリスクがあります。`,
-          createdAt: curr.createdAt
+          createdAt: curr.date
         });
         break; // 1銘柄につき1つの警告に留める
       }
@@ -42,7 +44,7 @@ export const detectRuleViolations = (transactions: Transaction[]): RuleViolation
   // 2. 過剰トレード検知 (24時間以内の取引回数)
   const now = new Date();
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const recentTransactions = transactions.filter(t => new Date(t.createdAt) > oneDayAgo);
+  const recentTransactions = transactions.filter(t => new Date(t.date) > oneDayAgo);
 
   if (recentTransactions.length > 5) {
     violations.push({

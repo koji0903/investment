@@ -69,10 +69,14 @@ export const WinPatternAnalysis = () => {
                     <Tooltip 
                       cursor={{ fill: 'transparent' }}
                       content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
+                        if (active && payload && payload.length && payload[0].value !== undefined) {
+                          const value = typeof payload[0].value === 'number' 
+                            ? payload[0].value 
+                            : parseFloat(payload[0].value as string);
+                          
                           return (
                             <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-xl text-[10px] font-bold">
-                              {payload[0].payload.category}: +{payload[0].value.toFixed(1)}%
+                              {payload[0].payload.category}: +{value.toFixed(1)}%
                             </div>
                           );
                         }
