@@ -221,6 +221,9 @@ export default function Home() {
                 <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 md:gap-8">
                   <div className="xl:col-span-3 space-y-6 md:space-y-8">
                     <InvestmentRuleMonitor />
+                    <InvestmentAdvice />
+                    <RiskAnalysis />
+                    <PortfolioOptimization />
                     <FXMarketAnalysis />
                     <WinPatternAnalysis />
                     <TradingAutomation />
@@ -232,7 +235,6 @@ export default function Home() {
                     <ScenarioComparison />
                     <RiskDecomposition />
                     <CorrelationMatrix />
-                    <PortfolioOptimization />
                     <ScenarioStrategyOptimization />
                     <BacktestSimulator />
                     <QuantumOptimizationCard />
@@ -244,9 +246,16 @@ export default function Home() {
                     <PortfolioRebalance />
                   </div>
                   <div className="xl:col-span-1 space-y-6 md:space-y-8">
-                    <InvestmentAdvice />
-                    <RiskAnalysis />
-                    <PortfolioOptimization />
+                    {/* サイドバーには比較的小さな情報や補助的なツールを置く */}
+                    <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-600/20">
+                      <h3 className="text-lg font-black mb-2">AI 投資家アシスタント</h3>
+                      <p className="text-xs font-bold text-indigo-100 leading-relaxed mb-4">
+                        あなたのポートフォリオを24時間監視し、最適なアクションを提案します。
+                      </p>
+                      <button className="w-full py-3 bg-white text-indigo-600 rounded-2xl text-xs font-black hover:bg-indigo-50 transition-colors">
+                        設定を確認する
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

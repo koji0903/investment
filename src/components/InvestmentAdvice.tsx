@@ -45,7 +45,7 @@ export const InvestmentAdvice = () => {
           </div>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {/* 市場・資産状況 */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
@@ -54,7 +54,7 @@ export const InvestmentAdvice = () => {
               </div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">市場概況</span>
             </div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-[1.8]">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-[1.8] break-keep">
               {advice.marketStatus}
             </p>
           </div>
@@ -67,20 +67,20 @@ export const InvestmentAdvice = () => {
               </div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">リスク評価</span>
             </div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-[1.8]">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-[1.8] break-keep">
               {advice.portfolioEvaluation}
             </p>
           </div>
 
           {/* 改善アクション */}
-          <div className="space-y-4">
+          <div className="space-y-4 sm:col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2">
               <div className="p-2 bg-amber-50 dark:bg-amber-500/10 rounded-xl text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20">
                 <Flag size={18} />
               </div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">推奨アクション</span>
             </div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-[1.8]">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-[1.8] break-keep">
               {advice.actionProposal}
             </p>
           </div>

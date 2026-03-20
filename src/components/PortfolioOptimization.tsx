@@ -167,30 +167,30 @@ export const PortfolioOptimization = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className="flex items-center justify-between p-4 bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/60"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-slate-50/50 dark:bg-slate-800/40 rounded-2xl border border-slate-100 dark:border-slate-800/60"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-1.5 h-10 rounded-full" style={{ backgroundColor: s.color }} />
-                  <div>
-                    <label className="text-xs font-black text-slate-800 dark:text-white">{s.category}</label>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-1.5 h-10 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                  <div className="min-w-0">
+                    <label className="text-xs font-black text-slate-800 dark:text-white truncate block">{s.category}</label>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase whitespace-nowrap">
                       現在 {s.currentRatio}% → 目標 {s.targetRatio}%
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right shrink-0 border-l sm:border-l-0 sm:border-slate-800/50 pl-3 sm:pl-0">
                   <div className={cn(
-                    "text-[13px] font-black flex items-center justify-end gap-1",
+                    "text-[13px] font-black flex items-center sm:justify-end gap-1.5",
                     s.delta > 0 ? "text-emerald-500" : s.delta < 0 ? "text-rose-500" : "text-slate-400"
                   )}>
                     {s.delta > 0 ? "+" : ""}{formatCurrency(s.delta)}
                     {s.delta !== 0 && (
-                      <span className="text-[10px] bg-current opacity-10 px-1.5 py-0.5 rounded uppercase">
+                      <span className="text-[9px] bg-current/10 px-1.5 py-0.5 rounded-md font-black">
                         {s.delta > 0 ? "追加" : "削減"}
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">調整見込額</p>
+                  <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-tight">目標配分への調整額</p>
                 </div>
               </motion.div>
             ))}

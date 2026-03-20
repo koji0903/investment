@@ -104,16 +104,16 @@ export const RiskAnalysis = () => {
             {riskData.highRiskAssets.map(asset => (
               <div key={asset.assetId} className="flex items-center justify-between p-3.5 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-xl relative overflow-hidden group">
                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-500"></div>
-                <div className="flex flex-col ml-2">
-                  <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{asset.name}</span>
-                  <span className="text-xs text-rose-600 dark:text-rose-400 font-medium">
-                    ポートフォリオの {(asset.contribution * 100).toFixed(1)}% を占有
+                <div className="flex flex-col ml-2 min-w-0 flex-1">
+                  <span className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{asset.name}</span>
+                  <span className="text-[10px] sm:text-xs text-rose-600 dark:text-rose-400 font-medium">
+                    ポートフォリオの {(asset.contribution * 100).toFixed(1)}%
                   </span>
                 </div>
-                <div className="flex flex-col items-end">
-                  <div className="flex items-center gap-1 bg-white dark:bg-slate-800 px-2 py-1 rounded shadow-sm">
+                <div className="flex flex-col items-end shrink-0 ml-4">
+                  <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-lg shadow-sm border border-rose-100 dark:border-rose-500/20">
                     <AlertOctagon className="w-3.5 h-3.5 text-rose-500" />
-                    <span className="text-xs font-black text-rose-600 dark:text-rose-400">
+                    <span className="text-[11px] font-black text-rose-600 dark:text-rose-400 whitespace-nowrap">
                       スコア {Math.round(asset.riskScore)}
                     </span>
                   </div>
