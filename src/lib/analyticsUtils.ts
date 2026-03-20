@@ -109,9 +109,11 @@ export const getMetricComment = (type: keyof PerformanceMetrics, value: number):
 export interface AssetRisk {
   assetId: string;
   name: string;
+  category: string;
   riskScore: number; // 0-100
   riskLevel: "Low" | "Moderate" | "High" | "Danger";
-  contribution: number; // % of total portfolio
+  contribution: number; // % of total portfolio value
+  riskContribution: number; // % of total portfolio risk
 }
 
 export interface PortfolioRisk {
@@ -119,6 +121,7 @@ export interface PortfolioRisk {
   overallLevel: "Safe" | "Moderate" | "HighRisk" | "Critical";
   assetRisks: AssetRisk[];
   highRiskAssets: AssetRisk[];
+  diversificationScore: number; // 0-100
 }
 
 const CATEGORY_BASE_RISK: Record<string, number> = {
@@ -132,58 +135,71 @@ export const calculatePortfolioRisk = (assets: AssetCalculated[]): PortfolioRisk
   const totalValue = assets.reduce((sum, a) => sum + Math.max(0, a.evaluatedValue), 0);
   
   if (totalValue === 0 || assets.length === 0) {
-    return { overallScore: 0, overallLevel: "Safe", assetRisks: [], highRiskAssets: [] };
+    return { overallScore: 0, overallLevel: "Safe", assetRisks: [], highRiskAssets: [], diversificationScore: 0 };
   }
 
-  const assetRisks = assets.map(asset => {
-    // 1. 各クラスの基本ボラティリティリスク
+  // 1. 各資産の個別リスク計算
+  const rawRisks = assets.map(asset => {
     const baseRisk = CATEGORY_BASE_RISK[asset.category] || 50;
-    
-    // 2. 評価損を抱えている場合は短期リスク上昇とみなしてペナルティ加算
     let penalty = 0;
     if (asset.profitPercentage < 0) {
-      penalty = Math.min(30, Math.abs(asset.profitPercentage)); // 最大30ポイント加算
+      penalty = Math.min(30, Math.abs(asset.profitPercentage));
     }
-    
     const riskScore = Math.min(100, Math.max(0, baseRisk + penalty));
-    
-    // 3. ポートフォリオ全体に対する構成比率
     const evalValue = Math.max(0, asset.evaluatedValue);
-    const contribution = evalValue / totalValue;
-    
-    let riskLevel: AssetRisk["riskLevel"] = "Low";
-    if (riskScore >= 80) riskLevel = "Danger";
-    else if (riskScore >= 60) riskLevel = "High";
-    else if (riskScore >= 40) riskLevel = "Moderate";
-    
+    const weight = evalValue / totalValue;
+
     return {
       assetId: asset.id,
       name: asset.name,
+      category: asset.category,
       riskScore,
-      riskLevel,
-      contribution
+      weight
     };
   });
 
-  // ポートフォリオ全体のリスクスコア（加重平均）
-  const overallScore = assetRisks.reduce((sum, ar) => sum + (ar.riskScore * ar.contribution), 0);
-  
+  // 2. 加重平均リスクスコア
+  const overallScore = rawRisks.reduce((sum, r) => sum + (r.riskScore * r.weight), 0);
+
+  // 3. リスク寄与度（Risk Contribution）の計算
+  const assetRisks: AssetRisk[] = rawRisks.map(r => {
+    const riskLevel: AssetRisk["riskLevel"] = 
+      r.riskScore >= 80 ? "Danger" : 
+      r.riskScore >= 60 ? "High" : 
+      r.riskScore >= 40 ? "Moderate" : "Low";
+
+    // 寄与度 = (その資産の加重リスク) / (全体のリスク合計)
+    const riskContribution = overallScore > 0 ? (r.riskScore * r.weight) / overallScore : 0;
+
+    return {
+      assetId: r.assetId,
+      name: r.name,
+      category: r.category,
+      riskScore: r.riskScore,
+      riskLevel,
+      contribution: r.weight,
+      riskContribution
+    };
+  });
+
   let overallLevel: PortfolioRisk["overallLevel"] = "Safe";
   if (overallScore >= 75) overallLevel = "Critical";
   else if (overallScore >= 55) overallLevel = "HighRisk";
   else if (overallScore >= 35) overallLevel = "Moderate";
 
-  // スコアが70以上（危険水域）かつ保有割合が0より大きい資産を警告対象にする
   const highRiskAssets = assetRisks.filter(ar => ar.riskScore >= 70 && ar.contribution > 0);
-  
-  // 影響度が大きい順にソート
-  highRiskAssets.sort((a, b) => b.contribution - a.contribution);
+  highRiskAssets.sort((a, b) => b.riskContribution - a.riskContribution);
+
+  // 4. 分散効果スコア（簡易モデル: 銘柄数と最大占有率から算出）
+  const maxWeight = Math.max(...rawRisks.map(r => r.weight));
+  const diversificationScore = Math.min(100, Math.max(0, (1 - maxWeight) * 100 + (assets.length * 5)));
 
   return {
     overallScore,
     overallLevel,
     assetRisks,
-    highRiskAssets
+    highRiskAssets,
+    diversificationScore
   };
 };
 
