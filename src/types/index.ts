@@ -22,6 +22,7 @@ export interface Asset {
   currency?: "JPY" | "USD"; // 追加
   isManual?: boolean;
   brokerName?: string; // 証券会社・金融機関名
+  requiredMargin?: number; // FX等の必要証拠金 (1単位あたり)
 }
 
 export interface AssetCalculated extends Asset {
