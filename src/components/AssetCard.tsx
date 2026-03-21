@@ -47,7 +47,7 @@ const CategoryIcon = ({ category, className }: { category: string; className?: s
   }
 };
 
-export const AssetCard = ({ asset }: AssetCardProps) => {
+export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
   const { isDemo } = useAuth();
   const isProfit = asset.profitAndLoss >= 0;
   const [sentiment, setSentiment] = useState<SentimentResult | null>(null);
@@ -70,8 +70,9 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
   return (
     <div className="relative isolate">
       <motion.div
+        layout
         initial={{ opacity: 0, scale: 0.95 }}
-        whileInView={{ opacity: 1, scale: 1 }}
+        animate={{ opacity: 1, scale: 1 }}
         viewport={{ once: true }}
         whileHover={{ y: -5, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)" }}
         onClick={() => window.location.href = `/asset/${asset.symbol}`}
@@ -209,4 +210,4 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
       </AnimatePresence>
     </div>
   );
-};
+});

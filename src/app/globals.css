@@ -21,8 +21,27 @@
   --font-mono: var(--font-geist-mono);
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+/* プレミアムなカードの基本定義を安定化 */
+.premium-card {
+  @apply bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] shadow-sm;
+  transition-property: transform, box-shadow, border-color, background-color;
+  transition-duration: 300ms;
+}
+
+/* レイアウトシフトを防ぐためのユーティリティ */
+.prevent-layout-shift {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
 }

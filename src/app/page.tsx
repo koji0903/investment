@@ -284,8 +284,10 @@ export default function Home() {
                             ).map(([category, items]) => (
                               <motion.div 
                                 key={category} 
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
+                                layout
+                                initial={{ opacity: 0, scale: 0.98 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.98 }}
                                 className="w-full"
                               >
                                 <AssetCategoryGroup 

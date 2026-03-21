@@ -111,7 +111,7 @@ export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
     return items;
   }, [news, activeTab, search, relatedKeywords, filterKeyword]);
 
-  if ((isFetching || isLoadingNews) && news.length === 0) {
+  if (isLoadingNews && news.length === 0) {
     return (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[var(--radius-card)] overflow-hidden shadow-sm">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800">
