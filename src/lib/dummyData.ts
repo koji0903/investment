@@ -17,7 +17,8 @@ export const calculateAssetValues = (asset: Asset, usdJpyRate: number = 150): As
 
   const totalNotional = currentPriceYen * asset.quantity;
   const totalCost = averageCostYen * asset.quantity;
-  const profitAndLoss = totalNotional - totalCost;
+  const pricePnL = totalNotional - totalCost;
+  const profitAndLoss = pricePnL + (asset.swapPoints || 0);
   const profitPercentage = totalCost !== 0 ? (profitAndLoss / Math.abs(totalCost)) * 100 : 0;
 
   let evaluatedValue = totalNotional;

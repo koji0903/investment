@@ -174,6 +174,12 @@ export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
                 {isProfit ? "+" : ""}{asset.profitPercentage.toFixed(2)}%
               </span>
             </div>
+            {asset.swapPoints !== undefined && asset.swapPoints !== 0 && (
+              <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase tracking-tighter">Swap</span>
+                <span>{asset.swapPoints > 0 ? "+" : ""}{formatCurrency(asset.swapPoints)}</span>
+              </div>
+            )}
           </div>
         </div>
 

@@ -23,6 +23,7 @@ interface AssetRow {
   averageCost: number;
   brokerName: string;
   requiredMargin?: number;
+  swapPoints?: number;
 }
 
 const CATEGORIES: { id: AssetCategory; label: string; icon: React.ElementType }[] = [
@@ -133,9 +134,10 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           currentPrice: asset.currentPrice, 
           averageCost: asset.averageCost,
           brokerName: asset.brokerName || "",
-          requiredMargin: asset.requiredMargin || 0
+          requiredMargin: asset.requiredMargin || 0,
+          swapPoints: asset.swapPoints || 0
         }]
-      : [{ id: "1", name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: "", requiredMargin: 0 }]
+      : [{ id: "1", name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: "", requiredMargin: 0, swapPoints: 0 }]
   );
   
   const [loading, setLoading] = useState(false);
@@ -151,7 +153,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
       case "銀行":
         return { name: "預金種別・口座名", quantity: "現在の残高", symbol: "コード", price: "評価単価", cost: "取得単価" };
       case "FX":
-        return { name: "通貨ペア", quantity: "取引数量 (Lot)", symbol: "コード", price: "評価単価", cost: "取得単価", margin: "必要証拠金 (1単位あたり)" };
+        return { name: "通貨ペア", quantity: "取引数量 (Lot)", symbol: "コード", price: "評価単価", cost: "取得単価", margin: "必要証拠金 (1単位あたり)", swap: "累積スワップポイント (円)" };
       case "仮想通貨":
         return { name: "通貨名", quantity: "保有数量", symbol: "コード", price: "評価単価", cost: "取得単価" };
       case "日本株":
@@ -213,6 +215,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           brokerName: row.brokerName,
           currency: (category === "外国株" || (category === "FX" && (row.symbol.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
           requiredMargin: undefined, // FXは自動算出に移行
+          swapPoints: category === "FX" ? Number(row.swapPoints) : undefined,
         });
       } else {
         for (const row of rows) {
@@ -232,6 +235,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
             isManual: true,
             currency: (category === "外国株" || (category === "FX" && (row.symbol.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
             requiredMargin: undefined, // FXは自動算出に移行
+            swapPoints: category === "FX" ? Number(row.swapPoints) : undefined,
           });
         }
       }
@@ -450,18 +454,32 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                       )}
  
                        {category === "FX" && (
-                         <div className="md:col-span-2 space-y-1.5">
-                           <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.margin}</label>
-                           <div className="relative">
-                             <div className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-black text-slate-500 flex items-center justify-between">
-                               <span>自動算出 (4%)</span>
-                               <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20">推奨</span>
+                         <>
+                           <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
+                             <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.margin}</label>
+                             <div className="relative">
+                               <div className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-black text-slate-500 flex items-center justify-between">
+                                 <span>自動算出 (4%)</span>
+                               </div>
+                               <p className="text-[9px] font-bold text-slate-400 mt-1 ml-1 leading-tight">
+                                 25倍レバレッジ
+                               </p>
                              </div>
-                             <p className="text-[9px] font-bold text-slate-400 mt-1 ml-1 leading-tight">
-                               最新の為替レートに基づき、国内法規（レバレッジ25倍）に準拠した証拠金額を自動適用します。
-                             </p>
                            </div>
-                         </div>
+                           <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
+                             <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.swap}</label>
+                             <div className="relative">
+                               <input
+                                 type="number"
+                                 step="any"
+                                 value={row.swapPoints}
+                                 onChange={(e) => updateRow(row.id, "swapPoints", e.target.value)}
+                                 className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                               />
+                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">JPY</span>
+                             </div>
+                           </div>
+                         </>
                        )}
 
                       <div className="md:col-span-1 flex justify-end pb-1">
