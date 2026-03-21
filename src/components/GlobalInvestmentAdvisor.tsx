@@ -1,315 +1,298 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { 
-  AdvisorRecommendation, 
-  RecommendedAsset, 
-  StockIndicator, 
-  FXIndicator, 
-  CryptoIndicator 
-} from "@/types/advisor";
+import React, { useState } from "react";
+import { usePortfolio } from "@/context/PortfolioContext";
 import { generateProfessionalAdvice } from "@/lib/advisorUtils";
+import { AdvisorRecommendation, RecommendedAsset } from "@/types/advisor";
 import { 
   Sparkles, 
+  Target, 
   TrendingUp, 
-  ShieldCheck, 
-  AlertCircle, 
-  Search, 
+  ShieldAlert, 
   ArrowRight, 
-  Wallet, 
-  BarChart4, 
-  Globe2, 
-  Zap, 
-  Info
+  Loader2, 
+  AlertCircle,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  LineChart,
+  Lightbulb,
+  ArrowUpRight
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn, formatCurrency } from "@/lib/utils";
 
 export const GlobalInvestmentAdvisor = () => {
-  const [budget, setBudget] = useState<number>(1000000);
-  const [riskPreference, setRiskPreference] = useState<"aggressive" | "conservative" | "balanced">("balanced");
+  const { totalAssetsValue } = usePortfolio();
+  const [budget, setBudget] = useState<number>(100000);
+  const [riskPreference, setRiskPreference] = useState<"積極" | "安定" | "バランス">("バランス");
   const [recommendation, setRecommendation] = useState<AdvisorRecommendation | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [expandedAsset, setExpandedAsset] = useState<string | null>(null);
 
-  const handleGenerate = () => {
-    setIsGenerating(true);
-    // 演出としての遅延
+  const handleAnalize = () => {
+    setLoading(true);
+    // AI分析をシミュレート
     setTimeout(() => {
-      const res = generateProfessionalAdvice(budget, riskPreference);
-      setRecommendation(res);
-      setIsGenerating(false);
+      const result = generateProfessionalAdvice(budget, riskPreference);
+      setRecommendation(result);
+      setLoading(false);
     }, 1500);
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-sm relative group">
-      {/* Background Decor */}
-      <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none group-hover:scale-110 transition-transform duration-1000">
-        <Globe2 size={200} />
-      </div>
-
-      <div className="p-6 md:p-10 space-y-10 relative z-10">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-4 text-left">
-            <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl text-white shadow-xl shadow-indigo-500/20">
-              <Sparkles size={24} />
+    <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-white relative">
+        <div className="absolute top-0 right-0 p-8 opacity-20">
+          <Sparkles size={120} />
+        </div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center">
+              <Sparkles size={32} />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-slate-800 dark:text-white">グローバル投資アドバイザー</h2>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-none mt-1">Multi-Asset Intelligent Analysis</p>
+              <h2 className="text-2xl font-black tracking-tight">グローバル投資アドバイザー</h2>
+              <p className="text-sm font-medium text-white/80 mt-1 uppercase tracking-widest">Multi-Asset Intelligent Analysis</p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded-2xl border border-slate-100 dark:border-slate-800">
-            {(["balanced", "aggressive", "conservative"] as const).map((pref) => (
+          <div className="flex bg-white/10 backdrop-blur-md p-1 rounded-2xl border border-white/10">
+            {(["安定", "バランス", "積極"] as const).map(pref => (
               <button
                 key={pref}
                 onClick={() => setRiskPreference(pref)}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
-                  riskPreference === pref 
-                    ? "bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm border border-indigo-100 dark:border-indigo-900/50" 
-                    : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  "px-6 py-2 rounded-xl text-sm font-bold transition-all",
+                  riskPreference === pref ? "bg-white text-indigo-600 shadow-lg" : "text-white/70 hover:text-white"
                 )}
               >
-                {pref === "balanced" ? "バランス" : pref === "aggressive" ? "積極" : "安定"}
+                {pref}
               </button>
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Setup Section */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end">
-          <div className="md:col-span-8 space-y-3">
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
-              <Wallet size={14} className="text-indigo-500" />
-              投資可能予算 (現在の余力)
+      <div className="p-8 space-y-8">
+        {/* Input Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2">
+              <Target size={14} /> 投資可能予算 (現在の余力)
             </label>
             <div className="relative">
-              <input 
+              <input
                 type="number"
                 value={budget}
                 onChange={(e) => setBudget(Number(e.target.value))}
-                className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-2xl px-6 py-4 text-xl font-black text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 transition-all placeholder-slate-400"
-                placeholder="金額を入力してください..."
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl px-6 py-4 text-xl font-bold focus:ring-2 focus:ring-indigo-500 transition-all outline-none"
+                placeholder="100,000"
               />
-              <span className="absolute right-6 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">円</span>
+              <span className="absolute right-6 top-1/2 -translate-y-1/2 font-bold text-slate-400">円</span>
             </div>
           </div>
-          <div className="md:col-span-4">
-            <button 
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="w-full py-[18px] bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl shadow-xl shadow-indigo-600/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-50"
+          <div className="flex items-end">
+            <button
+              onClick={handleAnalize}
+              disabled={loading}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-black py-4 px-8 rounded-2xl flex items-center justify-center gap-3 shadow-xl shadow-indigo-500/20 active:scale-95 transition-all h-[62px]"
             >
-              {isGenerating ? (
-                <Zap size={20} className="animate-spin text-amber-300" />
+              {loading ? (
+                <>
+                  <Loader2 className="animate-spin" /> <span>プロのAIが分析中...</span>
+                </>
               ) : (
-                <Search size={20} />
+                <>
+                  <Sparkles size={20} /> <span>最適な投資先を診断する</span>
+                </>
               )}
-              {isGenerating ? "分析中..." : "最適な投資先を探す"}
             </button>
           </div>
         </div>
 
+        {/* Results Area */}
         <AnimatePresence mode="wait">
-          {recommendation && !isGenerating ? (
-            <motion.div 
-              key="recommendation"
+          {recommendation && (
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="space-y-12"
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-8"
             >
-              {/* Market Context Banner */}
-              <div className="p-6 bg-indigo-50 dark:bg-indigo-500/5 rounded-[32px] border border-indigo-100 dark:border-indigo-500/20 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-[0.05] pointer-events-none">
-                  <BarChart4 size={80} />
+              {/* Market Context */}
+              <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-6 rounded-3xl border border-indigo-100 dark:border-indigo-900/50 flex items-start gap-4">
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl text-indigo-600 shadow-sm border border-indigo-50 dark:border-indigo-900/50">
+                  <AlertCircle size={20} />
                 </div>
-                <div className="relative z-10 flex flex-col md:flex-row gap-6 items-start">
-                  <div className="p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-sm text-indigo-500 border border-indigo-100 dark:border-indigo-900 border-b-2">
-                    <Globe2 size={24} />
-                  </div>
-                  <div className="space-y-2 text-left">
-                    <h3 className="text-lg font-black text-slate-800 dark:text-white">現在のマーケット環境</h3>
-                    <p className="text-sm font-bold text-slate-500 dark:text-slate-400 leading-relaxed break-words">
-                      {recommendation.marketContext}
-                    </p>
-                  </div>
+                <div>
+                  <h4 className="text-sm font-black text-indigo-900 dark:text-indigo-300 mb-1">現在のマーケット環境と戦略</h4>
+                  <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
+                    {recommendation.marketContext}
+                  </p>
                 </div>
               </div>
 
-              {/* Recommendation Summary */}
-              <div className="text-left space-y-3 px-2">
-                <h3 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
-                  <TrendingUp size={20} className="text-emerald-500" />
-                  AIが提案するポートフォリオ構成
+              {/* Asset List */}
+              <div className="space-y-6">
+                <h3 className="text-lg font-black text-slate-800 dark:text-white flex items-center gap-2">
+                  <TrendingUp size={20} className="text-emerald-500" /> AIが提案するポートフォリオ構成
                 </h3>
-                <p className="text-sm font-bold text-slate-500 dark:text-slate-400 break-words">
-                  {recommendation.summary}
-                </p>
-              </div>
+                
+                <div className="grid grid-cols-1 gap-6">
+                  {recommendation.assets.map((asset, idx) => (
+                    <div 
+                      key={asset.symbol}
+                      className="group bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden hover:shadow-2xl hover:border-indigo-500/30 transition-all duration-300"
+                    >
+                      {/* Basic Info Header */}
+                      <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "w-14 h-14 rounded-2xl flex items-center justify-center font-black text-white shadow-lg",
+                            asset.category === "日本株" ? "bg-red-500" :
+                            asset.category === "外国株" ? "bg-blue-500" :
+                            asset.category === "FX" ? "bg-indigo-500" : "bg-amber-500"
+                          )}>
+                            {asset.category[0]}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] font-black px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-full">{asset.category}</span>
+                              <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 rounded-full">信頼度 {asset.confidence}%</span>
+                            </div>
+                            <h4 className="text-xl font-black text-slate-900 dark:text-white">{asset.name}</h4>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{asset.symbol}</p>
+                          </div>
+                        </div>
 
-              {/* Assets Grid */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                {recommendation.assets.map((asset, idx) => (
-                  <AssetRecommendCard key={asset.symbol} asset={asset} index={idx} />
-                ))}
-              </div>
+                        <div className="flex items-center gap-8">
+                          <div className="text-right">
+                            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">現在価格</p>
+                            <p className="text-xl font-black text-slate-900 dark:text-white">
+                              {asset.category === "外国株" || asset.category === "FX" ? "$" : "¥"}
+                              {asset.price.toLocaleString()}
+                            </p>
+                            <p className={cn("text-xs font-bold", asset.change24h >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                              {asset.change24h >= 0 ? "+" : ""}{asset.change24h}%
+                            </p>
+                          </div>
+                          <button 
+                            onClick={() => setExpandedAsset(expandedAsset === asset.symbol ? null : asset.symbol)}
+                            className="p-4 bg-slate-50 dark:bg-slate-950 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-2xl transition-all"
+                          >
+                            {expandedAsset === asset.symbol ? <ChevronUp size={24} className="text-indigo-600" /> : <ChevronDown size={24} className="text-slate-400" />}
+                          </button>
+                        </div>
+                      </div>
 
-              {/* Budget Footnote */}
-              <div className="pt-8 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-start px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">提案の総投資見込額</span>
-                    <span className="text-sm font-black text-slate-700 dark:text-slate-200">{formatCurrency(recommendation.budgetUsed)}</span>
-                  </div>
-                  <div className="flex flex-col items-start px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">投資余力の残り</span>
-                    <span className="text-sm font-black text-emerald-500">{formatCurrency(recommendation.remainingBudget)}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <ShieldCheck size={12} className="text-indigo-500" />
-                  AIによる総合判断に基づいた提案です
+                      {/* Detailed Analysis Section */}
+                      <AnimatePresence>
+                        {expandedAsset === asset.symbol && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-950/30"
+                          >
+                            <div className="p-6 md:p-8 space-y-8">
+                              {/* Professional Judgement Card */}
+                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col">
+                                  <div className="flex items-center gap-3 text-indigo-600 mb-4">
+                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg"><Lightbulb size={20} /></div>
+                                    <h5 className="font-black text-sm uppercase">プロの判断根拠</h5>
+                                  </div>
+                                  <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed italic">
+                                    「{asset.rationale}」
+                                  </p>
+                                </div>
+
+                                <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col">
+                                  <div className="flex items-center gap-3 text-emerald-600 mb-4">
+                                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg"><LineChart size={20} /></div>
+                                    <h5 className="font-black text-sm uppercase">今後の成長見込み</h5>
+                                  </div>
+                                  <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    {asset.expectedGrowth}
+                                  </p>
+                                </div>
+
+                                <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm flex flex-col">
+                                  <div className="flex items-center gap-3 text-rose-500 mb-4">
+                                    <div className="p-2 bg-rose-50 dark:bg-rose-900/30 rounded-lg"><ShieldAlert size={20} /></div>
+                                    <h5 className="font-black text-sm uppercase">出口・撤退戦略</h5>
+                                  </div>
+                                  <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    {asset.exitStrategy}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Indicators & Explanations */}
+                              <div className="space-y-4">
+                                <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 ml-1">
+                                  <Target size={12} /> 分析に使用した基準指標と用語解説
+                                </h5>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                  {Object.entries(asset.indicators).map(([key, val]) => (
+                                    <div key={key} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 group/indicator">
+                                      <div className="flex items-start justify-between mb-2">
+                                        <p className="text-[10px] font-black text-indigo-500 uppercase">{key}</p>
+                                        <div className="relative group/tooltip">
+                                          <HelpCircle size={14} className="text-slate-300 hover:text-indigo-400 transition-colors cursor-help" />
+                                          {asset.indicatorExplanations?.[key] && (
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 p-3 bg-slate-900 text-white text-[10px] leading-relaxed rounded-xl opacity-0 group-hover/tooltip:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl border border-white/10">
+                                              {asset.indicatorExplanations[key]}
+                                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900"></div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <p className="text-xl font-black text-slate-800 dark:text-white">
+                                        {key === "technicalSignal" || key === "trend" ? (
+                                          <span className="text-sm md:text-base">{val as string}</span>
+                                        ) : (
+                                          <span>{val as number}</span>
+                                        )}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              
+                              <div className="flex justify-end">
+                                <button className="flex items-center gap-2 text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:gap-3 transition-all">
+                                  この銘柄をトレードプランに追加する <ArrowUpRight size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
                 </div>
               </div>
             </motion.div>
-          ) : isGenerating ? (
-            <div className="py-24 flex flex-col items-center justify-center space-y-6">
-              <div className="relative w-24 h-24">
-                <div className="absolute inset-0 border-4 border-indigo-100 dark:border-indigo-900 rounded-full" />
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 border-4 border-t-indigo-600 rounded-full"
-                />
-              </div>
-              <p className="text-sm font-black text-slate-400 uppercase tracking-widest animate-pulse">分析アルゴリズムを実行中</p>
-            </div>
-          ) : (
-            <div className="py-20 flex flex-col items-center justify-center text-center opacity-40">
-              <BarChart4 size={64} className="text-slate-300 dark:text-slate-700 mb-6" />
-              <p className="text-sm font-bold text-slate-500 max-w-xs">予算に合わせて、株・FX・仮想通貨から最適な投資先を選定します。</p>
-            </div>
           )}
         </AnimatePresence>
+
+        {/* Initial Empty State */}
+        {!recommendation && !loading && (
+          <div className="py-20 flex flex-col items-center justify-center text-center space-y-6">
+            <div className="w-24 h-24 bg-slate-50 dark:bg-slate-950 rounded-[40px] flex items-center justify-center text-slate-300">
+              <Sparkles size={48} />
+            </div>
+            <div className="max-w-md space-y-2">
+              <h3 className="text-xl font-black text-slate-800 dark:text-white">あなたのための最適解をAIが導きます</h3>
+              <p className="text-sm font-bold text-slate-400 leading-relaxed">
+                予算とリスク嗜好を入力して分析を開始してください。世界の市場データに基づいたプロフェッショナルな推奨構成を提案します。
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
-
-const AssetRecommendCard = ({ asset, index }: { asset: RecommendedAsset, index: number }) => {
-  const isStock = asset.category === "日本株" || asset.category === "外国株";
-  const isFX = asset.category === "FX";
-  const isCrypto = asset.category === "仮想通貨";
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: index * 0.1 }}
-      className="bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-[28px] p-6 shadow-sm hover:shadow-xl hover:border-indigo-200 dark:hover:border-indigo-800 transition-all text-left relative overflow-hidden group/card"
-    >
-      <div className="flex justify-between items-start mb-6">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className={cn(
-              "px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest border",
-              isStock ? "bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:border-blue-500/20" :
-              isFX ? "bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" :
-              "bg-purple-50 text-purple-600 border-purple-100 dark:bg-purple-500/10 dark:text-purple-400 dark:border-purple-500/20"
-            )}>
-              {asset.category}
-            </span>
-            {asset.priority === "high" && (
-              <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-black rounded-lg border border-amber-100 dark:border-amber-500/20">
-                ★ 優先度:高
-              </span>
-            )}
-          </div>
-          <h4 className="text-xl font-black text-slate-800 dark:text-white mt-2 group-hover/card:text-indigo-600 dark:group-hover/card:text-indigo-400 transition-colors">
-            {asset.name}
-            <span className="text-xs font-bold text-slate-400 ml-2">({asset.symbol})</span>
-          </h4>
-        </div>
-        <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
-           <ArrowRight size={18} className="text-slate-400 group-hover/card:translate-x-1 transition-transform" />
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        {/* Indicators Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {isStock && (
-            <>
-              <IndicatorBox label="PER" value={(asset.indicators as StockIndicator).per?.toString() || "-"} sub="倍" />
-              <IndicatorBox label="PBR" value={(asset.indicators as StockIndicator).pbr?.toString() || "-"} sub="倍" />
-              <IndicatorBox label="ROE" value={(asset.indicators as StockIndicator).roe?.toString() || "-"} sub="%" />
-              <IndicatorBox label="配当利回" value={(asset.indicators as StockIndicator).dividendYield?.toString() || "-"} sub="%" highlight />
-            </>
-          )}
-          {isFX && (
-            <>
-              <IndicatorBox label="RSI" value={(asset.indicators as FXIndicator).rsi?.toString() || "-"} />
-              <IndicatorBox label="スワップ" value={(asset.indicators as FXIndicator).swapPoint?.toString() || "-"} sub="pt" highlight />
-              <IndicatorBox label="シグナル" value={(asset.indicators as FXIndicator).technicalSignal === "buy" ? "買い" : "中立"} highlight />
-            </>
-          )}
-          {isCrypto && (
-            <>
-              <IndicatorBox label="RSI" value={(asset.indicators as CryptoIndicator).rsi?.toString() || "-"} />
-              <IndicatorBox label="ドミナンス" value={(asset.indicators as CryptoIndicator).dominance?.toString() || "-"} sub="%" />
-              <IndicatorBox label="トレンド" value={(asset.indicators as CryptoIndicator).trend === "bullish" ? "強気" : "レンジ"} highlight />
-            </>
-          )}
-        </div>
-
-        {/* Action / Detail Section */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3">
-          <div className="flex justify-between items-center text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-slate-800 pb-2">
-            <span>AI分析・推奨理由</span>
-            <span className="text-indigo-500 flex items-center gap-1">
-              <Zap size={12} />
-              AI INSIGHT
-            </span>
-          </div>
-          <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed break-words">
-            {asset.reason}
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">最小投資目安額</span>
-            <span className="text-lg font-black text-slate-800 dark:text-white tabular-nums">
-              {formatCurrency(asset.minPurchaseAmount)}
-            </span>
-          </div>
-          <button className="px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs rounded-xl shadow-lg hover:scale-105 active:scale-95 transition-all">
-            詳細を詳しく見る
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
-
-const IndicatorBox = ({ label, value, sub, highlight }: { label: string, value: string, sub?: string, highlight?: boolean }) => (
-  <div className={cn(
-    "px-3 py-2 rounded-xl border flex flex-col items-center justify-center transition-all",
-    highlight 
-      ? "bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20" 
-      : "bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800"
-  )}>
-    <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.1em] mb-1">{label}</span>
-    <div className="flex items-baseline gap-0.5">
-      <span className={cn(
-        "text-xs font-black tabular-nums",
-        highlight ? "text-indigo-600 dark:text-indigo-400" : "text-slate-700 dark:text-slate-300"
-      )}>
-        {value}
-      </span>
-      {sub && <span className="text-[8px] font-bold text-slate-400">{sub}</span>}
-    </div>
-  </div>
-);

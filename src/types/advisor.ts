@@ -27,10 +27,15 @@ export interface RecommendedAsset {
   name: string;
   category: AdvisorCategory;
   price: number;
-  minPurchaseAmount: number; // 最小購入単位 (円換算)
-  indicators: StockIndicator | FXIndicator | CryptoIndicator;
+  change24h: number;
+  recommendationType: "buy" | "hold" | "sell";
+  confidence: number;
   reason: string;
-  priority: "high" | "medium" | "low";
+  rationale: string; // プロの判断根拠（詳細）
+  expectedGrowth: string; // 今後の成長見込み（予測値含む文言）
+  exitStrategy: string; // 撤退基準（損切り・利確）
+  indicators: StockIndicator | FXIndicator | CryptoIndicator;
+  indicatorExplanations?: Record<string, string>; // 指標の初心者向け解説
 }
 
 export interface AdvisorRecommendation {
