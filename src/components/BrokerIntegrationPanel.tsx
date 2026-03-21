@@ -174,7 +174,7 @@ export const BrokerIntegrationPanel = () => {
                   <h3 className="text-base font-black text-slate-800 dark:text-white">
                     {provider.name}
                   </h3>
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-snug break-words">
                     {provider.description}
                   </p>
                 </div>

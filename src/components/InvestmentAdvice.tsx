@@ -29,7 +29,7 @@ export const InvestmentAdvice = () => {
   if (!advice) return null;
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-5 md:p-8 shadow-sm overflow-hidden relative group text-left">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-5 md:p-8 shadow-sm overflow-hidden relative group text-left transition-all hover:shadow-md">
       <div className="absolute top-0 right-0 -translate-y-8 translate-x-8 opacity-[0.05] pointer-events-none group-hover:scale-110 transition-transform duration-700">
         <Sparkles className="w-64 h-64 text-indigo-500" />
       </div>
@@ -54,7 +54,7 @@ export const InvestmentAdvice = () => {
               </div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">市場概況</span>
             </div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-[1.8] break-keep">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed break-words">
               {advice.marketStatus}
             </p>
           </div>
@@ -67,7 +67,7 @@ export const InvestmentAdvice = () => {
               </div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">リスク評価</span>
             </div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-[1.8] break-keep">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed break-words">
               {advice.portfolioEvaluation}
             </p>
           </div>
@@ -80,7 +80,7 @@ export const InvestmentAdvice = () => {
               </div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">推奨アクション</span>
             </div>
-            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-[1.8] break-keep">
+            <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed break-words">
               {advice.actionProposal}
             </p>
           </div>

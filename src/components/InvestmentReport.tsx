@@ -216,7 +216,7 @@ export function InvestmentReportComponent() {
                         <Sparkles size={14} className="text-amber-500" />
                         AI サマリー
                       </p>
-                      <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-relaxed italic">
+                      <p className="text-sm font-bold text-slate-700 dark:text-slate-300 leading-normal italic break-words">
                         「{activeReport.summary}」
                       </p>
                     </div>
@@ -235,7 +235,7 @@ export function InvestmentReportComponent() {
                             <ChevronRight size={14} className="text-indigo-500" />
                             {item.title}
                           </h5>
-                          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
+                          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-normal break-words">
                             {item.text}
                           </p>
                         </div>

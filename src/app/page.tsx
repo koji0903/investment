@@ -244,35 +244,75 @@ export default function Home() {
               )}
 
               {activeTab === "analysis" && (
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8">
-                  <div className="xl:col-span-2 space-y-6 md:space-y-8">
-                    <InvestmentRuleMonitor />
-                    <InvestmentAdvice />
-                    <RiskAnalysis />
-                    <PortfolioOptimization />
-                    <TradingAutomation />
-                    <ScenarioComparison />
-                    <ScenarioStrategyOptimization />
-                    <BacktestSimulator />
-                    <QuantumOptimizationCard />
-                    <StrategyActionPoints />
-                    <SemiAutoTrading />
-                    <PortfolioRebalance />
-                  </div>
-                  <div className="xl:col-span-1 space-y-6 md:space-y-8">
-                    <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-600/20">
-                      <h3 className="text-lg font-black mb-2">AI 投資家アシスタント</h3>
-                      <p className="text-xs font-bold text-indigo-100 leading-relaxed mb-4">
-                        あなたのポートフォリオを24時間監視し、最適なアクションを提案します。
-                      </p>
-                      <button className="w-full py-3 bg-white text-indigo-600 rounded-2xl text-xs font-black hover:bg-indigo-50 transition-colors">
-                        設定を確認する
-                      </button>
+                <div className="space-y-8 md:space-y-12">
+                  {/* Row 1: High Priority Insights & Risk */}
+                  <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8 items-start">
+                    <div className="xl:col-span-8 space-y-6 md:space-y-8">
+                      <InvestmentAdvice />
+                      <InvestmentRuleMonitor />
                     </div>
-                    
+                    <div className="xl:col-span-4 space-y-6 md:space-y-8">
+                      <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-600/20 relative overflow-hidden group">
+                        <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-700">
+                          <Sparkles size={120} />
+                        </div>
+                        <h3 className="text-lg font-black mb-2 flex items-center gap-2">
+                          <Sparkles size={20} className="text-amber-300" />
+                          AI 投資家アシスタント
+                        </h3>
+                        <p className="text-xs font-bold text-indigo-100 leading-relaxed mb-4">
+                          あなたのポートフォリオを24時間監視し、市場動向に合わせた最適なアクションをリアルタイムで提案します。
+                        </p>
+                        <button className="w-full py-3 bg-white text-indigo-600 rounded-2xl text-xs font-black hover:bg-indigo-50 transition-colors shadow-lg active:scale-95">
+                          設定を確認する
+                        </button>
+                      </div>
+                      <RiskAnalysis />
+                    </div>
+                  </div>
+
+                  {/* Row 2: Optimization & Automation (Middle Priority) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 items-start">
+                    <div className="xl:col-span-2">
+                      <PortfolioOptimization />
+                    </div>
+                    <div className="xl:col-span-1">
+                      <TradingAutomation />
+                    </div>
+                  </div>
+
+                  {/* Row 3: Simulations & Advanced Logic (Bento Grid Style) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8 auto-rows-min">
+                    <div className="md:col-span-2 lg:col-span-1 xl:col-span-1">
+                      <ScenarioComparison />
+                    </div>
+                    <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
+                      <ScenarioStrategyOptimization />
+                    </div>
+                    <div className="md:col-span-2 lg:col-span-1 xl:col-span-2">
+                      <BacktestSimulator />
+                    </div>
+                    <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
+                      <QuantumOptimizationCard />
+                    </div>
+                    <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
+                      <StrategyActionPoints />
+                    </div>
+                    <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
+                      <SemiAutoTrading />
+                    </div>
+                    <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
+                      <PortfolioRebalance />
+                    </div>
+                    <div className="md:col-span-2 lg:col-span-1 xl:col-span-2">
+                      <FXMarketAnalysis />
+                    </div>
+                  </div>
+
+                  {/* Row 4: Secondary Context & Style Analysis */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
                     <MarketCondition />
                     <MarketSentiment />
-                    <FXMarketAnalysis />
                     <WinPatternAnalysis />
                     <InvestmentStylePortrait />
                     <InvestmentStrategyCard />
@@ -281,27 +321,44 @@ export default function Home() {
                     <CorrelationMatrix />
                     <BehaviorInsight />
                     <SkillCoach />
-                    <InvestmentReportComponent />
+                    <div className="md:col-span-2 lg:col-span-1 xl:col-span-1">
+                      <InvestmentReportComponent />
+                    </div>
                   </div>
                 </div>
               )}
 
               {activeTab === "tools" && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-                  <div className="lg:col-span-2 space-y-6 md:space-y-8">
-                    <BrokerIntegrationPanel />
-                    <RiskManagementPanel />
-                    <PositionSizing />
-                    <NotificationSettingsComponent />
-                    <TransactionForm />
-                    <TransactionList />
+                <div className="space-y-8 md:space-y-12">
+                  <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8 items-start">
+                    {/* Data Management & Integration */}
+                    <div className="xl:col-span-8 space-y-6 md:space-y-8">
+                      <BrokerIntegrationPanel />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <RiskManagementPanel />
+                        <PositionSizing />
+                      </div>
+                      <NotificationSettingsComponent />
+                    </div>
+
+                    {/* Settings & External Data Sidebar */}
+                    <div className="xl:col-span-4 space-y-6 md:space-y-8">
+                      <AlertSettings />
+                      <UserRiskSettings />
+                      <EconomicCalendar />
+                      <NewsPanel />
+                      <MacroDashboard />
+                    </div>
                   </div>
-                  <div className="space-y-6 md:space-y-8">
-                    <AlertSettings />
-                    <UserRiskSettings />
-                    <EconomicCalendar />
-                    <NewsPanel />
-                    <MacroDashboard />
+
+                  {/* Transactions Section */}
+                  <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8 items-start">
+                    <div className="xl:col-span-4">
+                      <TransactionForm />
+                    </div>
+                    <div className="xl:col-span-8">
+                      <TransactionList />
+                    </div>
                   </div>
                 </div>
               )}
