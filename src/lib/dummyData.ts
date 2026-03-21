@@ -32,6 +32,7 @@ export const calculateAssetValues = (asset: Asset, usdJpyRate: number = 150): As
     profitPercentage,
     dailyChange,
     dailyChangePercentage,
+    exchangeRate: asset.currency === "USD" ? usdJpyRate : undefined,
   };
 };
 

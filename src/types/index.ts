@@ -30,6 +30,7 @@ export interface AssetCalculated extends Asset {
   profitPercentage: number;
   dailyChange: number;
   dailyChangePercentage: number;
+  exchangeRate?: number; // 適用された為替レート
 }
 
 export type ProposalStatus = "pending" | "executed" | "rejected";

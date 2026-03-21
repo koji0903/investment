@@ -179,7 +179,16 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
         <div className="pt-4 flex justify-between items-center text-[11px] border-t border-slate-100 dark:border-slate-800">
           <div className="flex flex-col gap-0.5">
             <span className="text-slate-400 dark:text-slate-500 font-bold">現在価格</span>
-            <span className="font-black text-slate-700 dark:text-slate-300">{formatCurrency(asset.currentPrice)}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-black text-slate-700 dark:text-slate-300">
+                {formatCurrency(asset.currentPrice, asset.currency)}
+              </span>
+              {asset.exchangeRate && (
+                <span className="text-[9px] font-black text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-500/20">
+                  1 USD = {asset.exchangeRate.toFixed(1)} JPY
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex flex-col items-end gap-0.5">
             <span className="text-slate-400 dark:text-slate-500 font-bold">保有数量</span>
