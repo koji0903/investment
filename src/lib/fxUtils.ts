@@ -87,8 +87,16 @@ export const generateFXAdviceFromData = (indicators: EconomicIndicator[], fxAnal
   if (usdjpy && usdjpy.technical) {
     const { signal, reason } = usdjpy.technical;
     advice += ` ドル円については、${reason}`;
-    if (signal === "buy") advice += " 短期的な押し目買いのチャンスかもしれません。";
-    if (signal === "sell") advice += " 短期的な過熱感に注意が必要です。";
+    
+    if (signal === "strong_buy") advice += " テクニカル的に絶好の買い場（ゴールデンクロス・売られすぎ）である可能性があります。";
+    else if (signal === "buy") advice += " 短期的な押し目買いを検討できる水準です。";
+    else if (signal === "strong_sell") advice += " 強い売りシグナル（デッドクロス・買われすぎ）が出ており、急落に警戒が必要です。";
+    else if (signal === "sell") advice += " 戻り売りを警戒すべき局面です。";
+
+    // スワップ情報の考慮
+    if (usdjpy.swap && usdjpy.swap.buy > 0 && signal.includes("buy")) {
+      advice += ` 買いスワップがプラス（${usdjpy.swap.buy}）であることも長期保有の追い風となります。`;
+    }
   }
 
   const highImpact = indicators.filter(i => i.importance === "high");

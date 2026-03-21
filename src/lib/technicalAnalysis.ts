@@ -94,33 +94,76 @@ export function calculateMACD(data: number[], fastPeriod: number = 12, slowPerio
 }
 
 /**
+ * ボリンジャーバンド (+-2σ)
+ */
+export function calculateBollingerBands(data: number[], period: number = 20) {
+  const sma = calculateSMA(data, period);
+  const upper: number[] = [];
+  const lower: number[] = [];
+
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) {
+      upper.push(NaN);
+      lower.push(NaN);
+      continue;
+    }
+
+    const subset = data.slice(i - period + 1, i + 1);
+    const mean = sma[i];
+    const variance = subset.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / period;
+    const stdDev = Math.sqrt(variance);
+
+    upper.push(mean + stdDev * 2);
+    lower.push(mean - stdDev * 2);
+  }
+
+  return { upper, lower, sma };
+}
+
+/**
  * 現在のステータス判定
  */
 export function getTechnicalStatus(lastPrice: number, data: number[]) {
   const rsi = calculateRSI(data, 14);
   const lastRSI = rsi[rsi.length - 1];
   
-  const sma20 = calculateSMA(data, 20);
-  const lastSMA20 = sma20[sma20.length - 1];
+  const { upper, lower, sma } = calculateBollingerBands(data, 20);
+  const lastUpper = upper[upper.length - 1];
+  const lastLower = lower[lower.length - 1];
+  const lastSMA20 = sma[sma.length - 1];
 
-  let signal: "buy" | "sell" | "neutral" = "neutral";
-  let reason = "";
+  const { histogram } = calculateMACD(data);
+  const lastHist = histogram[histogram.length - 1];
+  const prevHist = histogram[histogram.length - 2];
 
-  if (lastRSI < 30) {
-    signal = "buy";
-    reason = "RSIが30を下回り、売られすぎ水準です。反発の可能性があります。";
-  } else if (lastRSI > 70) {
-    signal = "sell";
-    reason = "RSIが70を上回り、買われすぎ水準です。調整の可能性があります。";
-  } else if (lastPrice > lastSMA20 * 1.02) {
-    signal = "sell";
-    reason = "移動平均線(20)から上方乖離しています。";
-  } else if (lastPrice < lastSMA20 * 0.98) {
-    signal = "buy";
-    reason = "移動平均線(20)から下方乖離しています。";
-  } else {
-    reason = "主要なテクニカル指標は中立を示しています。";
-  }
+  let score = 0; // -3 (Strong Sell) to +3 (Strong Buy)
+  let reasons: string[] = [];
 
-  return { rsi: lastRSI, sma20: lastSMA20, signal, reason };
+  // RSI判定
+  if (lastRSI < 30) { score += 1; reasons.push("RSI売られすぎ"); }
+  if (lastRSI < 20) { score += 1; }
+  if (lastRSI > 70) { score -= 1; reasons.push("RSI買われすぎ"); }
+  if (lastRSI > 80) { score -= 1; }
+
+  // ボリンジャーバンド判定
+  if (lastPrice <= lastLower) { score += 2; reasons.push("ボリバン-2σ到達"); }
+  if (lastPrice >= lastUpper) { score -= 2; reasons.push("ボリバン+2σ到達"); }
+
+  // MACD判定 (ゴールデンクロス/デッドクロス)
+  if (lastHist > 0 && prevHist <= 0) { score += 1; reasons.push("MACDゴールデンクロス"); }
+  if (lastHist < 0 && prevHist >= 0) { score -= 1; reasons.push("MACDデッドクロス"); }
+
+  // 乖離率判定
+  if (lastPrice > lastSMA20 * 1.03) { score -= 1; reasons.push("SMA乖離過大(上)"); }
+  if (lastPrice < lastSMA20 * 0.97) { score += 1; reasons.push("SMA乖離過大(下)"); }
+
+  let signal: "strong_buy" | "buy" | "neutral" | "sell" | "strong_sell" = "neutral";
+  if (score >= 3) signal = "strong_buy";
+  else if (score >= 1) signal = "buy";
+  else if (score <= -3) signal = "strong_sell";
+  else if (score <= -1) signal = "sell";
+
+  const reason = reasons.length > 0 ? reasons.join("・") + "から総合判定。" : "主要な指標は中立を示しています。";
+
+  return { rsi: lastRSI, sma20: lastSMA20, signal, reason, score, bollinger: { upper: lastUpper, lower: lastLower } };
 }

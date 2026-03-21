@@ -9,6 +9,15 @@ export async function GET() {
     // FXペア (詳細分析用)
     const fxPairs = ["JPY=X", "EURJPY=X", "GBPJPY=X", "AUDJPY=X", "EURUSD=X"];
     
+    // スワップポイント (1Lotあたりの参考値)
+    const swapData: Record<string, { buy: number; sell: number }> = {
+      "JPY=X": { buy: 232, sell: -251 },
+      "EURJPY=X": { buy: 158, sell: -182 },
+      "GBPJPY=X": { buy: 215, sell: -241 },
+      "AUDJPY=X": { buy: 184, sell: -205 },
+      "EURUSD=X": { buy: -125, sell: 102 }
+    };
+    
     // 外部APIを並列で実行 (現在の価格)
     const quoteResults = await Promise.all(
       symbols.map(async (sym) => {
@@ -52,6 +61,7 @@ export async function GET() {
             price: lastPrice,
             change: prices.length > 1 ? ((lastPrice - prices[prices.length - 2]) / prices[prices.length - 2]) * 100 : 0,
             technical: tech,
+            swap: swapData[pair] || { buy: 0, sell: 0 },
             history: prices.slice(-20) // 直近20日分を返す
           };
         } catch (e) {

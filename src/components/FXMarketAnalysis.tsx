@@ -161,27 +161,53 @@ export const FXMarketAnalysis = () => {
                       </span>
                       <div className="flex items-center gap-2">
                         <div className={cn(
-                          "px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider",
+                          "px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all shadow-sm",
+                          item.technical?.signal === "strong_buy" ? "bg-emerald-600 text-white shadow-emerald-500/40" :
                           item.technical?.signal === "buy" ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" :
+                          item.technical?.signal === "strong_sell" ? "bg-rose-600 text-white shadow-rose-500/40" :
                           item.technical?.signal === "sell" ? "bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400" :
                           "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
                         )}>
-                          {item.technical?.signal === "buy" ? "強気" :
-                           item.technical?.signal === "sell" ? "弱気" : "中立"}
+                          {item.technical?.signal === "strong_buy" ? "強い買い" :
+                           item.technical?.signal === "buy" ? "買い" :
+                           item.technical?.signal === "strong_sell" ? "強い売り" :
+                           item.technical?.signal === "sell" ? "売り" : "中立"}
                         </div>
-                        {(item.technical?.signal === "buy" || item.technical?.signal === "sell") && (
+                        {item.technical?.signal !== "neutral" && (
                           <button 
-                            className="p-1.5 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-500 hover:text-white rounded-lg text-indigo-500 transition-all"
+                            className={cn(
+                              "p-1.5 rounded-lg text-white transition-all transform active:scale-95",
+                              (item.technical?.signal === "buy" || item.technical?.signal === "strong_buy") ? "bg-emerald-500 hover:bg-emerald-600" : "bg-rose-500 hover:bg-rose-600"
+                            )}
                             title="トレード提案を作成"
                             onClick={() => {
-                              alert(`${item.pair.replace("=X", "")} の ${item.technical.signal === "buy" ? "買い" : "売り"} 提案を作成しました（デモ）`);
+                              alert(`${item.pair.replace("=X", "")} の ${item.technical.signal.includes("buy") ? "買い" : "売り"} 提案を作成しました`);
                             }}
                           >
-                            <Zap size={12} />
+                            <Zap size={12} fill="currentColor" />
                           </button>
                         )}
                       </div>
                     </div>
+                    
+                    {/* Swap Points Info */}
+                    {item.swap && (
+                      <div className="flex items-center gap-4 py-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Swap 買</span>
+                          <span className={cn("text-[11px] font-black tabular-nums", item.swap.buy >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                            {item.swap.buy > 0 ? "+" : ""}{item.swap.buy}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">Swap 売</span>
+                          <span className={cn("text-[11px] font-black tabular-nums", item.swap.sell >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                            {item.swap.sell > 0 ? "+" : ""}{item.swap.sell}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex-1 flex items-center gap-3">
                         <span className="text-[10px] font-black text-slate-400 tabular-nums w-12 shrink-0">RSI: {item.technical?.rsi?.toFixed(1)}</span>
