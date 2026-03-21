@@ -164,7 +164,7 @@ export default function Home() {
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
               {activeTab === "overview" && (
-                <div className="max-w-5xl mx-auto space-y-12 md:space-y-16 pb-20">
+                <div className="max-w-7xl mx-auto space-y-12 md:space-y-16 pb-20">
                   {/* Performance Growth Stats (NEW) */}
                   <AssetGrowthEngine />
 
@@ -259,7 +259,7 @@ export default function Home() {
               )}
 
               {activeTab === "analysis" && (
-                <div className="max-w-5xl mx-auto space-y-12 md:space-y-16 pb-20">
+                <div className="max-w-7xl mx-auto space-y-12 md:space-y-16 pb-20">
                   {/* Performance Growth Stats (NEW) */}
                   <AssetGrowthEngine />
 
@@ -361,7 +361,7 @@ export default function Home() {
               )}
 
               {activeTab === "tools" && (
-                <div className="max-w-5xl mx-auto space-y-12 md:space-y-16 pb-20">
+                <div className="max-w-7xl mx-auto space-y-12 md:space-y-16 pb-20">
                   {/* Broker Integration & Data Management */}
                   <section className="space-y-8">
                     <div className="flex items-center gap-3 px-2">
