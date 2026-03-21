@@ -388,6 +388,23 @@ export const subscribeBehavior = (uid: string, portfolioId: string = "default", 
   });
 };
 
+export const subscribeGrowthMetrics = (uid: string, portfolioId: string = "default", callback: (growth: any) => void) => {
+  return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "growth"), (doc) => {
+    if (doc.exists()) {
+      callback(doc.data());
+    } else {
+      callback(null);
+    }
+  });
+};
+
+export const saveGrowthMetrics = async (uid: string, portfolioId: string = "default", metrics: any) => {
+  return setDoc(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "growth"), {
+    ...metrics,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+};
+
 export const updateRiskSettings = async (uid: string, settings: { riskTolerance?: string, autoExecute?: boolean }) => {
   return setDoc(doc(db, "users", uid, "settings", "general"), { ...settings, updatedAt: serverTimestamp() }, { merge: true });
 };

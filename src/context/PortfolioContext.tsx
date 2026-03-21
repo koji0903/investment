@@ -12,6 +12,8 @@ import {
   subscribeBehavior, 
   subscribeStrategy, 
   subscribeBrokerConnections,
+  subscribeGrowthMetrics,
+  saveGrowthMetrics,
   updateBrokerConnection,
   saveTransaction, 
   saveAsset, 
@@ -42,6 +44,7 @@ interface PortfolioContextType {
   totalAssetsValue: number;
   totalProfitAndLoss: number;
   totalDailyChange: number;
+  growthMetrics: any | null;
   addAsset: (asset: Omit<Asset, "id">) => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, "id" | "date">) => Promise<void>;
   updateAsset: (assetId: string, update: Partial<Asset>) => Promise<void>;
@@ -64,6 +67,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   const [analysis, setAnalysis] = useState<AnalysisSummary | null>(null);
   const [behavior, setBehavior] = useState<any>(null);
   const [strategy, setStrategy] = useState<any>(null);
+  const [growthMetrics, setGrowthMetrics] = useState<any>(null);
   const [brokerConnections, setBrokerConnections] = useState<BrokerConnection[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
@@ -107,6 +111,10 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     const unsubStrategy = subscribeStrategy(user.uid, portfolioId, (data) => {
       setStrategy(data);
     });
+    
+    const unsubGrowth = subscribeGrowthMetrics(user.uid, portfolioId, (data) => {
+      setGrowthMetrics(data);
+    });
 
     const unsubBroker = subscribeBrokerConnections(user.uid, (data) => {
       setBrokerConnections(data);
@@ -118,6 +126,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       unsubAnalysis();
       unsubBehavior();
       unsubStrategy();
+      unsubGrowth();
       unsubBroker();
     };
   }, [user, portfolioId]);
@@ -329,6 +338,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         totalAssetsValue,
         totalProfitAndLoss,
         totalDailyChange,
+        growthMetrics,
         addAsset,
         addTransaction,
         updateAsset,

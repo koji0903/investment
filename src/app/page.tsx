@@ -7,6 +7,7 @@ import { GlobalInvestmentAdvisor } from "@/components/GlobalInvestmentAdvisor";
 import { DemoStory } from "@/components/DemoStory";
 import { AlertToast } from "@/components/AlertToast";
 import { AssetCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { AssetGrowthEngine } from "@/components/AssetGrowthEngine";
 import { AssetCategoryGroup } from "@/components/AssetCategoryGroup";
 import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionList } from "@/components/TransactionList";
@@ -164,6 +165,9 @@ export default function Home() {
             >
               {activeTab === "overview" && (
                 <div className="max-w-5xl mx-auto space-y-12 md:space-y-16 pb-20">
+                  {/* Performance Growth Stats (NEW) */}
+                  <AssetGrowthEngine />
+
                   {/* Top: Market Intelligence Snapshot */}
                   <MarketAnalysisDashboard />
                   
@@ -256,6 +260,9 @@ export default function Home() {
 
               {activeTab === "analysis" && (
                 <div className="max-w-5xl mx-auto space-y-12 md:space-y-16 pb-20">
+                  {/* Performance Growth Stats (NEW) */}
+                  <AssetGrowthEngine />
+
                   {/* Global Investment Advisor (Top Priority) */}
                   <section className="space-y-6">
                     <GlobalInvestmentAdvisor />
