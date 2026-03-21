@@ -37,33 +37,77 @@ const BROKER_SUGGESTIONS: Record<string, string[]> = {
   "日本株": ["楽天証券", "SBI証券", "マネックス証券", "松井証券", "auカブコム証券", "野村證券", "大和証券"],
   "外国株": ["楽天証券", "SBI証券", "マネックス証券", "サクソバンク証券", "IG証券"],
   "投資信託": ["楽天証券", "SBI証券", "マネックス証券", "三菱UFJ国際投信", "アセットマネジメントOne"],
-  "仮想通貨": ["bitFlyer", "Coincheck", "GMOコイン", "DMM Bitcoin", "Binance", "Bybit", "MetaMask"],
+  "仮想通貨": ["Coincheck", "bitFlyer", "GMOコイン", "DMM Bitcoin", "Binance", "Bybit", "MetaMask"],
   "FX": ["DMM FX", "GMOクリック証券", "SBI FXトレード", "外貨ex", "外為どっとコム", "楽天FX"],
 };
 
 const ASSET_NAME_SUGGESTIONS: Record<string, { name: string; symbol: string }[]> = {
   "FX": [
-    { name: "USD/JPY (ドル円)", symbol: "USDJPY=X" },
-    { name: "EUR/JPY (ユーロ円)", symbol: "EURJPY=X" },
-    { name: "GBP/JPY (ポンド円)", symbol: "GBPJPY=X" },
-    { name: "AUD/JPY (豪ドル円)", symbol: "AUDJPY=X" },
-    { name: "NZD/JPY (NZドル円)", symbol: "NZDJPY=X" },
-    { name: "EUR/USD (ユーロドル)", symbol: "EURUSD=X" },
-    { name: "GBP/USD (ポンドドル)", symbol: "GBPUSD=X" },
-    { name: "ZAR/JPY (南アランド円)", symbol: "ZARJPY=X" },
-    { name: "TRY/JPY (トルコリラ円)", symbol: "TRYJPY=X" },
-    { name: "MXN/JPY (メキシコペソ円)", symbol: "MXNJPY=X" },
+    { name: "USD/JPY", symbol: "USDJPY=X" },
+    { name: "EUR/JPY", symbol: "EURJPY=X" },
+    { name: "GBP/JPY", symbol: "GBPJPY=X" },
+    { name: "AUD/JPY", symbol: "AUDJPY=X" },
+    { name: "NZD/JPY", symbol: "NZDJPY=X" },
+    { name: "CAD/JPY", symbol: "CADJPY=X" },
+    { name: "CHF/JPY", symbol: "CHFJPY=X" },
+    { name: "ZAR/JPY", symbol: "ZARJPY=X" },
+    { name: "MXN/JPY", symbol: "MXNJPY=X" },
+    { name: "TRY/JPY", symbol: "TRYJPY=X" },
+    { name: "EUR/USD", symbol: "EURUSD=X" },
+    { name: "GBP/USD", symbol: "GBPUSD=X" },
+    { name: "AUD/USD", symbol: "AUDUSD=X" },
+    { name: "NZD/USD", symbol: "NZDUSD=X" },
+    { name: "EUR/GBP", symbol: "EURGBP=X" },
+    { name: "USD/CHF", symbol: "USDCHF=X" },
+    { name: "USD/CAD", symbol: "USDCAD=X" },
+    { name: "EUR/AUD", symbol: "EURAUD=X" },
+    { name: "EUR/NZD", symbol: "EURNZD=X" },
+    { name: "EUR/CHF", symbol: "EURCHF=X" },
+    { name: "GBP/AUD", symbol: "GBPAUD=X" },
+    { name: "GBP/CHF", symbol: "GBPCHF=X" },
+    { name: "AUD/NZD", symbol: "AUDNZD=X" },
   ],
   "仮想通貨": [
-    { name: "Bitcoin (BTC)", symbol: "BTC" },
-    { name: "Ethereum (ETH)", symbol: "ETH" },
-    { name: "Ripple (XRP)", symbol: "XRP" },
-    { name: "Solana (SOL)", symbol: "SOL" },
-    { name: "Cardano (ADA)", symbol: "ADA" },
-    { name: "Polygon (MATIC)", symbol: "MATIC" },
-    { name: "BNB", symbol: "BNB" },
-    { name: "Dogecoin (DOGE)", symbol: "DOGE" },
+    { name: "BTC (ビットコイン)", symbol: "BTC" },
+    { name: "ETH (イーサリアム)", symbol: "ETH" },
+    { name: "XRP (リップル)", symbol: "XRP" },
+    { name: "LTC (ライトコイン)", symbol: "LTC" },
+    { name: "BCH (ビットコインキャッシュ)", symbol: "BCH" },
+    { name: "XLM (ステラルーメン)", symbol: "XLM" },
+    { name: "ETC (イーサクラシック)", symbol: "ETC" },
+    { name: "LSK (リスク)", symbol: "LSK" },
+    { name: "XEM (ネム)", symbol: "XEM" },
+    { name: "MONA (モナコイン)", symbol: "MONA" },
+    { name: "IOST", symbol: "IOST" },
+    { name: "SAND", symbol: "SAND" },
+    { name: "DOT (ポルカドット)", symbol: "DOT" },
+    { name: "MATIC (ポリゴン)", symbol: "MATIC" },
+    { name: "LINK (チェーンリンク)", symbol: "LINK" },
+    { name: "SOL (ソラナ)", symbol: "SOL" },
+    { name: "AVAX (アバランチ)", symbol: "AVAX" },
+    { name: "DOGE (ドージコイン)", symbol: "DOGE" },
+    { name: "SHIB (シバイヌ)", symbol: "SHIB" },
+    { name: "DAI", symbol: "DAI" },
+    { name: "TRX (トロン)", symbol: "TRX" },
+    { name: "WBTC", symbol: "WBTC" },
+    { name: "CHZ (チリーズ)", symbol: "CHZ" },
+    { name: "APE", symbol: "APE" },
+    { name: "AXS", symbol: "AXS" },
+    { name: "IMX", symbol: "IMX" },
+    { name: "ENJ", symbol: "ENJ" },
+    { name: "MASK", symbol: "MASK" },
+    { name: "GRT", symbol: "GRT" },
+    { name: "PEPE", symbol: "PEPE" },
   ],
+};
+
+const CATEGORY_PLACEHOLDERS: Record<string, { name: string; symbol: string }> = {
+  "銀行": { name: "例: 楽天銀行", symbol: "" },
+  "日本株": { name: "例: トヨタ", symbol: "例: 7203.T" },
+  "外国株": { name: "例: Apple", symbol: "例: AAPL" },
+  "投資信託": { name: "例: eMAXIS Slim 全世界株式", symbol: "例: 0331418A" },
+  "仮想通貨": { name: "例: BTC", symbol: "例: BTC" },
+  "FX": { name: "例: USD/JPY", symbol: "例: USDJPY=X" },
 };
 
 export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: ManualAssetFormProps) => {
@@ -89,6 +133,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
 
   const brokerSuggestions = useMemo(() => BROKER_SUGGESTIONS[category] || [], [category]);
   const assetNameSuggestions = useMemo(() => ASSET_NAME_SUGGESTIONS[category] || [], [category]);
+  const placeholders = useMemo(() => CATEGORY_PLACEHOLDERS[category] || { name: "資産名", symbol: "コード" }, [category]);
 
   const addRow = () => {
     setRows([...rows, { id: Math.random().toString(36).substr(2, 9), name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: rows[rows.length-1]?.brokerName || "" }]);
@@ -103,9 +148,12 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
   const updateRow = (id: string, field: keyof AssetRow, value: string | number) => {
     let newRows = rows.map(r => r.id === id ? { ...r, [field]: value } : r);
     
-    // Auto-sync symbol if name matches a suggestion
-    if (field === "name") {
-      const match = assetNameSuggestions.find(s => s.name === value);
+    // Auto-sync symbol if name matches a suggestion (case insensitive)
+    if (field === "name" && typeof value === "string") {
+      const match = assetNameSuggestions.find(s => 
+        s.name.toUpperCase() === value.toUpperCase() || 
+        s.name.split(" ")[0].toUpperCase() === value.toUpperCase()
+      );
       if (match) {
         newRows = newRows.map(r => r.id === id ? { ...r, symbol: match.symbol } : r);
       }
@@ -266,7 +314,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                           list={`names-${row.id}`}
                           type="text"
                           required
-                          placeholder="例: トヨタ"
+                          placeholder={placeholders.name}
                           value={row.name}
                           onChange={(e) => updateRow(row.id, "name", e.target.value)}
                           className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
@@ -281,7 +329,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                           type="text"
                           value={row.symbol}
                           onChange={(e) => updateRow(row.id, "symbol", e.target.value.toUpperCase())}
-                          placeholder="例: 7203.T"
+                          placeholder={placeholders.symbol}
                           className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
                         />
                       </div>
@@ -353,7 +401,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
               <div className="space-y-1">
                 <h4 className="text-sm font-black text-slate-800 dark:text-white">評価単価の自動連動について</h4>
                 <p className="text-xs font-bold text-slate-500 leading-relaxed">
-                  FXや仮想通貨では、提示された名前（例: USD/JPY）を選択すると、自動で正確なデータコードが設定されます。
+                  FXや仮想通貨では、各取引所で扱われている通貨ペア（例: USD/JPY）を選択すると、自動で正確なデータコードが設定されます。
                   その他の資産も、正しいコード（例: 7203.T）を入力することで最新の評価額と連動します。
                 </p>
               </div>
