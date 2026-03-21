@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export const MarketAnalysisDashboard = () => {
   // デモ用の入力データ (本来はコンテキストやAPIから)
@@ -148,9 +149,9 @@ export const MarketAnalysisDashboard = () => {
           </div>
 
           <div className="flex items-center gap-4 pt-4 border-t border-slate-100 dark:border-slate-800">
-            <button className="text-[10px] font-black text-indigo-500 uppercase flex items-center gap-1 hover:gap-2 transition-all">
-              詳細なレポートを表示 <ArrowRight size={12} />
-            </button>
+            <Link href="/market-analysis" className="text-[10px] font-black text-indigo-500 uppercase flex items-center gap-1 hover:gap-2 transition-all">
+              業界地図・詳細レポートを表示 <ArrowRight size={12} />
+            </Link>
             <div className="flex -space-x-2 ml-auto">
               {[1, 2, 3].map(i => (
                 <div key={i} className="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-800 border-2 border-white dark:border-slate-900 flex items-center justify-center text-[8px] font-black text-slate-400">

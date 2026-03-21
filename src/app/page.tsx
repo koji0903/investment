@@ -51,6 +51,7 @@ import { PositionSizing } from "@/components/PositionSizing";
 import { WinPatternAnalysis } from "@/components/WinPatternAnalysis";
 import { InvestmentRuleMonitor } from "@/components/InvestmentRuleMonitor";
 import { FXMarketAnalysis } from "@/components/FXMarketAnalysis";
+import { IndustryInsightLinkCard } from "@/components/IndustryInsightLinkCard";
 import { Footer } from "@/components/Footer";
 import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
@@ -178,6 +179,9 @@ export default function Home() {
                   
                   {/* Portfolio Scoring (NEW) */}
                   <PortfolioScoreCard />
+
+                  {/* Industry Insight Link (NEW) */}
+                  <IndustryInsightLinkCard />
 
                   {/* Top: Market Intelligence Snapshot */}
                   <MarketAnalysisDashboard />
