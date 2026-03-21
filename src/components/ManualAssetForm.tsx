@@ -1,252 +1,354 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useMemo } from "react";
+import { X, Plus, Trash2, Save, Loader2, Coins, Landmark, Globe, Building2, LineChart, Banknote, ShieldCheck } from "lucide-react";
 import { usePortfolio } from "@/context/PortfolioContext";
-import { useAuth } from "@/context/AuthContext";
-import { useNotify } from "@/context/NotificationContext";
 import { Asset, AssetCategory } from "@/types";
-import { Save, X, Trash2, Loader2, Landmark, Globe, Coins, LineChart, Banknote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ManualAssetFormProps {
-  asset?: Asset; // 編集モードの場合
   onClose: () => void;
+  initialCategory?: AssetCategory;
+  asset?: Asset;
 }
 
-const CATEGORIES: { label: string; value: AssetCategory; icon: React.ElementType }[] = [
-  { label: "銀行・預金", value: "銀行", icon: Landmark },
-  { label: "日本株", value: "日本株", icon: Banknote },
-  { label: "外国株", value: "外国株", icon: Globe },
-  { label: "投資信託", value: "投資信託", icon: LineChart },
-  { label: "仮想通貨", value: "仮想通貨", icon: Coins },
-  { label: "FX", value: "FX", icon: LineChart },
+interface AssetRow {
+  id: string;
+  name: string;
+  symbol: string;
+  quantity: number;
+  currentPrice: number;
+  averageCost: number;
+  brokerName: string;
+}
+
+const CATEGORIES: { id: AssetCategory; label: string; icon: React.ElementType }[] = [
+  { id: "銀行", label: "銀行・預金", icon: Landmark },
+  { id: "日本株", label: "日本株", icon: Building2 },
+  { id: "外国株", label: "外国株", icon: Globe },
+  { id: "投資信託", label: "投資信託", icon: Banknote },
+  { id: "仮想通貨", label: "仮想通貨", icon: Coins },
+  { id: "FX", label: "FX", icon: LineChart },
 ];
 
-export const ManualAssetForm = ({ asset, onClose }: ManualAssetFormProps) => {
+const BROKER_SUGGESTIONS: Record<string, string[]> = {
+  "銀行": ["三菱UFJ銀行", "三井住友銀行", "みずほ銀行", "ゆうちょ銀行", "楽天銀行", "住信SBIネット銀行", "PayPay銀行"],
+  "日本株": ["楽天証券", "SBI証券", "マネックス証券", "松井証券", "auカブコム証券", "野村證券", "大和証券"],
+  "外国株": ["楽天証券", "SBI証券", "マネックス証券", "サクソバンク証券", "IG証券"],
+  "投資信託": ["楽天証券", "SBI証券", "マネックス証券", "三菱UFJ国際投信", "アセットマネジメントOne"],
+  "仮想通貨": ["bitFlyer", "Coincheck", "GMOコイン", "DMM Bitcoin", "Binance", "Bybit", "MetaMask"],
+  "FX": ["DMM FX", "GMOクリック証券", "SBI FXトレード", "外貨ex", "外為どっとコム", "楽天FX"],
+};
+
+export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: ManualAssetFormProps) => {
   const { addAsset, updateAsset, deleteAsset } = usePortfolio();
-  const { isDemo } = useAuth();
-  const { notify } = useNotify();
+  
+  const [category, setCategory] = useState<AssetCategory>(asset?.category || initialCategory);
+  const [rows, setRows] = useState<AssetRow[]>(
+    asset 
+      ? [{ 
+          id: asset.id, 
+          name: asset.name, 
+          symbol: asset.symbol || "", 
+          quantity: asset.quantity, 
+          currentPrice: asset.currentPrice, 
+          averageCost: asset.averageCost,
+          brokerName: asset.brokerName || ""
+        }]
+      : [{ id: "1", name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: "" }]
+  );
+  
+  const [loading, setLoading] = useState(false);
+  const isEdit = !!asset;
 
-  const [name, setName] = useState(asset?.name || "");
-  const [category, setCategory] = useState<AssetCategory>(asset?.category || "銀行");
-  const [symbol, setSymbol] = useState(asset?.symbol || "");
-  const [quantity, setQuantity] = useState<number>(asset?.quantity || 1);
-  const [currentPrice, setCurrentPrice] = useState<number>(asset?.currentPrice || 0);
-  const [averageCost, setAverageCost] = useState<number>(asset?.averageCost || 0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const suggestions = useMemo(() => BROKER_SUGGESTIONS[category] || [], [category]);
 
-  // 編集モードの場合の初期化
-  useEffect(() => {
-    if (asset) {
-      setName(asset.name);
-      setCategory(asset.category);
-      setSymbol(asset.symbol);
-      setQuantity(asset.quantity);
-      setCurrentPrice(asset.currentPrice);
-      setAverageCost(asset.averageCost);
+  const addRow = () => {
+    setRows([...rows, { id: Math.random().toString(36).substr(2, 9), name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: rows[rows.length-1]?.brokerName || "" }]);
+  };
+
+  const removeRow = (id: string) => {
+    if (rows.length > 1) {
+      setRows(rows.filter(r => r.id !== id));
     }
-  }, [asset]);
+  };
+
+  const updateRow = (id: string, field: keyof AssetRow, value: string | number) => {
+    setRows(rows.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || quantity <= 0 || currentPrice < 0) {
-      notify({ type: "error", title: "入力エラー", message: "必須項目を正しく入力してください。" });
-      return;
-    }
+    setLoading(true);
 
-    setIsSubmitting(true);
     try {
-      const assetData: Omit<Asset, "id"> = {
-        name,
-        category,
-        symbol: symbol || `${category}_${Date.now()}`, // シンボルがない場合は内部IDとして生成
-        quantity,
-        currentPrice,
-        averageCost: averageCost || currentPrice,
-        isManual: true,
-      };
-
-      if (asset) {
-        await updateAsset(asset.id, assetData);
-        notify({ type: "success", title: "更新完了", message: "資産を更新しました。" });
+      if (isEdit) {
+        const row = rows[0];
+        await updateAsset(asset!.id, {
+          name: row.name,
+          category,
+          symbol: row.symbol,
+          quantity: Number(row.quantity),
+          currentPrice: Number(row.currentPrice),
+          averageCost: Number(row.averageCost),
+          brokerName: row.brokerName,
+        });
       } else {
-        await addAsset(assetData);
-        notify({ type: "success", title: "登録完了", message: "新しい資産を登録しました。" });
+        for (const row of rows) {
+          if (!row.name) continue;
+          await addAsset({
+            name: row.name,
+            category,
+            symbol: row.symbol || "",
+            quantity: Number(row.quantity),
+            currentPrice: Number(row.currentPrice),
+            averageCost: Number(row.averageCost),
+            brokerName: row.brokerName,
+            isManual: true,
+          });
+        }
       }
       onClose();
     } catch (error) {
-      console.error(error);
-      notify({ type: "error", title: "エラー", message: "データの保存に失敗しました。" });
+      console.error("Failed to save assets", error);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!asset) return;
-    if (!confirm("この資産を削除してもよろしいですか？")) return;
-
-    setIsSubmitting(true);
+    if (!asset || !window.confirm("この資産を削除してもよろしいですか？")) return;
+    setLoading(true);
     try {
       await deleteAsset(asset.id);
-      notify({ type: "success", title: "削除完了", message: "資産を削除しました。" });
       onClose();
     } catch (error) {
-      notify({ type: "error", title: "エラー", message: "削除に失敗しました。" });
+      console.error("Delete failed", error);
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm"
-    >
-      <motion.div
-        initial={{ scale: 0.9, y: 20 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={{ scale: 0.9, y: 20 }}
-        className="bg-white dark:bg-slate-900 w-full max-w-xl rounded-[32px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800"
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+      />
+      
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800"
       >
-        <div className="p-6 md:p-8 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
-              <div className="w-10 h-10 bg-indigo-500 rounded-2xl flex items-center justify-center text-white">
-                {asset ? <Save size={20} /> : <Landmark size={20} />}
-              </div>
-              {asset ? "資産を編集" : "手動で資産を追加"}
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-            >
-              <X className="w-6 h-6 text-slate-400" />
-            </button>
+        <div className="flex items-center justify-between p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-indigo-500 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
+              <Plus size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-slate-800 dark:text-white">
+                {isEdit ? "資産を編集" : "証券会社・金融機関別の一括追加"}
+              </h2>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Broker-Linked Asset Entry</p>
+            </div>
           </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors text-slate-400">
+            <X size={24} />
+          </button>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* 名前 */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">資産名</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="楽天銀行, トヨタ自動車等"
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900 dark:text-white"
-                  required
-                />
-              </div>
-
-              {/* カテゴリ */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">カテゴリ</label>
-                <div className="relative">
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as AssetCategory)}
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900 dark:text-white appearance-none"
-                  >
-                    {CATEGORIES.map((cat) => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <LineChart size={16} />
-                  </div>
+        <form onSubmit={handleSubmit} className="flex flex-col max-h-[85vh]">
+          <div className="p-8 space-y-8 overflow-y-auto">
+            {!isEdit && (
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">カテゴリを選択</label>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {CATEGORIES.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setCategory(cat.id)}
+                      className={cn(
+                        "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-300",
+                        category === cat.id
+                          ? "bg-indigo-500 border-indigo-500 text-white shadow-lg shadow-indigo-500/20 scale-105"
+                          : "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 text-slate-500 hover:border-indigo-300 dark:hover:border-indigo-900"
+                      )}
+                    >
+                      <cat.icon size={20} />
+                      <span className="text-[10px] font-black">{cat.label}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
+            )}
 
-              {/* Symbol */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">シンボル (任意)</label>
-                <input
-                  type="text"
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value)}
-                  placeholder="7203.T, BTC等"
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900 dark:text-white"
-                />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                  資産の内訳（{CATEGORIES.find(c => c.id === category)?.label}）
+                </label>
+                <div className="flex items-center gap-2 text-indigo-500">
+                  <ShieldCheck size={14} />
+                  <span className="text-[10px] font-black uppercase tracking-tighter">価格自動連動対応済み</span>
+                </div>
               </div>
-
-              {/* 数量 */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">数量</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900 dark:text-white"
-                  required
-                />
-              </div>
-
-              {/* 現在の評価単価 */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">現在の評価単価 / 残高</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={currentPrice}
-                  onChange={(e) => setCurrentPrice(Number(e.target.value))}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900 dark:text-white"
-                  required
-                />
-              </div>
-
-              {/* 平均取得単価 */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">平均取得単価 (任意)</label>
-                <input
-                  type="number"
-                  step="any"
-                  value={averageCost}
-                  onChange={(e) => setAverageCost(Number(e.target.value))}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-800 border-none rounded-2xl focus:ring-2 focus:ring-indigo-500 transition-all font-bold text-slate-900 dark:text-white"
-                />
+              
+              <div className="space-y-3">
+                <AnimatePresence initial={false}>
+                  {rows.map((row) => (
+                    <motion.div 
+                      key={row.id}
+                      initial={{ opacity: 0, scale: 0.98 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-5 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 group relative"
+                    >
+                      <div className="md:col-span-2 space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 ml-1">利用機関</label>
+                        <input
+                          list={`brokers-${row.id}`}
+                          type="text"
+                          placeholder="例: 楽天証券"
+                          value={row.brokerName}
+                          onChange={(e) => updateRow(row.id, "brokerName", e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                        />
+                        <datalist id={`brokers-${row.id}`}>
+                          {suggestions.map(s => <option key={s} value={s} />)}
+                        </datalist>
+                      </div>
+                      <div className="md:col-span-2 space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 ml-1">資産・銘柄名</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="例: トヨタ"
+                          value={row.name}
+                          onChange={(e) => updateRow(row.id, "name", e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 ml-1">コード (連動用)</label>
+                        <input
+                          type="text"
+                          value={row.symbol}
+                          onChange={(e) => updateRow(row.id, "symbol", e.target.value.toUpperCase())}
+                          placeholder="例: 7203.T"
+                          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="md:col-span-1 space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 ml-1">保有数</label>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          value={row.quantity}
+                          onChange={(e) => updateRow(row.id, "quantity", e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 ml-1">評価単価</label>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          value={row.currentPrice}
+                          onChange={(e) => updateRow(row.id, "currentPrice", e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="md:col-span-2 space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 ml-1">取得単価</label>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          value={row.averageCost}
+                          onChange={(e) => updateRow(row.id, "averageCost", e.target.value)}
+                          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="md:col-span-1 flex justify-end pb-1">
+                        {!isEdit && rows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeRow(row.id)}
+                            className="p-2.5 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+                
+                {!isEdit && (
+                  <button
+                    type="button"
+                    onClick={addRow}
+                    className="w-full py-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl text-slate-400 hover:text-indigo-500 hover:border-indigo-500 hover:bg-indigo-500/5 transition-all flex items-center justify-center gap-2 font-black text-sm"
+                  >
+                    <Plus size={20} />
+                    さらに資産を追加する
+                  </button>
+                )}
               </div>
             </div>
+            
+            <div className="p-6 bg-indigo-50 dark:bg-indigo-500/5 rounded-[32px] border border-indigo-100 dark:border-indigo-500/10 flex gap-4">
+              <div className="p-3 bg-indigo-500 rounded-2xl text-white h-fit shadow-lg shadow-indigo-500/20">
+                <Globe size={20} />
+              </div>
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-slate-800 dark:text-white">評価単価の自動連動について</h4>
+                <p className="text-xs font-bold text-slate-500 leading-relaxed">
+                  「コード」欄に正しい銘柄コードや通貨ペア（例: 7203.T, USDJPY=X, BTC）を入力すると、市場の最新価格と自動で連動します。
+                  証券会社（楽天証券、DMM FX等）で保有している資産も、コードを入力することで常に最新の評価額を確認できます。
+                </p>
+              </div>
+            </div>
+          </div>
 
-            <div className="flex items-center gap-3 pt-4">
-              {asset && (
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={isSubmitting || isDemo}
-                  className="p-4 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-2xl hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-all"
-                >
-                  <Trash2 size={24} />
-                </button>
-              )}
+          <div className="p-8 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center gap-4 bg-slate-50/50 dark:bg-slate-800/50">
+            {isEdit && (
               <button
-                type="submit"
-                disabled={isSubmitting || isDemo}
-                className={cn(
-                  "flex-1 p-4 rounded-2xl text-white font-black shadow-xl shadow-indigo-500/20 transition-all active:scale-95 flex items-center justify-center gap-2",
-                  isDemo ? "bg-slate-300 dark:bg-slate-800 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-500"
-                )}
+                type="button"
+                onClick={handleDelete}
+                className="w-full md:w-auto px-8 py-4 text-rose-500 font-bold hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-2xl transition-all"
               >
-                {isSubmitting ? (
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                ) : (
-                  <>
-                    <Save size={20} />
-                    {asset ? "変更を保存" : "資産を登録"}
-                  </>
-                )}
+                削除する
               </button>
-            </div>
-          </form>
-        </div>
+            )}
+            <div className="flex-1 md:flex" />
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full md:w-auto px-8 py-4 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all"
+            >
+              キャンセル
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full md:w-auto px-10 py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white font-black rounded-2xl shadow-xl shadow-indigo-600/30 transition-all active:scale-95 flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={20} />}
+              {isEdit ? "更新する" : "資産を一括登録する"}
+            </button>
+          </div>
+        </form>
       </motion.div>
-    </motion.div>
+    </div>
   );
 };

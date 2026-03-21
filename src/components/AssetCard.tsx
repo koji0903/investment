@@ -10,14 +10,18 @@ import {
   CircleDollarSign,
   Flame,
   Snowflake,
-  Minus
+  Minus,
+  Globe,
+  Edit3,
+  Trash2,
+  ExternalLink,
+  RefreshCw,
 } from "lucide-react";
 import { getAssetSentiment, SentimentResult } from "@/lib/sentimentUtils";
 import { NewsItem } from "@/app/api/news/route";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { ManualAssetForm } from "./ManualAssetForm";
-import { Globe, Banknote, Edit3 } from "lucide-react";
 
 interface AssetCardProps {
   asset: AssetCalculated;
@@ -62,10 +66,10 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
     };
     fetchSentiment();
   }, [asset.name]);
-  
+
   return (
     <div className="relative isolate">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         whileInView={{ opacity: 1, scale: 1 }}
         viewport={{ once: true }}
@@ -104,7 +108,7 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
                 {asset.category}
               </span>
               {sentiment && (
-                <div 
+                <div
                   className={cn(
                     "flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider",
                     sentiment.type === "bullish" ? "bg-rose-50 border-rose-100 text-rose-600 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400" :
@@ -120,9 +124,32 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
                 </div>
               )}
             </div>
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white leading-tight">
-              {asset.name}
-            </h3>
+            <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-xl font-black text-slate-800 dark:text-white leading-tight">
+                {asset.name}
+              </h3>
+              {asset.symbol && (
+                <div className="p-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-md group-hover:rotate-180 transition-transform duration-500">
+                  <RefreshCw size={12} className="animate-spin-slow" />
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                {asset.symbol || "MANUAL"}
+              </p>
+              {asset.brokerName && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-slate-200 dark:bg-slate-700" />
+                  <div className="flex items-center gap-1">
+                    <Building2 size={10} className="text-slate-400" />
+                    <span className="text-[10px] font-bold text-slate-500">{asset.brokerName}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
           </div>
         </div>
 

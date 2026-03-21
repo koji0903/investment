@@ -20,6 +20,7 @@ export interface Asset {
   quantity: number;
   averageCost: number;
   isManual?: boolean;
+  brokerName?: string; // 証券会社・金融機関名
 }
 
 export interface AssetCalculated extends Asset {

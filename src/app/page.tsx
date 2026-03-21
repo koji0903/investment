@@ -5,8 +5,8 @@ import { usePortfolio } from "@/context/PortfolioContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import { DemoStory } from "@/components/DemoStory";
 import { AlertToast } from "@/components/AlertToast";
-import { AssetCard } from "@/components/AssetCard";
 import { AssetCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
+import { AssetCategoryGroup } from "@/components/AssetCategoryGroup";
 import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionList } from "@/components/TransactionList";
 import { AssetTrendChart } from "@/components/AssetTrendChart";
@@ -223,8 +223,19 @@ export default function Home() {
                           </button>
                         </div>
                       ) : (
-                        calculatedAssets.map(asset => (
-                          <AssetCard key={asset.id} asset={asset} />
+                        Object.entries(
+                          calculatedAssets.reduce((acc, asset) => {
+                            if (!acc[asset.category]) acc[asset.category] = [];
+                            acc[asset.category].push(asset);
+                            return acc;
+                          }, {} as Record<string, typeof calculatedAssets>)
+                        ).map(([category, items]) => (
+                          <div key={category} className="col-span-full mb-8">
+                            <AssetCategoryGroup 
+                              category={category} 
+                              assets={items} 
+                            />
+                          </div>
                         ))
                       )}
                     </div>
