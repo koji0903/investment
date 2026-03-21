@@ -9,12 +9,13 @@ interface IndustryRelationshipMapProps {
 }
 
 export const IndustryRelationshipMap: React.FC<IndustryRelationshipMapProps> = ({ analysis }) => {
-  // 簡易的なノード配置ロジック (円周上に配置)
+  // 動的なノード配置ロジック (企業数に応じて半径とサイズを調整)
   const nodes = useMemo(() => {
     const count = analysis.companies.length;
     return analysis.companies.map((c, i) => {
       const angle = (i / count) * 2 * Math.PI;
-      const radius = 120;
+      // 企業数が多い場合は半径を広げる
+      const radius = count > 6 ? 140 : 120;
       return {
         ...c,
         x: 200 + radius * Math.cos(angle),

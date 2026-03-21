@@ -43,10 +43,11 @@ export const IndustryTrendBadge: React.FC<IndustryTrendBadgeProps> = ({ trend, s
 
   return (
     <div className={cn(
-      "flex items-center gap-2 px-3 py-1.5 rounded-full border font-black text-xs transition-all",
+      "flex items-center justify-center shrink-0 border font-black transition-all",
+      showText ? "px-3 py-1.5 rounded-full text-xs gap-2" : "w-7 h-7 rounded-xl",
       config.className
     )}>
-      <Icon size={14} className={config.animation} />
+      <Icon size={showText ? 14 : 16} className={config.animation} />
       {showText && <span>{config.label}</span>}
     </div>
   );
