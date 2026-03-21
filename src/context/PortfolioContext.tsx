@@ -286,7 +286,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       const latestPrice = asset.isManual && !asset.symbol 
         ? asset.currentPrice 
         : (prices[asset.symbol] || asset.currentPrice);
-      return calculateAssetValues({ ...asset, currentPrice: latestPrice }, usdJpyRate);
+      return calculateAssetValues({ ...asset, currentPrice: latestPrice }, prices);
     });
   }, [assets, prices]);
 

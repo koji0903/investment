@@ -188,8 +188,15 @@ export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
             <span className="text-slate-400 dark:text-slate-500 font-bold">現在価格</span>
             <div className="flex items-center gap-1.5">
               <span className="font-black text-slate-700 dark:text-slate-300">
-                {formatCurrency(asset.currentPrice, asset.currency)}
+                {asset.category === "FX" 
+                  ? asset.currentPrice.toFixed(4) 
+                  : formatCurrency(asset.currentPrice, asset.currency)}
               </span>
+              {asset.category === "FX" && (
+                <span className="text-[10px] font-bold text-slate-400">
+                  {asset.symbol.substring(3, 6)} {/* 対価通貨を表示 */}
+                </span>
+              )}
               {asset.exchangeRate && (
                 <span className="text-[9px] font-black text-indigo-500 bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-500/20">
                   1 USD = {asset.exchangeRate.toFixed(1)} JPY
@@ -198,8 +205,12 @@ export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
             </div>
           </div>
           <div className="flex flex-col items-end gap-0.5">
-            <span className="text-slate-400 dark:text-slate-500 font-bold">保有数量</span>
-            <span className="font-black text-slate-700 dark:text-slate-300">{asset.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span>
+            <span className="text-slate-400 dark:text-slate-500 font-bold">
+              {asset.category === "FX" ? "保有数量 (Lot)" : "保有数量"}
+            </span>
+            <span className="font-black text-slate-700 dark:text-slate-300">
+              {asset.quantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+            </span>
           </div>
         </div>
       </div>
