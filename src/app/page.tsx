@@ -8,6 +8,7 @@ import { DemoStory } from "@/components/DemoStory";
 import { AlertToast } from "@/components/AlertToast";
 import { AssetCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
 import { AssetGrowthEngine } from "@/components/AssetGrowthEngine";
+import { PortfolioScoreCard } from "@/components/PortfolioScoreCard";
 import { AssetCategoryGroup } from "@/components/AssetCategoryGroup";
 import { TransactionForm } from "@/components/TransactionForm";
 import { TransactionList } from "@/components/TransactionList";
@@ -167,6 +168,9 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto space-y-12 md:space-y-16 pb-20">
                   {/* Performance Growth Stats (NEW) */}
                   <AssetGrowthEngine />
+                  
+                  {/* Portfolio Scoring (NEW) */}
+                  <PortfolioScoreCard />
 
                   {/* Top: Market Intelligence Snapshot */}
                   <MarketAnalysisDashboard />
@@ -262,6 +266,9 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto space-y-12 md:space-y-16 pb-20">
                   {/* Performance Growth Stats (NEW) */}
                   <AssetGrowthEngine />
+                  
+                  {/* Portfolio Scoring (NEW) */}
+                  <PortfolioScoreCard />
 
                   {/* Global Investment Advisor (Top Priority) */}
                   <section className="space-y-6">

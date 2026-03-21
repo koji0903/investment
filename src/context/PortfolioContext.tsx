@@ -13,7 +13,9 @@ import {
   subscribeStrategy, 
   subscribeBrokerConnections,
   subscribeGrowthMetrics,
+  subscribePortfolioMetrics,
   saveGrowthMetrics,
+  savePortfolioMetrics,
   updateBrokerConnection,
   saveTransaction, 
   saveAsset, 
@@ -45,6 +47,7 @@ interface PortfolioContextType {
   totalProfitAndLoss: number;
   totalDailyChange: number;
   growthMetrics: any | null;
+  portfolioMetrics: any | null;
   addAsset: (asset: Omit<Asset, "id">) => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, "id" | "date">) => Promise<void>;
   updateAsset: (assetId: string, update: Partial<Asset>) => Promise<void>;
@@ -68,6 +71,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   const [behavior, setBehavior] = useState<any>(null);
   const [strategy, setStrategy] = useState<any>(null);
   const [growthMetrics, setGrowthMetrics] = useState<any>(null);
+  const [portfolioMetrics, setPortfolioMetrics] = useState<any>(null);
   const [brokerConnections, setBrokerConnections] = useState<BrokerConnection[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
@@ -116,6 +120,10 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       setGrowthMetrics(data);
     });
 
+    const unsubMetrics = subscribePortfolioMetrics(user.uid, portfolioId, (data) => {
+      setPortfolioMetrics(data);
+    });
+
     const unsubBroker = subscribeBrokerConnections(user.uid, (data) => {
       setBrokerConnections(data);
     });
@@ -127,6 +135,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       unsubBehavior();
       unsubStrategy();
       unsubGrowth();
+      unsubMetrics();
       unsubBroker();
     };
   }, [user, portfolioId]);
@@ -271,12 +280,13 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   };
 
   const calculatedAssets = useMemo(() => {
+    const usdJpyRate = prices["USDJPY=X"] || 151.2; // 最新レート、なければデフォルト
     return assets.map(asset => {
       // 手動入力かつ市場価格シンボルがない場合は、保存されている currentPrice を優先
       const latestPrice = asset.isManual && !asset.symbol 
         ? asset.currentPrice 
         : (prices[asset.symbol] || asset.currentPrice);
-      return calculateAssetValues({ ...asset, currentPrice: latestPrice });
+      return calculateAssetValues({ ...asset, currentPrice: latestPrice }, usdJpyRate);
     });
   }, [assets, prices]);
 
@@ -339,6 +349,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         totalProfitAndLoss,
         totalDailyChange,
         growthMetrics,
+        portfolioMetrics,
         addAsset,
         addTransaction,
         updateAsset,

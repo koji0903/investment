@@ -1,4 +1,4 @@
-export type AssetCategory = "株" | "FX" | "仮想通貨" | "投資信託" | "銀行" | "外国株" | "日本株";
+export type AssetCategory = "株" | "FX" | "仮想通貨" | "投資信託" | "銀行" | "外国株" | "日本株" | "現金";
 
 export type TransactionType = "buy" | "sell";
 
@@ -19,6 +19,7 @@ export interface Asset {
   currentPrice: number;
   quantity: number;
   averageCost: number;
+  currency?: "JPY" | "USD"; // 追加
   isManual?: boolean;
   brokerName?: string; // 証券会社・金融機関名
 }

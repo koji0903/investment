@@ -1,21 +1,27 @@
 import { Asset, AssetCalculated } from "@/types";
 
 export const dummyAssets: Asset[] = [
-  { id: "1", symbol: "AAPL", name: "Apple Inc.", category: "株", currentPrice: 28500, quantity: 50, averageCost: 25000 },
-  { id: "2", symbol: "7203.T", name: "トヨタ自動車", category: "株", currentPrice: 3850, quantity: 400, averageCost: 3200 },
-  { id: "3", symbol: "USDJPY=X", name: "USD/JPY", category: "FX", currentPrice: 151.20, quantity: 10000, averageCost: 145.50 },
-  { id: "4", symbol: "BTC-USD", name: "Bitcoin", category: "仮想通貨", currentPrice: 10500000, quantity: 0.15, averageCost: 8000000 },
-  { id: "5", symbol: "EMAXIS-SLIM", name: "eMAXIS Slim 全世界株式", category: "投資信託", currentPrice: 25000, quantity: 150, averageCost: 20000 },
+  { id: "1", symbol: "AAPL", name: "Apple Inc.", category: "外国株", currentPrice: 190.5, quantity: 50, averageCost: 175.2, currency: "USD" },
+  { id: "2", symbol: "7203.T", name: "トヨタ自動車", category: "日本株", currentPrice: 3850, quantity: 400, averageCost: 3200, currency: "JPY" },
+  { id: "3", symbol: "USDJPY=X", name: "USD/JPY", category: "FX", currentPrice: 151.20, quantity: 10000, averageCost: 145.50, currency: "JPY" },
+  { id: "4", symbol: "BTC-USD", name: "Bitcoin", category: "仮想通貨", currentPrice: 65000, quantity: 0.15, averageCost: 55000, currency: "USD" },
+  { id: "5", symbol: "EMAXIS-SLIM", name: "eMAXIS Slim 全世界株式", category: "投資信託", currentPrice: 25000, quantity: 150, averageCost: 20000, currency: "JPY" },
 ];
 
-export const calculateAssetValues = (asset: Asset): AssetCalculated => {
-  const evaluatedValue = asset.currentPrice * asset.quantity;
-  const totalCost = asset.averageCost * asset.quantity;
+export const calculateAssetValues = (asset: Asset, usdJpyRate: number = 150): AssetCalculated => {
+  // 通貨がUSDの場合は円換算する
+  const rate = asset.currency === "USD" ? usdJpyRate : 1;
+  
+  const currentPriceYen = asset.currentPrice * rate;
+  const averageCostYen = asset.averageCost * rate;
+
+  const evaluatedValue = currentPriceYen * asset.quantity;
+  const totalCost = averageCostYen * asset.quantity;
   const profitAndLoss = evaluatedValue - totalCost;
   const profitPercentage = totalCost > 0 ? (profitAndLoss / totalCost) * 100 : 0;
 
   // デモ用に前日比をシミュレーション (1%〜3%の変動)
-  const seed = asset.id.charCodeAt(0);
+  const seed = (asset.id || asset.symbol).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
   const dailyChangePercentage = ((seed % 50) / 10) - 2.5; // -2.5% 〜 +2.5%
   const dailyChange = evaluatedValue * (dailyChangePercentage / 100);
 
@@ -29,8 +35,8 @@ export const calculateAssetValues = (asset: Asset): AssetCalculated => {
   };
 };
 
-export const getCalculatedAssets = (): AssetCalculated[] => {
-  return dummyAssets.map(calculateAssetValues);
+export const getCalculatedAssets = (usdJpyRate: number = 150): AssetCalculated[] => {
+  return dummyAssets.map(asset => calculateAssetValues(asset, usdJpyRate));
 };
 
 export const getTotalAssetsValue = (assets: AssetCalculated[]): number => {

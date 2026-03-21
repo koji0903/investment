@@ -405,6 +405,24 @@ export const saveGrowthMetrics = async (uid: string, portfolioId: string = "defa
   }, { merge: true });
 };
 
+export const subscribePortfolioMetrics = (uid: string, portfolioId: string = "default", callback: (metrics: any) => void) => {
+  const q = query(collection(db, "users", uid, "portfolios", portfolioId, "portfolio_metrics"), orderBy("updatedAt", "desc"));
+  return onSnapshot(q, (snapshot) => {
+    if (!snapshot.empty) {
+      callback(snapshot.docs[0].data());
+    } else {
+      callback(null);
+    }
+  });
+};
+
+export const savePortfolioMetrics = async (uid: string, portfolioId: string = "default", metrics: any) => {
+  return addDoc(collection(db, "users", uid, "portfolios", portfolioId, "portfolio_metrics"), {
+    ...metrics,
+    updatedAt: serverTimestamp()
+  });
+};
+
 export const updateRiskSettings = async (uid: string, settings: { riskTolerance?: string, autoExecute?: boolean }) => {
   return setDoc(doc(db, "users", uid, "settings", "general"), { ...settings, updatedAt: serverTimestamp() }, { merge: true });
 };
