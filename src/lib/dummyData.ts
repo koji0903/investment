@@ -15,15 +15,20 @@ export const calculateAssetValues = (asset: Asset, usdJpyRate: number = 150): As
   const currentPriceYen = asset.currentPrice * rate;
   const averageCostYen = asset.averageCost * rate;
 
-  const evaluatedValue = currentPriceYen * asset.quantity;
+  let evaluatedValue = currentPriceYen * asset.quantity;
   const totalCost = averageCostYen * asset.quantity;
   const profitAndLoss = evaluatedValue - totalCost;
-  const profitPercentage = totalCost > 0 ? (profitAndLoss / totalCost) * 100 : 0;
+  const profitPercentage = totalCost !== 0 ? (profitAndLoss / Math.abs(totalCost)) * 100 : 0;
+
+  // FXの場合は損益自体を評価額とする（証拠金は別管理を想定）
+  if (asset.category === "FX") {
+    evaluatedValue = profitAndLoss;
+  }
 
   // デモ用に前日比をシミュレーション (1%〜3%の変動)
   const seed = (asset.id || asset.symbol).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
   const dailyChangePercentage = ((seed % 50) / 10) - 2.5; // -2.5% 〜 +2.5%
-  const dailyChange = evaluatedValue * (dailyChangePercentage / 100);
+  const dailyChange = Math.abs(evaluatedValue) * (dailyChangePercentage / 100);
 
   return {
     ...asset,

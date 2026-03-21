@@ -209,7 +209,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           currentPrice,
           averageCost,
           brokerName: row.brokerName,
-          currency: category === "外国株" ? "USD" : "JPY",
+          currency: (category === "外国株" || (category === "FX" && (row.symbol.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
         });
       } else {
         for (const row of rows) {
@@ -227,7 +227,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
             averageCost,
             brokerName: row.brokerName,
             isManual: true,
-            currency: category === "外国株" ? "USD" : "JPY",
+            currency: (category === "外国株" || (category === "FX" && (row.symbol.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
           });
         }
       }
