@@ -347,10 +347,8 @@ export default function Home() {
                     </div>
                     <div className="space-y-8">
                       <BacktestSimulator />
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <ScenarioComparison />
-                        <ScenarioStrategyOptimization />
-                      </div>
+                      <ScenarioComparison />
+                      <ScenarioStrategyOptimization />
                       <QuantumOptimizationCard />
                     </div>
                   </section>
@@ -363,15 +361,11 @@ export default function Home() {
                     </div>
                     <div className="space-y-8">
                       <FXMarketAnalysis />
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <TradingAutomation />
-                        <SemiAutoTrading />
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <PortfolioRebalance />
-                        <StrategyActionPoints />
-                        <ActionTriggerPanel />
-                      </div>
+                      <TradingAutomation />
+                      <SemiAutoTrading />
+                      <PortfolioRebalance />
+                      <StrategyActionPoints />
+                      <ActionTriggerPanel />
                     </div>
                   </section>
 
@@ -381,28 +375,18 @@ export default function Home() {
                        <span className="w-1.5 h-6 bg-slate-400 rounded-full"></span>
                        <h2 className="text-xl font-black text-slate-800 dark:text-white">インサイト & 運用レポート</h2>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <MarketCondition />
-                      <MarketSentiment />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <WinPatternAnalysis />
-                      <InvestmentStylePortrait />
-                    </div>
+                    <MarketCondition />
+                    <MarketSentiment />
+                    <WinPatternAnalysis />
+                    <InvestmentStylePortrait />
                     <InvestmentReportComponent />
                   </section>
 
                   {/* Footer Context / Extras */}
-                  <section className="grid grid-cols-1 md:grid-cols-3 gap-6 opacity-80 italic">
-                    <div className="md:col-span-1">
-                      <BehaviorInsight />
-                    </div>
-                    <div className="md:col-span-1">
-                      <SkillCoach />
-                    </div>
-                    <div className="md:col-span-1">
-                      <RiskDecomposition />
-                    </div>
+                  <section className="space-y-6 opacity-80 italic">
+                    <BehaviorInsight />
+                    <SkillCoach />
+                    <RiskDecomposition />
                   </section>
                 </div>
               )}
@@ -424,10 +408,8 @@ export default function Home() {
                        <span className="w-1.5 h-6 bg-rose-500 rounded-full"></span>
                        <h2 className="text-xl font-black text-slate-800 dark:text-white">リスク・ポジション管理設定</h2>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <RiskManagementPanel />
-                      <PositionSizing />
-                    </div>
+                    <RiskManagementPanel />
+                    <PositionSizing />
                   </section>
 
                   {/* Notifications & System Alerts */}
@@ -436,10 +418,8 @@ export default function Home() {
                        <span className="w-1.5 h-6 bg-amber-500 rounded-full"></span>
                        <h2 className="text-xl font-black text-slate-800 dark:text-white">通知 & システムアラート設定</h2>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <AlertSettings />
-                      <NotificationSettingsComponent />
-                    </div>
+                    <AlertSettings />
+                    <NotificationSettingsComponent />
                   </section>
 
                   {/* Global Market Context (External Data) */}
@@ -448,10 +428,8 @@ export default function Home() {
                        <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
                        <h2 className="text-xl font-black text-slate-800 dark:text-white">グローバル指標 & マーケットニュース</h2>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <MacroDashboard />
-                      <EconomicCalendar />
-                    </div>
+                    <MacroDashboard />
+                    <EconomicCalendar />
                     <NewsPanel />
                   </section>
 
