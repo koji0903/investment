@@ -153,8 +153,9 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
       case "仮想通貨":
         return { name: "通貨名", quantity: "保有数量", symbol: "コード", price: "評価単価", cost: "取得単価" };
       case "日本株":
-      case "外国株":
         return { name: "銘柄名", quantity: "保有株数", symbol: "証券コード", price: "現在値", cost: "取得単価" };
+      case "外国株":
+        return { name: "銘柄名", quantity: "保有株数", symbol: "証券コード", price: "現在値 (USD / ドル)", cost: "取得単価 (USD / ドル)" };
       case "投資信託":
         return { name: "銘柄名", quantity: "保有口数", symbol: "コード", price: "基準価額", cost: "取得単価" };
       default:
@@ -208,6 +209,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           currentPrice,
           averageCost,
           brokerName: row.brokerName,
+          currency: category === "外国株" ? "USD" : "JPY",
         });
       } else {
         for (const row of rows) {
@@ -225,6 +227,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
             averageCost,
             brokerName: row.brokerName,
             isManual: true,
+            currency: category === "外国株" ? "USD" : "JPY",
           });
         }
       }
@@ -397,25 +400,47 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                         <>
                           <div className="md:col-span-2 space-y-1.5">
                             <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.price}</label>
-                            <input
-                              type="number"
-                              step="any"
-                              required
-                              value={row.currentPrice}
-                              onChange={(e) => updateRow(row.id, "currentPrice", e.target.value)}
-                              className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
-                            />
+                            <div className="relative">
+                              {category === "外国株" && (
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                              )}
+                              <input
+                                type="number"
+                                step="any"
+                                required
+                                value={row.currentPrice}
+                                onChange={(e) => updateRow(row.id, "currentPrice", e.target.value)}
+                                className={cn(
+                                  "w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all",
+                                  category === "外国株" && "pl-7 pr-12"
+                                )}
+                              />
+                              {category === "外国株" && (
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">USD</span>
+                              )}
+                            </div>
                           </div>
                           <div className="md:col-span-2 space-y-1.5">
                             <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.cost}</label>
-                            <input
-                              type="number"
-                              step="any"
-                              required
-                              value={row.averageCost}
-                              onChange={(e) => updateRow(row.id, "averageCost", e.target.value)}
-                              className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
-                            />
+                            <div className="relative">
+                              {category === "外国株" && (
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                              )}
+                              <input
+                                type="number"
+                                step="any"
+                                required
+                                value={row.averageCost}
+                                onChange={(e) => updateRow(row.id, "averageCost", e.target.value)}
+                                className={cn(
+                                  "w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all",
+                                  category === "外国株" && "pl-7 pr-12"
+                                )}
+                              />
+                              {category === "外国株" && (
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">USD</span>
+                              )}
+                            </div>
                           </div>
                         </>
                       )}
