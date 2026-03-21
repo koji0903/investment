@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import { GlobalInvestmentAdvisor } from "@/components/GlobalInvestmentAdvisor";
@@ -63,6 +63,13 @@ export default function Home() {
   const { calculatedAssets, totalAssetsValue, totalProfitAndLoss, totalDailyChange, lastUpdated, isFetching } = usePortfolio();
   const { isDemo, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [selectedAssetCategory, setSelectedAssetCategory] = useState<string>("すべて");
+
+  // 利用可能なカテゴリを抽出
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(calculatedAssets.map(a => a.category)));
+    return ["すべて", ...cats];
+  }, [calculatedAssets]);
 
   return (
     <AuthGuard>
@@ -240,21 +247,54 @@ export default function Home() {
                           </button>
                         </div>
                       ) : (
-                        <div className="space-y-12">
-                          {Object.entries(
-                            calculatedAssets.reduce((acc, asset) => {
-                              if (!acc[asset.category]) acc[asset.category] = [];
-                              acc[asset.category].push(asset);
-                              return acc;
-                            }, {} as Record<string, typeof calculatedAssets>)
-                          ).map(([category, items]) => (
-                            <div key={category} className="w-full">
-                              <AssetCategoryGroup 
-                                category={category} 
-                                assets={items} 
-                              />
-                            </div>
-                          ))}
+                        <div className="space-y-10">
+                          {/* Asset Category Tabs */}
+                          <div className="flex flex-wrap gap-2 pb-2">
+                            {categories.map(cat => (
+                              <button
+                                key={cat}
+                                onClick={() => setSelectedAssetCategory(cat)}
+                                className={cn(
+                                  "px-6 py-2.5 rounded-2xl text-[10px] md:text-sm font-black transition-all border outline-none",
+                                  selectedAssetCategory === cat
+                                    ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20"
+                                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500 hover:border-indigo-400 group"
+                                )}
+                              >
+                                {cat}
+                                <span className={cn(
+                                  "ml-2 text-[10px] opacity-70",
+                                  selectedAssetCategory === cat ? "text-white" : "text-slate-400"
+                                )}>
+                                  ({cat === "すべて" ? calculatedAssets.length : calculatedAssets.filter(a => a.category === cat).length})
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="space-y-12">
+                            {Object.entries(
+                              calculatedAssets
+                                .filter(asset => selectedAssetCategory === "すべて" || asset.category === selectedAssetCategory)
+                                .reduce((acc, asset) => {
+                                  if (!acc[asset.category]) acc[asset.category] = [];
+                                  acc[asset.category].push(asset);
+                                  return acc;
+                                }, {} as Record<string, typeof calculatedAssets>)
+                            ).map(([category, items]) => (
+                              <motion.div 
+                                key={category} 
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="w-full"
+                              >
+                                <AssetCategoryGroup 
+                                  category={category} 
+                                  assets={items} 
+                                />
+                              </motion.div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
