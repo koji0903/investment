@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { AuthGuard } from "@/components/AuthGuard";
+import { GlobalInvestmentAdvisor } from "@/components/GlobalInvestmentAdvisor";
 import { DemoStory } from "@/components/DemoStory";
 import { AlertToast } from "@/components/AlertToast";
 import { AssetCardSkeleton, Skeleton } from "@/components/ui/Skeleton";
@@ -245,6 +246,9 @@ export default function Home() {
 
               {activeTab === "analysis" && (
                 <div className="space-y-8 md:space-y-12">
+                  {/* Global Investment Advisor (Top Priority) */}
+                  <GlobalInvestmentAdvisor />
+
                   {/* Row 1: High Priority Insights & Risk */}
                   <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8 items-start">
                     <div className="xl:col-span-8 space-y-6 md:space-y-8">
