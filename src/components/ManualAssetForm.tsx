@@ -41,6 +41,31 @@ const BROKER_SUGGESTIONS: Record<string, string[]> = {
   "FX": ["DMM FX", "GMOクリック証券", "SBI FXトレード", "外貨ex", "外為どっとコム", "楽天FX"],
 };
 
+const ASSET_NAME_SUGGESTIONS: Record<string, { name: string; symbol: string }[]> = {
+  "FX": [
+    { name: "USD/JPY (ドル円)", symbol: "USDJPY=X" },
+    { name: "EUR/JPY (ユーロ円)", symbol: "EURJPY=X" },
+    { name: "GBP/JPY (ポンド円)", symbol: "GBPJPY=X" },
+    { name: "AUD/JPY (豪ドル円)", symbol: "AUDJPY=X" },
+    { name: "NZD/JPY (NZドル円)", symbol: "NZDJPY=X" },
+    { name: "EUR/USD (ユーロドル)", symbol: "EURUSD=X" },
+    { name: "GBP/USD (ポンドドル)", symbol: "GBPUSD=X" },
+    { name: "ZAR/JPY (南アランド円)", symbol: "ZARJPY=X" },
+    { name: "TRY/JPY (トルコリラ円)", symbol: "TRYJPY=X" },
+    { name: "MXN/JPY (メキシコペソ円)", symbol: "MXNJPY=X" },
+  ],
+  "仮想通貨": [
+    { name: "Bitcoin (BTC)", symbol: "BTC" },
+    { name: "Ethereum (ETH)", symbol: "ETH" },
+    { name: "Ripple (XRP)", symbol: "XRP" },
+    { name: "Solana (SOL)", symbol: "SOL" },
+    { name: "Cardano (ADA)", symbol: "ADA" },
+    { name: "Polygon (MATIC)", symbol: "MATIC" },
+    { name: "BNB", symbol: "BNB" },
+    { name: "Dogecoin (DOGE)", symbol: "DOGE" },
+  ],
+};
+
 export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: ManualAssetFormProps) => {
   const { addAsset, updateAsset, deleteAsset } = usePortfolio();
   
@@ -62,7 +87,8 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
   const [loading, setLoading] = useState(false);
   const isEdit = !!asset;
 
-  const suggestions = useMemo(() => BROKER_SUGGESTIONS[category] || [], [category]);
+  const brokerSuggestions = useMemo(() => BROKER_SUGGESTIONS[category] || [], [category]);
+  const assetNameSuggestions = useMemo(() => ASSET_NAME_SUGGESTIONS[category] || [], [category]);
 
   const addRow = () => {
     setRows([...rows, { id: Math.random().toString(36).substr(2, 9), name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: rows[rows.length-1]?.brokerName || "" }]);
@@ -75,7 +101,17 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
   };
 
   const updateRow = (id: string, field: keyof AssetRow, value: string | number) => {
-    setRows(rows.map(r => r.id === id ? { ...r, [field]: value } : r));
+    let newRows = rows.map(r => r.id === id ? { ...r, [field]: value } : r);
+    
+    // Auto-sync symbol if name matches a suggestion
+    if (field === "name") {
+      const match = assetNameSuggestions.find(s => s.name === value);
+      if (match) {
+        newRows = newRows.map(r => r.id === id ? { ...r, symbol: match.symbol } : r);
+      }
+    }
+    
+    setRows(newRows);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,7 +180,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-5xl bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800"
+        className="relative w-full max-w-6xl bg-white dark:bg-slate-900 rounded-[40px] shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800"
       >
         <div className="flex items-center justify-between p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
           <div className="flex items-center gap-4">
@@ -221,12 +257,13 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                           className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
                         />
                         <datalist id={`brokers-${row.id}`}>
-                          {suggestions.map(s => <option key={s} value={s} />)}
+                          {brokerSuggestions.map(s => <option key={s} value={s} />)}
                         </datalist>
                       </div>
                       <div className="md:col-span-2 space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 ml-1">資産・銘柄名</label>
                         <input
+                          list={`names-${row.id}`}
                           type="text"
                           required
                           placeholder="例: トヨタ"
@@ -234,6 +271,9 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                           onChange={(e) => updateRow(row.id, "name", e.target.value)}
                           className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
                         />
+                        <datalist id={`names-${row.id}`}>
+                          {assetNameSuggestions.map(s => <option key={s.name} value={s.name} />)}
+                        </datalist>
                       </div>
                       <div className="md:col-span-2 space-y-1.5">
                         <label className="text-[10px] font-bold text-slate-400 ml-1">コード (連動用)</label>
@@ -313,8 +353,8 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
               <div className="space-y-1">
                 <h4 className="text-sm font-black text-slate-800 dark:text-white">評価単価の自動連動について</h4>
                 <p className="text-xs font-bold text-slate-500 leading-relaxed">
-                  「コード」欄に正しい銘柄コードや通貨ペア（例: 7203.T, USDJPY=X, BTC）を入力すると、市場の最新価格と自動で連動します。
-                  証券会社（楽天証券、DMM FX等）で保有している資産も、コードを入力することで常に最新の評価額を確認できます。
+                  FXや仮想通貨では、提示された名前（例: USD/JPY）を選択すると、自動で正確なデータコードが設定されます。
+                  その他の資産も、正しいコード（例: 7203.T）を入力することで最新の評価額と連動します。
                 </p>
               </div>
             </div>
