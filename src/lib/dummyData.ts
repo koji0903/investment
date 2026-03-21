@@ -24,7 +24,10 @@ export const calculateAssetValues = (asset: Asset, usdJpyRate: number = 150): As
 
   // FXの場合は「数量×必要証拠金 + 評価損益」を評価額とする（実効的な持分）
   if (asset.category === "FX") {
-    const margin = Math.abs(asset.quantity) * (asset.requiredMargin || 0);
+    // 日本国内の個人FXレバレッジ25倍（証拠金率4%）を基準に自動算出
+    // 外貨ペア（EUR/USD等）の場合も currentPriceYen は既に円換算されているため適用可能
+    const autoMarginPerUnit = currentPriceYen * 0.04; 
+    const margin = Math.abs(asset.quantity) * (asset.requiredMargin || autoMarginPerUnit);
     evaluatedValue = margin + profitAndLoss;
   }
 

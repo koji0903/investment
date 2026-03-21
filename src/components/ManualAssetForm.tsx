@@ -212,7 +212,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           averageCost,
           brokerName: row.brokerName,
           currency: (category === "外国株" || (category === "FX" && (row.symbol.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
-          requiredMargin: category === "FX" ? Number(row.requiredMargin) : undefined,
+          requiredMargin: undefined, // FXは自動算出に移行
         });
       } else {
         for (const row of rows) {
@@ -231,7 +231,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
             brokerName: row.brokerName,
             isManual: true,
             currency: (category === "外国株" || (category === "FX" && (row.symbol.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
-            requiredMargin: category === "FX" ? Number(row.requiredMargin) : undefined,
+            requiredMargin: undefined, // FXは自動算出に移行
           });
         }
       }
@@ -453,15 +453,13 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                          <div className="md:col-span-2 space-y-1.5">
                            <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.margin}</label>
                            <div className="relative">
-                             <input
-                               type="number"
-                               step="any"
-                               required
-                               value={row.requiredMargin}
-                               onChange={(e) => updateRow(row.id, "requiredMargin", e.target.value)}
-                               className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
-                             />
-                             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">JPY</span>
+                             <div className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-black text-slate-500 flex items-center justify-between">
+                               <span>自動算出 (4%)</span>
+                               <span className="text-[10px] bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20">推奨</span>
+                             </div>
+                             <p className="text-[9px] font-bold text-slate-400 mt-1 ml-1 leading-tight">
+                               最新の為替レートに基づき、国内法規（レバレッジ25倍）に準拠した証拠金額を自動適用します。
+                             </p>
                            </div>
                          </div>
                        )}
