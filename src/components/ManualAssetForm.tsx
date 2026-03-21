@@ -114,6 +114,13 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
   const { addAsset, updateAsset, deleteAsset } = usePortfolio();
   
   const [category, setCategory] = useState<AssetCategory>(asset?.category || initialCategory);
+  
+  const handleCategoryChange = (newCategory: AssetCategory) => {
+    setCategory(newCategory);
+    // カテゴリ変更時に利用機関をクリア（既存の入力内容が新しいカテゴリにそぐわない可能性があるため）
+    setRows(prevRows => prevRows.map(row => ({ ...row, brokerName: "" })));
+  };
+
   const [rows, setRows] = useState<AssetRow[]>(
     asset 
       ? [{ 
@@ -130,10 +137,29 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
   
   const [loading, setLoading] = useState(false);
   const isEdit = !!asset;
+  const isInvestment = category !== "銀行";
 
   const brokerSuggestions = useMemo(() => BROKER_SUGGESTIONS[category] || [], [category]);
   const assetNameSuggestions = useMemo(() => ASSET_NAME_SUGGESTIONS[category] || [], [category]);
   const placeholders = useMemo(() => CATEGORY_PLACEHOLDERS[category] || { name: "資産名", symbol: "コード" }, [category]);
+
+  const labels = useMemo(() => {
+    switch (category) {
+      case "銀行":
+        return { name: "預金種別・口座名", quantity: "現在の残高", symbol: "コード", price: "評価単価", cost: "取得単価" };
+      case "FX":
+        return { name: "通貨ペア", quantity: "取引数量 (Lot)", symbol: "コード", price: "評価単価", cost: "取得単価" };
+      case "仮想通貨":
+        return { name: "通貨名", quantity: "保有数量", symbol: "コード", price: "評価単価", cost: "取得単価" };
+      case "日本株":
+      case "外国株":
+        return { name: "銘柄名", quantity: "保有株数", symbol: "証券コード", price: "現在値", cost: "取得単価" };
+      case "投資信託":
+        return { name: "銘柄名", quantity: "保有口数", symbol: "コード", price: "基準価額", cost: "取得単価" };
+      default:
+        return { name: "資産名", quantity: "保有数", symbol: "コード", price: "評価単価", cost: "取得単価" };
+    }
+  }, [category]);
 
   const addRow = () => {
     setRows([...rows, { id: Math.random().toString(36).substr(2, 9), name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: rows[rows.length-1]?.brokerName || "" }]);
@@ -169,25 +195,33 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
     try {
       if (isEdit) {
         const row = rows[0];
+        const quantity = Number(row.quantity);
+        const currentPrice = isInvestment ? Number(row.currentPrice) : 1;
+        const averageCost = isInvestment ? Number(row.averageCost) : 1;
+
         await updateAsset(asset!.id, {
           name: row.name,
           category,
-          symbol: row.symbol,
-          quantity: Number(row.quantity),
-          currentPrice: Number(row.currentPrice),
-          averageCost: Number(row.averageCost),
+          symbol: isInvestment ? row.symbol : "",
+          quantity,
+          currentPrice,
+          averageCost,
           brokerName: row.brokerName,
         });
       } else {
         for (const row of rows) {
           if (!row.name) continue;
+          const quantity = Number(row.quantity);
+          const currentPrice = isInvestment ? Number(row.currentPrice) : 1;
+          const averageCost = isInvestment ? Number(row.averageCost) : 1;
+          
           await addAsset({
             name: row.name,
             category,
-            symbol: row.symbol || "",
-            quantity: Number(row.quantity),
-            currentPrice: Number(row.currentPrice),
-            averageCost: Number(row.averageCost),
+            symbol: isInvestment ? (row.symbol || "") : "",
+            quantity,
+            currentPrice,
+            averageCost,
             brokerName: row.brokerName,
             isManual: true,
           });
@@ -257,7 +291,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                     <button
                       key={cat.id}
                       type="button"
-                      onClick={() => setCategory(cat.id)}
+                      onClick={() => handleCategoryChange(cat.id)}
                       className={cn(
                         "flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all duration-300",
                         category === cat.id
@@ -294,22 +328,24 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                       exit={{ opacity: 0, scale: 0.98 }}
                       className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-5 bg-slate-50 dark:bg-slate-800/50 rounded-3xl border border-slate-100 dark:border-slate-800 group relative"
                     >
-                      <div className="md:col-span-2 space-y-1.5">
+                      <div className={cn("space-y-1.5", isInvestment ? "md:col-span-2" : "md:col-span-4")}>
                         <label className="text-[10px] font-bold text-slate-400 ml-1">利用機関</label>
                         <input
-                          list={`brokers-${row.id}`}
+                          list={`brokers-${category}-${row.id}`}
                           type="text"
                           placeholder="例: 楽天証券"
                           value={row.brokerName}
                           onChange={(e) => updateRow(row.id, "brokerName", e.target.value)}
                           className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
                         />
-                        <datalist id={`brokers-${row.id}`}>
+                        <datalist id={`brokers-${category}-${row.id}`}>
                           {brokerSuggestions.map(s => <option key={s} value={s} />)}
                         </datalist>
                       </div>
-                      <div className="md:col-span-2 space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 ml-1">資産・銘柄名</label>
+                      <div className={cn("space-y-1.5", isInvestment ? "md:col-span-2" : "md:col-span-4")}>
+                        <label className="text-[10px] font-bold text-slate-400 ml-1">
+                          {labels.name}
+                        </label>
                         <input
                           list={`names-${row.id}`}
                           type="text"
@@ -323,18 +359,24 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                           {assetNameSuggestions.map(s => <option key={s.name} value={s.name} />)}
                         </datalist>
                       </div>
-                      <div className="md:col-span-2 space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 ml-1">コード (連動用)</label>
-                        <input
-                          type="text"
-                          value={row.symbol}
-                          onChange={(e) => updateRow(row.id, "symbol", e.target.value.toUpperCase())}
-                          placeholder={placeholders.symbol}
-                          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div className="md:col-span-1 space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 ml-1">保有数</label>
+                      
+                      {isInvestment && (
+                        <div className="md:col-span-2 space-y-1.5">
+                          <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.symbol}</label>
+                          <input
+                            type="text"
+                            value={row.symbol}
+                            onChange={(e) => updateRow(row.id, "symbol", e.target.value.toUpperCase())}
+                            placeholder={placeholders.symbol}
+                            className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                          />
+                        </div>
+                      )}
+
+                      <div className={cn("space-y-1.5", isInvestment ? "md:col-span-1" : "md:col-span-3")}>
+                        <label className="text-[10px] font-bold text-slate-400 ml-1">
+                          {labels.quantity}
+                        </label>
                         <input
                           type="number"
                           step="any"
@@ -344,28 +386,34 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                           className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
                         />
                       </div>
-                      <div className="md:col-span-2 space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 ml-1">評価単価</label>
-                        <input
-                          type="number"
-                          step="any"
-                          required
-                          value={row.currentPrice}
-                          onChange={(e) => updateRow(row.id, "currentPrice", e.target.value)}
-                          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </div>
-                      <div className="md:col-span-2 space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 ml-1">取得単価</label>
-                        <input
-                          type="number"
-                          step="any"
-                          required
-                          value={row.averageCost}
-                          onChange={(e) => updateRow(row.id, "averageCost", e.target.value)}
-                          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </div>
+
+                      {isInvestment && (
+                        <>
+                          <div className="md:col-span-2 space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.price}</label>
+                            <input
+                              type="number"
+                              step="any"
+                              required
+                              value={row.currentPrice}
+                              onChange={(e) => updateRow(row.id, "currentPrice", e.target.value)}
+                              className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                            />
+                          </div>
+                          <div className="md:col-span-2 space-y-1.5">
+                            <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.cost}</label>
+                            <input
+                              type="number"
+                              step="any"
+                              required
+                              value={row.averageCost}
+                              onChange={(e) => updateRow(row.id, "averageCost", e.target.value)}
+                              className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                            />
+                          </div>
+                        </>
+                      )}
+
                       <div className="md:col-span-1 flex justify-end pb-1">
                         {!isEdit && rows.length > 1 && (
                           <button
