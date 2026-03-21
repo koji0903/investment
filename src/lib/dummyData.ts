@@ -9,7 +9,7 @@ export const dummyAssets: Asset[] = [
 ];
 
 export const calculateAssetValues = (asset: Asset, prices: Record<string, number> = {}): AssetCalculated => {
-  const usdJpyRate = prices["JPY=X"] || 151.2;
+  const usdJpyRate = prices["JPY=X"] || prices["USDJPY=X"] || 151.2;
   
   // デフォルトのレート設定 (非FX用)
   let rate = asset.currency === "USD" ? usdJpyRate : 1;
@@ -46,15 +46,23 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
       if (prices[`${ccy}JPY=X`]) return prices[`${ccy}JPY=X`];
       // クロスレートの合成 (例: CHF -> CHFUSD * USDJPY)
       if (prices[`${ccy}USD=X`]) return prices[`${ccy}USD=X`] * usdJpyRate;
+      if (prices[`USD${ccy}=X`]) return usdJpyRate / prices[`USD${ccy}=X`];
       if (ccy === "USD") return usdJpyRate;
-      return 1;
+      return null; // 不明な場合は null
     };
 
-    const baseRate = getJpyRate(base);
-    const counterRate = getJpyRate(counter);
-    const FX_LOT_SIZE = 10000; // 1ロット = 10,000通貨単位 (国内標準)
+    const baseRate = getJpyRate(base) || usdJpyRate;
+    
+    // 対価通貨レートの合成優先
+    // CounterRate (CHF/JPY) = BaseRate (USD/JPY) / CurrentPrice (USD/CHF)
+    let counterRate = getJpyRate(counter);
+    if (!counterRate && asset.currentPrice > 0) {
+      counterRate = baseRate / asset.currentPrice;
+    }
+    if (!counterRate) counterRate = 1;
 
     // FXの損益計算: (評価レート - 取得レート) * (数量 * ロット単位) * 対価通貨の対円レート
+    const FX_LOT_SIZE = 10000;
     const totalQuantity = asset.quantity * FX_LOT_SIZE;
     const pips = asset.currentPrice - asset.averageCost;
     pricePnL = pips * totalQuantity * counterRate;
@@ -63,12 +71,9 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
     const nominalYen = Math.abs(totalQuantity) * baseRate;
     const margin = nominalYen * 0.04; 
     
-    // ユーザーの期待（評価額がマイナスになるはず）に合わせ、FXの evaluatedValue は損益を主とする
-    // ただし、ポートフォリオ全体では「証拠金 + 損益」が資産価値となるため、ここでは P/L + Swap のみを evaluatedValue とし、
-    // 必要証拠金は別途管理・表示する設計に変更
     evaluatedValue = pricePnL + (asset.swapPoints || 0);
     
-    // 表示用により正確な情報をセット (FXの場合は対価通貨の円換算値を単価とする)
+    // 表示用により正確な情報をセット
     currentPriceYen = asset.currentPrice * counterRate;
     averageCostYen = asset.averageCost * counterRate;
   }
