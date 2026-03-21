@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Plus, Trash2, Save, Loader2, Coins, Landmark, Globe, Building2, LineChart, Banknote, ShieldCheck } from "lucide-react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { Asset, AssetCategory } from "@/types";
@@ -248,8 +249,13 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -485,6 +491,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           </div>
         </form>
       </motion.div>
-    </div>
+    </div>,
+    document.body
   );
 };
