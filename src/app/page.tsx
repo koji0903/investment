@@ -3,7 +3,6 @@
 import React, { useState } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { AuthGuard } from "@/components/AuthGuard";
-import { DemoDataLoader } from "@/components/DemoDataLoader";
 import { DemoStory } from "@/components/DemoStory";
 import { AlertToast } from "@/components/AlertToast";
 import { AssetCard } from "@/components/AssetCard";
