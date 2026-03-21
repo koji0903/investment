@@ -163,19 +163,26 @@ export default function Home() {
               transition={{ duration: 0.3, ease: "easeOut" }}
             >
               {activeTab === "overview" && (
-                <div className="space-y-12">
+                <div className="max-w-5xl mx-auto space-y-12 md:space-y-16 pb-20">
+                  {/* Top: Market Intelligence Snapshot */}
                   <MarketAnalysisDashboard />
-                  <ActionTriggerPanel />
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* Left Column: Visualization & AI Advice */}
-                    <div className="lg:col-span-2 space-y-8">
-                      <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative group">
-                        <div className="flex items-center justify-between mb-8">
-                          <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
-                            <span className="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
-                            ポートフォリオ構成
-                          </h2>
-                        </div>
+                  
+                  {/* Strategic Triggers & Alerts */}
+                  <div className="space-y-8">
+                    <ActionTriggerPanel />
+                    <AlertList />
+                  </div>
+
+                  {/* Portfolio Composition (Main Visual) */}
+                  <section className="space-y-8">
+                    <div className="bg-white dark:bg-slate-900 rounded-[32px] p-8 md:p-12 border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden relative group">
+                      <div className="flex items-center justify-between mb-8">
+                        <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                          <span className="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+                          ポートフォリオ構成
+                        </h2>
+                      </div>
+                      <div className="w-full">
                         {isFetching ? (
                           <div className="h-[400px] flex items-center justify-center">
                             <Skeleton className="w-64 h-64 rounded-full opacity-10" />
@@ -184,186 +191,238 @@ export default function Home() {
                           <PortfolioComposition />
                         )}
                       </div>
-                      
-                      <InvestmentAdvice />
                     </div>
+                    
+                    {/* Quick AI Advice for Portfolio */}
+                    <InvestmentAdvice />
+                  </section>
 
-                    {/* Right Column: Alerts */}
-                    <div className="space-y-8">
-                      <AlertList />
+                  {/* Assets Grid Section */}
+                  <section className="space-y-8">
+                    <div className="flex items-center justify-between px-2">
+                      <h2 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-3">
+                        <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+                        保有資産一覧
+                      </h2>
                     </div>
-                  </div>
-
-                  {/* Bottom: Assets Grid */}
-                  <div className="space-y-6">
-                    <h2 className="text-xl font-black text-slate-800 dark:text-white flex items-center gap-3 px-2">
-                      <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
-                      保有資産一覧
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                    
+                    <div className="space-y-10">
                       {isFetching ? (
-                        <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                           <AssetCardSkeleton />
                           <AssetCardSkeleton />
                           <AssetCardSkeleton />
-                        </>
+                        </div>
                       ) : calculatedAssets.length === 0 ? (
-                        <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[32px] space-y-4">
-                          <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-400">
-                            <DollarSign size={40} />
+                        <div className="py-24 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[40px] space-y-6 bg-slate-50/50 dark:bg-slate-900/50">
+                          <div className="w-24 h-24 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-300 dark:text-slate-600 shadow-sm">
+                            <DollarSign size={48} />
                           </div>
-                          <div>
-                            <p className="text-xl font-black text-slate-800 dark:text-white">資産がまだ登録されていません</p>
-                            <p className="text-sm font-bold text-slate-500 mt-2">銘柄を登録して、ポートフォリオ分析を始めましょう。</p>
+                          <div className="max-w-md mx-auto">
+                            <p className="text-2xl font-black text-slate-800 dark:text-white">資産データがありません</p>
+                            <p className="text-sm font-bold text-slate-500 mt-3 leading-relaxed">
+                              証券口座やウォレットを連携するか、手動で銘柄を登録してポートフォリオを構築しましょう。
+                            </p>
                           </div>
                           <button 
                             onClick={() => setActiveTab("tools")}
-                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-8 py-3 rounded-full shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-black px-10 py-4 rounded-2xl shadow-xl shadow-indigo-600/20 transition-all active:scale-[0.97]"
                           >
-                            最初の銘柄を登録する
+                            銘柄を登録しにいく
                           </button>
                         </div>
                       ) : (
-                        Object.entries(
-                          calculatedAssets.reduce((acc, asset) => {
-                            if (!acc[asset.category]) acc[asset.category] = [];
-                            acc[asset.category].push(asset);
-                            return acc;
-                          }, {} as Record<string, typeof calculatedAssets>)
-                        ).map(([category, items]) => (
-                          <div key={category} className="col-span-full mb-8">
-                            <AssetCategoryGroup 
-                              category={category} 
-                              assets={items} 
-                            />
-                          </div>
-                        ))
+                        <div className="space-y-12">
+                          {Object.entries(
+                            calculatedAssets.reduce((acc, asset) => {
+                              if (!acc[asset.category]) acc[asset.category] = [];
+                              acc[asset.category].push(asset);
+                              return acc;
+                            }, {} as Record<string, typeof calculatedAssets>)
+                          ).map(([category, items]) => (
+                            <div key={category} className="w-full">
+                              <AssetCategoryGroup 
+                                category={category} 
+                                assets={items} 
+                              />
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
-                  </div>
+                  </section>
                 </div>
               )}
 
               {activeTab === "analysis" && (
-                <div className="space-y-8 md:space-y-12">
+                <div className="max-w-5xl mx-auto space-y-12 md:space-y-16 pb-20">
                   {/* Global Investment Advisor (Top Priority) */}
-                  <GlobalInvestmentAdvisor />
+                  <section className="space-y-6">
+                    <GlobalInvestmentAdvisor />
+                  </section>
 
-                  {/* Row 1: High Priority Insights & Risk */}
-                  <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8 items-start">
-                    <div className="xl:col-span-8 space-y-6 md:space-y-8">
+                  {/* AI Advice & Strategy */}
+                  <section className="space-y-6">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">AI 戦略アドバイス</h2>
+                    </div>
+                    <div className="space-y-6 md:space-y-8">
                       <InvestmentAdvice />
                       <InvestmentRuleMonitor />
                     </div>
-                    <div className="xl:col-span-4 space-y-6 md:space-y-8">
-                      <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-600/20 relative overflow-hidden group">
-                        <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-700">
-                          <Sparkles size={120} />
-                        </div>
-                        <h3 className="text-lg font-black mb-2 flex items-center gap-2">
-                          <Sparkles size={20} className="text-amber-300" />
-                          AI 投資家アシスタント
-                        </h3>
-                        <p className="text-xs font-bold text-indigo-100 leading-relaxed mb-4">
-                          あなたのポートフォリオを24時間監視し、市場動向に合わせた最適なアクションをリアルタイムで提案します。
-                        </p>
-                        <button className="w-full py-3 bg-white text-indigo-600 rounded-2xl text-xs font-black hover:bg-indigo-50 transition-colors shadow-lg active:scale-95">
-                          設定を確認する
-                        </button>
-                      </div>
-                      <RiskAnalysis />
-                    </div>
-                  </div>
+                  </section>
 
-                  {/* Row 2: Optimization & Automation (Middle Priority) */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8 items-start">
-                    <div className="xl:col-span-2">
+                  {/* Risk Profile & Portfolio Optimization */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-rose-500 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">ポートフォリオ・リスク分析</h2>
+                    </div>
+                    <div className="space-y-8">
+                      <RiskAnalysis />
                       <PortfolioOptimization />
                     </div>
-                    <div className="xl:col-span-1">
-                      <TradingAutomation />
-                    </div>
-                  </div>
+                  </section>
 
-                  {/* Row 3: Simulations & Advanced Logic (Bento Grid Style) */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8 auto-rows-min">
-                    <div className="md:col-span-2 lg:col-span-1 xl:col-span-1">
-                      <ScenarioComparison />
+                  {/* Advanced Simulation & AI Engines */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-amber-500 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">高度シミュレーション & AIエンジン</h2>
                     </div>
-                    <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
-                      <ScenarioStrategyOptimization />
-                    </div>
-                    <div className="md:col-span-2 lg:col-span-1 xl:col-span-2">
+                    <div className="space-y-8">
                       <BacktestSimulator />
-                    </div>
-                    <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <ScenarioComparison />
+                        <ScenarioStrategyOptimization />
+                      </div>
                       <QuantumOptimizationCard />
                     </div>
-                    <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
-                      <StrategyActionPoints />
-                    </div>
-                    <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
-                      <SemiAutoTrading />
-                    </div>
-                    <div className="md:col-span-1 lg:col-span-1 xl:col-span-1">
-                      <PortfolioRebalance />
-                    </div>
-                    <div className="md:col-span-2 lg:col-span-1 xl:col-span-2">
-                      <FXMarketAnalysis />
-                    </div>
-                  </div>
+                  </section>
 
-                  {/* Row 4: Secondary Context & Style Analysis */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-                    <MarketCondition />
-                    <MarketSentiment />
-                    <WinPatternAnalysis />
-                    <InvestmentStylePortrait />
-                    <InvestmentStrategyCard />
-                    <StrategyTemplates />
-                    <RiskDecomposition />
-                    <CorrelationMatrix />
-                    <BehaviorInsight />
-                    <SkillCoach />
-                    <div className="md:col-span-2 lg:col-span-1 xl:col-span-1">
-                      <InvestmentReportComponent />
+                  {/* Market Analysis & Trading Tools */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">マーケット分析 & 取引支援</h2>
                     </div>
-                  </div>
+                    <div className="space-y-8">
+                      <FXMarketAnalysis />
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <TradingAutomation />
+                        <SemiAutoTrading />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <PortfolioRebalance />
+                        <StrategyActionPoints />
+                        <ActionTriggerPanel />
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Insights & History */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-slate-400 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">インサイト & 運用レポート</h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <MarketCondition />
+                      <MarketSentiment />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <WinPatternAnalysis />
+                      <InvestmentStylePortrait />
+                    </div>
+                    <InvestmentReportComponent />
+                  </section>
+
+                  {/* Footer Context / Extras */}
+                  <section className="grid grid-cols-1 md:grid-cols-3 gap-6 opacity-80 italic">
+                    <div className="md:col-span-1">
+                      <BehaviorInsight />
+                    </div>
+                    <div className="md:col-span-1">
+                      <SkillCoach />
+                    </div>
+                    <div className="md:col-span-1">
+                      <RiskDecomposition />
+                    </div>
+                  </section>
                 </div>
               )}
 
               {activeTab === "tools" && (
-                <div className="space-y-8 md:space-y-12">
-                  <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8 items-start">
-                    {/* Data Management & Integration */}
-                    <div className="xl:col-span-8 space-y-6 md:space-y-8">
-                      <BrokerIntegrationPanel />
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <RiskManagementPanel />
-                        <PositionSizing />
-                      </div>
+                <div className="max-w-5xl mx-auto space-y-12 md:space-y-16 pb-20">
+                  {/* Broker Integration & Data Management */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-indigo-500 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">金融機関連携 & データ同期</h2>
+                    </div>
+                    <BrokerIntegrationPanel />
+                  </section>
+
+                  {/* Risk & Position Management */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-rose-500 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">リスク・ポジション管理設定</h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <RiskManagementPanel />
+                      <PositionSizing />
+                    </div>
+                  </section>
+
+                  {/* Notifications & System Alerts */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-amber-500 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">通知 & システムアラート設定</h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <AlertSettings />
                       <NotificationSettingsComponent />
                     </div>
+                  </section>
 
-                    {/* Settings & External Data Sidebar */}
-                    <div className="xl:col-span-4 space-y-6 md:space-y-8">
-                      <AlertSettings />
-                      <UserRiskSettings />
-                      <EconomicCalendar />
-                      <NewsPanel />
+                  {/* Global Market Context (External Data) */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-emerald-500 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">グローバル指標 & マーケットニュース</h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <MacroDashboard />
+                      <EconomicCalendar />
                     </div>
-                  </div>
+                    <NewsPanel />
+                  </section>
 
-                  {/* Transactions Section */}
-                  <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8 items-start">
-                    <div className="xl:col-span-4">
-                      <TransactionForm />
+                  {/* Transactions & History */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-slate-800 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">取引データの管理</h2>
                     </div>
-                    <div className="xl:col-span-8">
+                    <div className="space-y-8">
+                      <div className="bg-slate-50 dark:bg-slate-900 p-8 rounded-[32px] border border-slate-100 dark:border-slate-800">
+                        <TransactionForm />
+                      </div>
                       <TransactionList />
                     </div>
-                  </div>
+                  </section>
+
+                  {/* Personalization */}
+                  <section className="space-y-8">
+                    <div className="flex items-center gap-3 px-2">
+                       <span className="w-1.5 h-6 bg-slate-400 rounded-full"></span>
+                       <h2 className="text-xl font-black text-slate-800 dark:text-white">パーソナライゼーション</h2>
+                    </div>
+                    <UserRiskSettings />
+                  </section>
                 </div>
               )}
             </motion.div>
