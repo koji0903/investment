@@ -56,26 +56,32 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
 
     // FXの損益計算: (評価レート - 取得レート) * (数量 * ロット単位) * 対価通貨の対円レート
     const totalQuantity = asset.quantity * FX_LOT_SIZE;
-    pricePnL = (asset.currentPrice - asset.averageCost) * totalQuantity * counterRate;
+    const pips = asset.currentPrice - asset.averageCost;
+    pricePnL = pips * totalQuantity * counterRate;
     
     // 証拠金計算: (数量 * 1単位あたりの価格) * 証拠金率(4%) * ベース通貨の対円レート
     const nominalYen = Math.abs(totalQuantity) * baseRate;
     const margin = nominalYen * 0.04; 
     
-    evaluatedValue = margin + pricePnL + (asset.swapPoints || 0);
+    // ユーザーの期待（評価額がマイナスになるはず）に合わせ、FXの evaluatedValue は損益を主とする
+    // ただし、ポートフォリオ全体では「証拠金 + 損益」が資産価値となるため、ここでは P/L + Swap のみを evaluatedValue とし、
+    // 必要証拠金は別途管理・表示する設計に変更
+    evaluatedValue = pricePnL + (asset.swapPoints || 0);
     
     // 表示用により正確な情報をセット (FXの場合は対価通貨の円換算値を単価とする)
     currentPriceYen = asset.currentPrice * counterRate;
+    averageCostYen = asset.averageCost * counterRate;
   }
 
   const profitAndLoss = pricePnL + (asset.swapPoints || 0);
   
   // 騰落率の計算 (FXの場合は必要証拠金を分母とする)
+  // 分母は「取得時のベース通貨価値 * 0.04」
   const marginForDenominator = asset.category === "FX" 
-    ? (Math.abs(asset.quantity * 10000) * (asset.averageCost * (prices[asset.symbol.substring(0,3)+"JPY=X"] || usdJpyRate)) * 0.04)
+    ? (Math.abs(asset.quantity * 10000) * (prices[asset.symbol.substring(0,3)+"JPY=X"] || usdJpyRate) * 0.04)
     : (Math.abs(asset.quantity) * averageCostYen);
     
-  const profitPercentage = marginForDenominator !== 0 ? (profitAndLoss / marginForDenominator) * 100 : 0;
+  const profitPercentage = marginForDenominator > 0 ? (profitAndLoss / marginForDenominator) * 100 : 0;
 
   // デモ用に前日比をシミュレーション
   const seed = (asset.id || asset.symbol || asset.name).split('').reduce((a, b) => a + b.charCodeAt(0), 0);

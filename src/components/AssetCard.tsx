@@ -156,8 +156,16 @@ export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
 
         <div className="space-y-4">
           <div className="flex flex-col">
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em] mb-1">評価額</span>
-            <span className="text-2xl font-black gradient-text">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em] mb-1">
+              {asset.category === "FX" ? "評価損益" : "評価額"}
+            </span>
+            <span className={cn(
+              "text-2xl font-black",
+              asset.category === "FX" 
+                ? (asset.profitAndLoss >= 0 ? "text-emerald-500" : "text-rose-500")
+                : "gradient-text"
+            )}>
+              {asset.category === "FX" && asset.profitAndLoss >= 0 ? "+" : ""}
               {formatCurrency(asset.evaluatedValue)}
             </span>
           </div>
