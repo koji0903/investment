@@ -42,7 +42,10 @@ interface PortfolioContextType {
   totalAssetsValue: number;
   totalProfitAndLoss: number;
   totalDailyChange: number;
+  addAsset: (asset: Omit<Asset, "id">) => Promise<void>;
   addTransaction: (transaction: Omit<Transaction, "id" | "date">) => Promise<void>;
+  updateAsset: (assetId: string, update: Partial<Asset>) => Promise<void>;
+  deleteAsset: (assetId: string) => Promise<void>;
   syncExternalData?: (providerType: 'stock' | 'crypto' | 'fx') => Promise<void>;
   lastUpdated: string | null;
   isFetching: boolean;
@@ -260,7 +263,10 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
 
   const calculatedAssets = useMemo(() => {
     return assets.map(asset => {
-      const latestPrice = prices[asset.symbol] || asset.currentPrice;
+      // 手動入力かつ市場価格シンボルがない場合は、保存されている currentPrice を優先
+      const latestPrice = asset.isManual && !asset.symbol 
+        ? asset.currentPrice 
+        : (prices[asset.symbol] || asset.currentPrice);
       return calculateAssetValues({ ...asset, currentPrice: latestPrice });
     });
   }, [assets, prices]);
@@ -277,6 +283,38 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     return calculatedAssets.reduce((total, asset) => total + asset.dailyChange, 0);
   }, [calculatedAssets]);
 
+  const addAsset = async (newAsset: Omit<Asset, "id">) => {
+    if (isDemo) {
+      alert("デモモードでは資産の追加は制限されています。");
+      return;
+    }
+    if (!user) return;
+    const { saveAsset } = await import("@/lib/db");
+    await saveAsset(user.uid, newAsset, portfolioId);
+  };
+
+  const updateAsset = async (assetId: string, update: Partial<Asset>) => {
+    if (isDemo) {
+      alert("デモモードでは編集が制限されています。");
+      return;
+    }
+    if (!user) return;
+    await updateDoc(doc(db, "users", user.uid, "portfolios", portfolioId, "assets", assetId), {
+      ...update,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  const deleteAsset = async (assetId: string) => {
+    if (isDemo) {
+      alert("デモモードでは削除が制限されています。");
+      return;
+    }
+    if (!user) return;
+    const { removeAsset } = await import("@/lib/db");
+    await removeAsset(user.uid, assetId, portfolioId);
+  };
+
   return (
     <PortfolioContext.Provider
       value={{
@@ -291,7 +329,10 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         totalAssetsValue,
         totalProfitAndLoss,
         totalDailyChange,
+        addAsset,
         addTransaction,
+        updateAsset,
+        deleteAsset,
         syncExternalData,
         lastUpdated,
         isFetching,

@@ -16,6 +16,9 @@ const CATEGORY_COLORS: Record<string, string> = {
   "FX": "#22c55e",     // green-500
   "仮想通貨": "#f59e0b", // amber-500
   "投資信託": "#8b5cf6", // violet-500
+  "銀行": "#10b981",     // emerald-500
+  "外国株": "#6366f1",   // indigo-500
+  "日本株": "#ef4444",   // red-500
 };
 
 export const getCompositionData = (assets: AssetCalculated[]): CompositionData[] => {

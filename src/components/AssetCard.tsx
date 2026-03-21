@@ -15,7 +15,9 @@ import {
 import { getAssetSentiment, SentimentResult } from "@/lib/sentimentUtils";
 import { NewsItem } from "@/app/api/news/route";
 import { useAuth } from "@/context/AuthContext";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { ManualAssetForm } from "./ManualAssetForm";
+import { Globe, Banknote, Edit3 } from "lucide-react";
 
 interface AssetCardProps {
   asset: AssetCalculated;
@@ -24,7 +26,12 @@ interface AssetCardProps {
 const CategoryIcon = ({ category, className }: { category: string; className?: string }) => {
   switch (category) {
     case "株":
+    case "日本株":
       return <Building2 className={className} />;
+    case "外国株":
+      return <Globe className={className} />;
+    case "銀行":
+      return <Landmark className={className} />;
     case "FX":
       return <CircleDollarSign className={className} />;
     case "仮想通貨":
@@ -40,6 +47,7 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
   const { isDemo } = useAuth();
   const isProfit = asset.profitAndLoss >= 0;
   const [sentiment, setSentiment] = useState<SentimentResult | null>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
 
   useEffect(() => {
     const fetchSentiment = async () => {
@@ -56,17 +64,37 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
   }, [asset.name]);
   
   return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.95 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      viewport={{ once: true }}
-      whileHover={{ y: -5, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)" }}
-      onClick={() => window.location.href = `/asset/${asset.symbol}`}
-      className="premium-card group relative p-4 md:p-6 cursor-pointer"
-    >
-      <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-500 group-hover:scale-125 group-hover:-rotate-12 pointer-events-none">
-        <CategoryIcon category={asset.category} className="w-24 h-24 text-slate-900 dark:text-slate-100" />
-      </div>
+    <div className="relative isolate">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        whileHover={{ y: -5, boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)" }}
+        onClick={() => window.location.href = `/asset/${asset.symbol}`}
+        className="premium-card group relative p-4 md:p-6 cursor-pointer overflow-hidden"
+      >
+        {/* 背景の薄いアイコン */}
+        <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.08] transition-all duration-500 group-hover:scale-125 group-hover:-rotate-12 pointer-events-none">
+          <CategoryIcon category={asset.category} className="w-24 h-24 text-slate-900 dark:text-slate-100" />
+        </div>
+
+        {/* 手動入力バッジ & 編集ボタン */}
+        {asset.isManual && (
+          <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+            <span className="bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-500/20 uppercase tracking-tighter">
+              Manual
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowEditForm(true);
+              }}
+              className="p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-500 transition-colors shadow-sm"
+            >
+              <Edit3 size={14} />
+            </button>
+          </div>
+        )}
 
       <div className="relative z-10 flex flex-col gap-5">
         <div className="flex items-start justify-between">
@@ -132,6 +160,17 @@ export const AssetCard = ({ asset }: AssetCardProps) => {
           </div>
         </div>
       </div>
-    </motion.div>
+      </motion.div>
+
+      {/* 編集用モダル */}
+      <AnimatePresence>
+        {showEditForm && (
+          <ManualAssetForm 
+            asset={asset} 
+            onClose={() => setShowEditForm(false)} 
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 };

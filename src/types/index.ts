@@ -1,4 +1,4 @@
-export type AssetCategory = "株" | "FX" | "仮想通貨" | "投資信託";
+export type AssetCategory = "株" | "FX" | "仮想通貨" | "投資信託" | "銀行" | "外国株" | "日本株";
 
 export type TransactionType = "buy" | "sell";
 
@@ -19,6 +19,7 @@ export interface Asset {
   currentPrice: number;
   quantity: number;
   averageCost: number;
+  isManual?: boolean;
 }
 
 export interface AssetCalculated extends Asset {

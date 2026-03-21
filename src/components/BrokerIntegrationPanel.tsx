@@ -6,8 +6,10 @@ import { useNotify } from "@/context/NotificationContext";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { updateBrokerConnection } from "@/lib/db";
 import { ProviderType, BrokerConnection } from "@/types";
-import { Landmark, Bitcoin, LineChart, Link as LinkIcon, AlertCircle, CheckCircle2, RefreshCw } from "lucide-react";
+import { Landmark, Bitcoin, LineChart, Link as LinkIcon, AlertCircle, CheckCircle2, RefreshCw, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ManualAssetForm } from "./ManualAssetForm";
+import { AnimatePresence } from "framer-motion";
 
 interface ProviderConfig {
   id: ProviderType;
@@ -51,6 +53,7 @@ export const BrokerIntegrationPanel = () => {
   const { notify } = useNotify();
   
   const [syncing, setSyncing] = useState<Record<string, boolean>>({});
+  const [showManualForm, setShowManualForm] = useState(false);
 
   const handleToggleConnection = async (providerId: string, currentStatus: boolean) => {
     if (isDemo || !user) {
@@ -217,7 +220,39 @@ export const BrokerIntegrationPanel = () => {
             );
           })}
         </div>
+
+        {/* Manual Input Section */}
+        <div className="mt-12 p-8 bg-indigo-50 dark:bg-indigo-500/5 rounded-[32px] border border-indigo-100 dark:border-indigo-500/20 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:opacity-[0.1] transition-all duration-700 group-hover:scale-150 rotate-12 pointer-events-none">
+            <Landmark size={120} className="text-indigo-900 dark:text-white" />
+          </div>
+          <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="space-y-3 text-center md:text-left">
+              <h3 className="text-2xl font-black text-slate-800 dark:text-white flex items-center gap-3 justify-center md:justify-start">
+                <span className="w-2 h-8 bg-indigo-500 rounded-full"></span>
+                手動で資産を管理
+              </h3>
+              <p className="text-sm font-bold text-slate-500 dark:text-slate-400 max-w-lg leading-relaxed">
+                銀行口座の残高や、API連携に対応していない銘柄、不動産など、あらゆる資産を手動で登録・更新できます。
+              </p>
+            </div>
+            <button 
+              onClick={() => setShowManualForm(true)}
+              className="w-full md:w-auto px-10 py-5 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl shadow-2xl shadow-indigo-600/30 transition-all active:scale-95 flex items-center justify-center gap-3"
+            >
+              <PlusCircle size={24} />
+              手動資産を追加する
+            </button>
+          </div>
+        </div>
       </div>
+      
+      {/* Manual Asset Form Modal */}
+      <AnimatePresence>
+        {showManualForm && (
+          <ManualAssetForm onClose={() => setShowManualForm(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
