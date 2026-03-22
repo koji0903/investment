@@ -212,8 +212,8 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
         // ポジション必要証拠金 = Lot数 * 1ロットあたりの必要証拠金
         const totalRequired = Math.round(row.quantity * marginPerLot);
         
-        // 預託証拠金残高の提案 (維持率200%相当を推奨値とするが、計算のベースは証拠金)
-        const suggestedDeposit = totalRequired * 2;
+        // 預託証拠金残高の提案 (100%維持ベースをデフォルトとする)
+        const suggestedDeposit = totalRequired;
         
         updateRow(rowId, "requiredMargin", marginPerLot.toString());
         updateRow(rowId, "depositMargin", suggestedDeposit.toString());
@@ -406,12 +406,20 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
     }
   }, []);
 
-  // カテゴリがFXに切り替わった場合も実行
+  // FXの数量・通貨ペア・単位が変更されたら自動再計算
   useEffect(() => {
-    if (category === "FX" && rows.length > 0 && rows[0].name && !rows[0].depositMargin) {
-      handleFetchBrokerInfo(rows[0].id, true);
+    if (category === "FX") {
+      rows.forEach(row => {
+        if (row.quantity > 0 && (row.symbol || row.name)) {
+          // debounce 的な扱いで自動推定を実行
+          const timer = setTimeout(() => {
+            handleFetchBrokerInfo(row.id, true);
+          }, 1000);
+          return () => clearTimeout(timer);
+        }
+      });
     }
-  }, [category]);
+  }, [category, JSON.stringify(rows.map(r => ({ q: r.quantity, s: r.symbol, u: r.lotUnit })))]);
 
   if (!mounted) return null;
 
@@ -540,19 +548,17 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                         </div>
                       )}
 
-                      <div className={cn("space-y-1.5", isInvestment ? "md:col-span-1" : "md:col-span-3")}>
-                        <label className="text-[10px] font-bold text-slate-400 ml-1">
-                          {labels.quantity}
-                        </label>
-                        <input
-                          type="number"
-                          step="any"
-                          required
-                          value={row.quantity}
-                          onChange={(e) => updateRow(row.id, "quantity", e.target.value)}
-                          className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
-                        />
-                      </div>
+                       <div className={cn("space-y-1.5", isInvestment ? "md:col-span-1" : "md:col-span-3")}>
+                         <label className="text-[10px] font-bold text-slate-400 ml-1">
+                           {labels.quantity}
+                         </label>
+                         <NumberInput
+                           required
+                           value={row.quantity}
+                           onChange={(val: string) => updateRow(row.id, "quantity", val)}
+                           className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                         />
+                       </div>
 
                       {isInvestment && (
                         <>
