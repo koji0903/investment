@@ -51,6 +51,7 @@ import { PositionSizing } from "@/components/PositionSizing";
 import { WinPatternAnalysis } from "@/components/WinPatternAnalysis";
 import { InvestmentRuleMonitor } from "@/components/InvestmentRuleMonitor";
 import { FXMarketAnalysis } from "@/components/FXMarketAnalysis";
+import { FXJudgmentLinkCard } from "@/components/FXJudgmentLinkCard";
 import { IndustryInsightLinkCard } from "@/components/IndustryInsightLinkCard";
 import { Footer } from "@/components/Footer";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -180,8 +181,11 @@ export default function Home() {
                   {/* Portfolio Scoring (NEW) */}
                   <PortfolioScoreCard />
 
-                  {/* Industry Insight Link (NEW) */}
-                  <IndustryInsightLinkCard />
+                  {/* Strategic Link Cards */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <FXJudgmentLinkCard />
+                    <IndustryInsightLinkCard />
+                  </div>
 
                   {/* Top: Market Intelligence Snapshot */}
                   <MarketAnalysisDashboard />
