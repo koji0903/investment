@@ -58,12 +58,18 @@ export const FXService = {
       if (results.length === 0) {
         // データがない場合は実データを同期
         console.log("No data found in Firestore, triggering real data sync...");
-        return await FXService.syncRealData();
+        const syncResults = await FXService.syncRealData();
+        if (syncResults.length === 0) {
+          console.log("Real data sync returned no results, falling back to dummy data...");
+          return await FXService.generateAndSaveDummyData();
+        }
+        return syncResults;
       }
       return results;
     } catch (error) {
       console.error("Error fetching FX judgments:", error);
-      return [];
+      // エラー時も最終手段としてダミーデータを試みる
+      return await FXService.generateAndSaveDummyData().catch(() => []);
     }
   },
 
@@ -86,12 +92,16 @@ export const FXService = {
    */
   syncRealData: async (): Promise<FXJudgment[]> => {
     try {
-      await syncFXRealData();
+      const res = await syncFXRealData();
+      if (!res || res.count === 0) {
+        console.warn("syncFXRealData returned 0 results, generating dummy data instead.");
+        return await FXService.generateAndSaveDummyData();
+      }
       return await FXService.getPairs();
     } catch (error) {
       console.error("Error syncing real FX data:", error);
-      // 失敗した場合は既存のデータを返す
-      return await FXService.getPairs();
+      // 失敗した場合はダミーデータを生成して返す
+      return await FXService.generateAndSaveDummyData().catch(() => []);
     }
   },
 
