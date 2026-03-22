@@ -219,7 +219,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
         const currentPrice = isInvestment ? Number(row.currentPrice) : 1;
         const averageCost = isInvestment ? Number(row.averageCost) : 1;
 
-        await updateAsset(asset!.id, {
+        const updateData: any = {
           name: row.name,
           category,
           symbol: isInvestment ? row.symbol : "",
@@ -227,10 +227,14 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           currentPrice,
           averageCost,
           brokerName: row.brokerName,
-          currency: (category === "外国株" || (category === "FX" && (row.symbol.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
-          requiredMargin: undefined, 
-          swapPoints: category === "FX" ? Number(row.swapPoints) : undefined,
-        });
+          currency: (category === "外国株" || (category === "FX" && (row.symbol?.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
+        };
+
+        if (category === "FX") {
+          updateData.swapPoints = Number(row.swapPoints || 0);
+        }
+
+        await updateAsset(asset!.id, updateData);
 
         notify({
           type: "success",
@@ -244,7 +248,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           const currentPrice = isInvestment ? Number(row.currentPrice) : 1;
           const averageCost = isInvestment ? Number(row.averageCost) : 1;
           
-          await addAsset({
+          const newData: any = {
             name: row.name,
             category,
             symbol: isInvestment ? (row.symbol || "") : "",
@@ -253,10 +257,14 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
             averageCost,
             brokerName: row.brokerName,
             isManual: true,
-            currency: (category === "外国株" || (category === "FX" && (row.symbol.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
-            requiredMargin: undefined,
-            swapPoints: category === "FX" ? Number(row.swapPoints) : undefined,
-          });
+            currency: (category === "外国株" || (category === "FX" && (row.symbol?.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
+          };
+
+          if (category === "FX") {
+            newData.swapPoints = Number(row.swapPoints || 0);
+          }
+
+          await addAsset(newData);
         }
         
         notify({
