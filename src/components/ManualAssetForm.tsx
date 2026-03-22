@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X, Plus, Trash2, Save, Loader2, Coins, Landmark, Globe, Building2, LineChart, Banknote, ShieldCheck } from "lucide-react";
 import { usePortfolio } from "@/context/PortfolioContext";
+import { useNotify } from "@/context/NotificationContext";
 import { Asset, AssetCategory } from "@/types";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -115,6 +116,7 @@ const CATEGORY_PLACEHOLDERS: Record<string, { name: string; symbol: string }> = 
 
 export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: ManualAssetFormProps) => {
   const { addAsset, updateAsset, deleteAsset } = usePortfolio();
+  const { notify } = useNotify();
   
   const [category, setCategory] = useState<AssetCategory>(asset?.category || initialCategory);
   
@@ -194,8 +196,20 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
     setRows(newRows);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    // 手動バリデーション
+    const invalidRow = rows.find(r => !r.name || (category !== "銀行" && r.quantity <= 0));
+    if (invalidRow) {
+      notify({
+        type: "error",
+        title: "入力エラー",
+        message: "資産名と数量を正しく入力してください。",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -214,8 +228,14 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           averageCost,
           brokerName: row.brokerName,
           currency: (category === "外国株" || (category === "FX" && (row.symbol.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
-          requiredMargin: undefined, // FXは自動算出に移行
+          requiredMargin: undefined, 
           swapPoints: category === "FX" ? Number(row.swapPoints) : undefined,
+        });
+
+        notify({
+          type: "success",
+          title: "更新完了",
+          message: `${row.name} の情報を更新しました。`,
         });
       } else {
         for (const row of rows) {
@@ -234,14 +254,25 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
             brokerName: row.brokerName,
             isManual: true,
             currency: (category === "外国株" || (category === "FX" && (row.symbol.endsWith("USD=X") || row.name.includes("/USD")))) ? "USD" : "JPY",
-            requiredMargin: undefined, // FXは自動算出に移行
+            requiredMargin: undefined,
             swapPoints: category === "FX" ? Number(row.swapPoints) : undefined,
           });
         }
+        
+        notify({
+          type: "success",
+          title: "登録完了",
+          message: `${rows.length}件の資産を登録しました。`,
+        });
       }
       onClose();
     } catch (error) {
       console.error("Failed to save assets", error);
+      notify({
+        type: "error",
+        title: "保存失敗",
+        message: "データの保存に失敗しました。通信状況を確認して再度お試しください。",
+      });
     } finally {
       setLoading(false);
     }
@@ -543,8 +574,9 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
               キャンセル
             </button>
             <button
-              type="submit"
+              type="button"
               disabled={loading}
+              onClick={() => handleSubmit()}
               className="w-full md:w-auto px-10 py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-400 text-white font-black rounded-2xl shadow-xl shadow-indigo-600/30 transition-all active:scale-95 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={20} />}
