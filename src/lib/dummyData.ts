@@ -77,11 +77,11 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
 
   return {
     ...asset,
-    evaluatedValue,
-    profitAndLoss,
+    evaluatedValue: isNaN(evaluatedValue) ? 0 : evaluatedValue,
+    profitAndLoss: isNaN(profitAndLoss) ? 0 : profitAndLoss,
     profitPercentage: isNaN(profitPercentage) ? 0 : profitPercentage,
-    dailyChange,
-    dailyChangePercentage,
+    dailyChange: isNaN(dailyChange) ? 0 : dailyChange,
+    dailyChangePercentage: isNaN(dailyChangePercentage) ? 0 : dailyChangePercentage,
     exchangeRate: asset.category === "FX" ? undefined : (asset.currency === "USD" ? usdJpyRate : undefined),
   };
 };
