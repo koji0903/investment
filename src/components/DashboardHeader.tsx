@@ -10,9 +10,18 @@ interface DashboardHeaderProps {
   totalProfitAndLoss: number;
   lastUpdated?: string | null;
   isFetching?: boolean;
+  hideAuth?: boolean;
+  variant?: 'default' | 'minimal';
 }
 
-export const DashboardHeader = ({ totalAssets, totalProfitAndLoss, lastUpdated, isFetching }: DashboardHeaderProps) => {
+export const DashboardHeader = ({ 
+  totalAssets, 
+  totalProfitAndLoss, 
+  lastUpdated, 
+  isFetching,
+  hideAuth = false,
+  variant = 'default'
+}: DashboardHeaderProps) => {
   const { user, logout } = useAuth();
   const router = useRouter();
   const isProfit = totalProfitAndLoss >= 0;
@@ -21,6 +30,52 @@ export const DashboardHeader = ({ totalAssets, totalProfitAndLoss, lastUpdated, 
     await logout();
     router.push("/login");
   };
+
+  if (variant === 'minimal') {
+    return (
+      <div className="flex items-center justify-between px-6 py-4 bg-white/5 backdrop-blur-md border-b border-white/10 text-white">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => router.push("/")}
+            className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-lg font-black tracking-tight">マーケット・レーダー</h1>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Market Scanning</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">総資産</span>
+            <span className="text-xl font-black">{formatCurrency(totalAssets)}</span>
+          </div>
+          <div className="h-8 w-px bg-white/10" />
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">評価損益</span>
+            <span className={cn("text-xl font-black", isProfit ? "text-emerald-400" : "text-rose-400")}>
+              {isProfit ? "+" : ""}{formatCurrency(totalProfitAndLoss)}
+            </span>
+          </div>
+          {!hideAuth && user && (
+            <>
+              <div className="h-8 w-px bg-white/10" />
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <User size={16} />
+                </div>
+                <button onClick={handleLogout} className="p-2 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-all">
+                  <LogOut size={16} />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-8 md:p-10 shadow-xl border border-white/10">

@@ -5,13 +5,17 @@ import { useAuth } from "@/context/AuthContext";
 import { LogOut, User, ChevronDown, Settings, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export const UserMenu = () => {
   const { user, logout, isDemo } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
+
+  // 特定のページ（ヘッダーが特殊なページなど）ではグローバルの UserMenu を非表示にする
+  const isHiddenPage = pathname === "/market-radar" || pathname?.startsWith("/fx-judgment") || pathname?.startsWith("/stock-judgment");
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -23,7 +27,7 @@ export const UserMenu = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  if (!user) return null;
+  if (!user || isHiddenPage) return null;
 
   const handleLogout = async () => {
     await logout();
