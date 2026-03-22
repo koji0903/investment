@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from "react";
 import { Asset, AssetCalculated, Transaction, BrokerConnection } from "@/types";
 import { calculateAssetValues } from "@/lib/dummyData";
+import { calculatePortfolioScores, PortfolioScores } from "@/lib/scoringEngine";
 import { useAuth } from "@/context/AuthContext";
 import { useNotify } from "@/context/NotificationContext";
 import { 
@@ -57,6 +58,7 @@ interface PortfolioContextType {
   lastUpdated: string | null;
   isFetching: boolean;
   fetchError: string | null;
+  currentScore: PortfolioScores | null;
   retryFetch: () => void;
   refreshPrices: () => Promise<void>;
 }
@@ -313,6 +315,39 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     return calculatedAssets.reduce((total, asset) => total + asset.dailyChange, 0);
   }, [calculatedAssets]);
 
+  // --- Scoring Logic ---
+  const currentScore = useMemo(() => {
+    if (calculatedAssets.length === 0) return null;
+
+    const cashAssets = calculatedAssets.filter(a => a.category === "現金" || a.category === "銀行");
+    const cashValue = cashAssets.reduce((sum, a) => sum + a.evaluatedValue, 0);
+    const cashRatio = totalAssetsValue > 0 ? cashValue / totalAssetsValue : 0.2;
+    const violationsCount = behavior?.ruleViolations?.length || 0;
+
+    return calculatePortfolioScores(
+      { 
+        cagr: growthMetrics?.cagr || 12, 
+        maxDrawdown: growthMetrics?.maxDrawdown || 8 
+      },
+      calculatedAssets,
+      cashRatio,
+      violationsCount
+    );
+  }, [calculatedAssets, totalAssetsValue, growthMetrics, behavior]);
+
+  // 定期的なスコアのFirestore保存 (大幅な変更時または手動更新時)
+  useEffect(() => {
+    if (isDemo || !user || !currentScore) return;
+
+    // 前回の保存データと比較して差分がある場合のみ保存（デバウンスを考慮しても良いが、一旦単純な比較）
+    if (!portfolioMetrics || Math.abs(currentScore.total - portfolioMetrics.total) >= 1) {
+      const timer = setTimeout(() => {
+        savePortfolioMetrics(user.uid, portfolioId, currentScore);
+      }, 5000); // 5秒のディレイ（頻繁な書き込み防止）
+      return () => clearTimeout(timer);
+    }
+  }, [currentScore, user, isDemo, portfolioId, portfolioMetrics]);
+
   const addAsset = async (newAsset: Omit<Asset, "id">) => {
     if (isDemo) {
       alert("デモモードでは資産の追加は制限されています。");
@@ -370,6 +405,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         lastUpdated,
         isFetching,
         fetchError,
+        currentScore,
         retryFetch: () => fetchMarketData(0),
         refreshPrices: async () => {
           await fetchMarketData(0, true);

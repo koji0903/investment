@@ -21,55 +21,19 @@ import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
 export const PortfolioScoreCard = () => {
-  const { portfolioMetrics, growthMetrics, calculatedAssets, totalAssetsValue, behavior, isFetching } = usePortfolio();
-  const { user, isDemo } = useAuth();
+  const { currentScore, refreshPrices, isFetching } = usePortfolio();
   const [isCalculating, setIsCalculating] = useState(false);
 
-  // キャッシュ比率の算出（デモ用に簡略化、本来は現金アセットから算出）
-  const cashRatio = useMemo(() => {
-    // "現金" または "銀行" カテゴリの資産をキャッシュとして集計
-    const cashAssets = calculatedAssets.filter(a => a.category === "現金" || a.category === "銀行");
-    const cashValue = cashAssets.reduce((sum, a) => sum + a.evaluatedValue, 0);
-    return totalAssetsValue > 0 ? cashValue / totalAssetsValue : 0.2; // デモ用デフォルト20%
-  }, [calculatedAssets, totalAssetsValue]);
-
-  // ルール違反のカウント（behaviorデータから）
-  const violationsCount = useMemo(() => {
-    return behavior?.ruleViolations?.length || 0;
-  }, [behavior]);
-
-  const handleRecalculate = async () => {
-    if (!user) return;
+  const handleRefresh = async () => {
     setIsCalculating(true);
-
     try {
-      const scores = calculatePortfolioScores(
-        { 
-          cagr: growthMetrics?.cagr || 12, 
-          maxDrawdown: growthMetrics?.maxDrawdown || 8 
-        },
-        calculatedAssets,
-        cashRatio,
-        violationsCount
-      );
-
-      if (!isDemo) {
-        await savePortfolioMetrics(user.uid, "default", scores);
-      }
-    } catch (error) {
-      console.error("Scoring failed", error);
+      await refreshPrices();
     } finally {
       setIsCalculating(false);
     }
   };
 
-  useEffect(() => {
-    if (!portfolioMetrics && !isFetching && user && calculatedAssets.length > 0) {
-      handleRecalculate();
-    }
-  }, [portfolioMetrics, isFetching, user, calculatedAssets.length]);
-
-  const scores: PortfolioScores = portfolioMetrics || {
+  const scores: PortfolioScores = currentScore || {
     growth: 0,
     stability: 0,
     diversification: 0,
@@ -102,8 +66,8 @@ export const PortfolioScoreCard = () => {
             </div>
           </div>
           <button 
-            onClick={handleRecalculate}
-            disabled={isCalculating}
+            onClick={handleRefresh}
+            disabled={isCalculating || isFetching}
             className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50"
           >
             <RefreshCw size={18} className={cn("text-slate-500", isCalculating && "animate-spin")} />
