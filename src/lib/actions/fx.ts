@@ -6,6 +6,8 @@ import { analyzeTechnical } from "@/utils/fx/technical";
 import { analyzeFundamental } from "@/utils/fx/fundamental";
 import { evaluateSwap, calculateTotalJudgment } from "@/utils/fx/scoring";
 import { calculateEnergyAnalysis } from "@/utils/fx/energy";
+import { calculateEntryTiming } from "@/utils/fx/entry";
+import { calculateATR } from "@/lib/technicalAnalysis";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, getDocs, collection, query } from "firebase/firestore";
 
@@ -101,6 +103,21 @@ export async function syncFXRealData() {
 
         // 相場エネルギー分析を追加
         judgment.energyAnalysis = calculateEnergyAnalysis(prices, highs, lows, currentPrice);
+
+        // エントリータイミング最適化を追加
+        const atr = calculateATR({ high: highs, low: lows, close: prices }, 14).pop() || 0;
+        const recentHigh = Math.max(...highs.slice(-20)); // 過去20日の高値
+        const recentLow = Math.min(...lows.slice(-20));  // 過去20日の安値
+        
+        judgment.entryTimingAnalysis = calculateEntryTiming(
+          pair.pairCode,
+          currentPrice,
+          technical,
+          judgment.energyAnalysis,
+          atr,
+          recentHigh,
+          recentLow
+        );
       }
     } catch (e) {
       console.error(`Sync error for ${pair.pairCode}:`, e);
@@ -152,6 +169,15 @@ export async function syncFXRealData() {
           fakeFlag: false,
           entryRecommendation: breakoutDir === "none" ? "wait" : "enter"
         },
+        entryTimingAnalysis: calculateEntryTiming(
+          pair.pairCode,
+          dummyPrice,
+          undefined,
+          undefined,
+          0,
+          0,
+          0
+        ),
         updatedAt: new Date().toISOString()
       };
     }

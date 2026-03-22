@@ -8,7 +8,8 @@ import {
   HoldingStyleBadge 
 } from "./FXUIComponents";
 import { FXEnergyBento } from "./FXEnergyBento";
-import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle } from "lucide-react";
+import { FXEntryTimingBento } from "./FXEntryTimingBento";
+import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle, Crosshair } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -105,6 +106,19 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
                   <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">相場エネルギー分析</h3>
                 </div>
                 <FXEnergyBento analysis={judgment.energyAnalysis} pairCode={judgment.pairCode} />
+              </div>
+            )}
+
+            {/* Entry Timing Analysis (Bento) */}
+            {judgment.entryTimingAnalysis && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-emerald-500 rounded-lg text-white">
+                    <Crosshair size={14} fill="currentColor" />
+                  </div>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">エントリー最適化ナビ</h3>
+                </div>
+                <FXEntryTimingBento analysis={judgment.entryTimingAnalysis} pairCode={judgment.pairCode} />
               </div>
             )}
 

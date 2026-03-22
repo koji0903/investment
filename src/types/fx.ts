@@ -102,6 +102,40 @@ export interface MarketEnergyAnalysis {
 }
 
 /**
+ * エントリータイミング最適化 (構造単位エントリーエンジン)
+ */
+export type StructurePhase = 
+  | "pre_consolidation"
+  | "consolidating"
+  | "breakout_initial"
+  | "pullback_waiting"
+  | "reacceleration"
+  | "extended_move"
+  | "possible_fakeout";
+
+export type RecommendedEntryType = 
+  | "initial_breakout_entry"
+  | "pullback_entry"
+  | "reacceleration_entry";
+
+export interface EntryTimingAnalysis {
+  structurePhase: StructurePhase;
+  structureComment: string;
+  recommendedEntryType: RecommendedEntryType;
+  entryTypeReason: string;
+  entryScore: number;           // 0〜100
+  entryLabel: string;           // エントリー好機, 条件付きで有望, 待機優先, 見送り
+  waitReasons: string[];
+  shouldWait: boolean;
+  suggestedEntryPrice: number;
+  invalidationPrice: number;    // 損切り候補
+  targetPrice: number;          // 目標価格 (追加)
+  rrRatio: number;              // リスクリワード比
+  stopComment: string;
+  targetComment: string;
+}
+
+/**
  * 統合判定結果 (Firestore 保存形式)
  */
 export interface FXJudgment {
@@ -139,6 +173,9 @@ export interface FXJudgment {
   
   // 相場エネルギー分析 (新規追加)
   energyAnalysis?: MarketEnergyAnalysis;
+
+  // エントリータイミング分析 (新規追加)
+  entryTimingAnalysis?: EntryTimingAnalysis;
 
   updatedAt: string;
   
