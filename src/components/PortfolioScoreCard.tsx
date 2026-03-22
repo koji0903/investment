@@ -39,17 +39,24 @@ export const PortfolioScoreCard = () => {
     diversification: 0,
     efficiency: 0,
     discipline: 0,
-    total: 0
+    total: 0,
+    reasons: {
+      growth: "計算中...",
+      stability: "計算中...",
+      diversification: "計算中...",
+      efficiency: "計算中...",
+      discipline: "計算中..."
+    }
   };
 
   const evaluation = getTotalScoreEvaluation(scores.total);
 
   const scoreItems = [
-    { label: "成長性", sub: "CAGR", value: scores.growth, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-50" },
-    { label: "安定性", sub: "MDD", value: scores.stability, icon: ShieldCheck, color: "text-indigo-500", bg: "bg-indigo-50" },
-    { label: "分散性", sub: "配分", value: scores.diversification, icon: Layers, color: "text-purple-500", bg: "bg-purple-50" },
-    { label: "資金効率", sub: "現比", value: scores.efficiency, icon: Zap, color: "text-amber-500", bg: "bg-amber-50" },
-    { label: "行動規律", sub: "違反", value: scores.discipline, icon: Target, color: "text-rose-500", bg: "bg-rose-50" },
+    { label: "成長性", sub: "CAGR", value: scores.growth, reason: scores.reasons.growth, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-50" },
+    { label: "安定性", sub: "MDD", value: scores.stability, reason: scores.reasons.stability, icon: ShieldCheck, color: "text-indigo-500", bg: "bg-indigo-50" },
+    { label: "分散性", sub: "配分", value: scores.diversification, reason: scores.reasons.diversification, icon: Layers, color: "text-purple-500", bg: "bg-purple-50" },
+    { label: "資金効率", sub: "現比", value: scores.efficiency, reason: scores.reasons.efficiency, icon: Zap, color: "text-amber-500", bg: "bg-amber-50" },
+    { label: "行動規律", sub: "違反", value: scores.discipline, reason: scores.reasons.discipline, icon: Target, color: "text-rose-500", bg: "bg-rose-50" },
   ];
 
   return (
@@ -70,7 +77,7 @@ export const PortfolioScoreCard = () => {
             disabled={isCalculating || isFetching}
             className="p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl hover:bg-slate-100 transition-all active:scale-95 disabled:opacity-50"
           >
-            <RefreshCw size={18} className={cn("text-slate-500", isCalculating && "animate-spin")} />
+            <RefreshCw size={18} className={cn("text-slate-500", (isCalculating || isFetching) && "animate-spin")} />
           </button>
         </div>
 
@@ -131,25 +138,25 @@ export const PortfolioScoreCard = () => {
           {/* Detailed Breakdown Section */}
           <div className="lg:col-span-7 space-y-4">
             <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-              <PieChart size={14} /> スコア内訳 (各20点満点)
+              <PieChart size={14} /> スコア内訳 (算出根拠を表示)
             </h4>
             
-            <div className="space-y-3">
+            <div className="space-y-5">
               {scoreItems.map((item, idx) => (
                 <div key={item.label} className="group/item">
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-3">
                       <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", item.bg, item.color)}>
                         <item.icon size={16} />
                       </div>
                       <div>
                         <span className="text-sm font-black text-slate-700 dark:text-slate-200">{item.label}</span>
-                        <span className="text-[10px] font-bold text-slate-400 ml-2 uppercase opacity-0 group-hover/item:opacity-100 transition-opacity">[{item.sub}]</span>
+                        <span className="text-xs font-bold text-slate-900 dark:text-white ml-2">{item.value}/20</span>
                       </div>
                     </div>
-                    <span className="text-sm font-black text-slate-900 dark:text-white">{item.value}/20</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">[{item.sub}]</span>
                   </div>
-                  <div className="h-2 w-full bg-slate-50 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-1.5 w-full bg-slate-50 dark:bg-slate-800 rounded-full overflow-hidden mb-1.5">
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: `${(item.value / 20) * 100}%` }}
@@ -157,6 +164,9 @@ export const PortfolioScoreCard = () => {
                       className={cn("h-full rounded-full bg-current", item.color)}
                     />
                   </div>
+                  <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400 leading-tight">
+                    {item.reason}
+                  </p>
                 </div>
               ))}
             </div>
