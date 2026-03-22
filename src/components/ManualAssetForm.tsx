@@ -65,6 +65,7 @@ interface AssetRow {
   requiredMargin?: number;
   swapPoints?: number;
   depositMargin?: number;
+  lotUnit?: number;
 }
 
 const CATEGORIES: { id: AssetCategory; label: string; icon: React.ElementType }[] = [
@@ -178,9 +179,10 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           brokerName: asset.brokerName || "",
           requiredMargin: asset.requiredMargin || 0,
           swapPoints: asset.swapPoints || 0,
-          depositMargin: asset.depositMargin || 0
+          depositMargin: asset.depositMargin || 0,
+          lotUnit: asset.lotUnit || 10000
         }]
-      : [{ id: "1", name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: "", requiredMargin: 0, swapPoints: 0, depositMargin: 0 }]
+      : [{ id: "1", name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: "", requiredMargin: 0, swapPoints: 0, depositMargin: 0, lotUnit: 10000 }]
   );
 
   const handleFetchBrokerInfo = async (rowId: string, silent = false) => {
@@ -200,16 +202,18 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
         const baseCcy = getBaseCurrency(row.name, row.symbol);
         const baseRate = getJpyRate(baseCcy, prices);
         
-        const FX_LOT_SIZE = 10000;
-        // 1ロットあたりの必要証拠金 = ベース通貨レート * 10,000 * 証拠金率(4%)
-        // TRY等の例外対応ロジック
-        let baseMarginRate = data.marginRate;
-        if (baseCcy === "TRY") baseMarginRate = 0.032; // ユーザー指摘の約1436円(レート4.5時)に近似
-
-        const marginPerLot = Math.round(baseRate * FX_LOT_SIZE * baseMarginRate);
+        // ユーザー指定の公式: 現在レート × Lot数 × 取引単位 ÷ 25
+        const lotUnit = row.lotUnit || 10000;
+        const LEVERAGE = 25;
         
-        // 預託証拠金 = 取引数量(Lot) * 1ロットあたりの必要証拠金 (100%維持ベース)
-        const suggestedDeposit = Math.round(row.quantity * marginPerLot);
+        // 1ロットあたりの必要証拠金 = ベース通貨レート * 取引単位 / レバレッジ
+        const marginPerLot = Math.round(baseRate * lotUnit / LEVERAGE);
+        
+        // ポジション必要証拠金 = Lot数 * 1ロットあたりの必要証拠金
+        const totalRequired = Math.round(row.quantity * marginPerLot);
+        
+        // 預託証拠金残高の提案 (維持率200%相当を推奨値とするが、計算のベースは証拠金)
+        const suggestedDeposit = totalRequired * 2;
         
         updateRow(rowId, "requiredMargin", marginPerLot.toString());
         updateRow(rowId, "depositMargin", suggestedDeposit.toString());
@@ -218,7 +222,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           notify({
             type: "success",
             title: "証拠金を精密算出",
-            message: `${row.name} の1ロットあたり証拠金 ${marginPerLot.toLocaleString()}円 を算出しました。`,
+            message: `公式 [${baseRate.toFixed(2)} × ${lotUnit.toLocaleString()} / 25] に基づき、1ロットあたり ${marginPerLot.toLocaleString()}円 と算出しました。`,
           });
         }
       }
@@ -320,6 +324,8 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
         if (category === "FX") {
           updateData.swapPoints = Number(row.swapPoints || 0);
           updateData.depositMargin = Number(row.depositMargin || 0);
+          updateData.requiredMargin = Number(row.requiredMargin || 0);
+          updateData.lotUnit = Number(row.lotUnit || 10000);
         }
 
         await updateAsset(asset!.id, updateData);
@@ -351,6 +357,8 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           if (category === "FX") {
             newData.swapPoints = Number(row.swapPoints || 0);
             newData.depositMargin = Number(row.depositMargin || 0);
+            newData.requiredMargin = Number(row.requiredMargin || 0);
+            newData.lotUnit = Number(row.lotUnit || 10000);
           }
 
           await addAsset(newData);
@@ -596,9 +604,24 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                                 className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
                                 suffix="JPY"
                               />
-                              <p className="text-[9px] font-bold text-slate-400 mt-1 ml-1 leading-tight">
-                                1ロット(1万通貨)あたりの必要額
-                              </p>
+                              <div className="flex items-center gap-2 mt-1 ml-1">
+                                <p className="text-[9px] font-bold text-slate-400 leading-tight">
+                                  取引単位:
+                                </p>
+                                <select 
+                                  value={row.lotUnit || 10000}
+                                  onChange={(e) => updateRow(row.id, "lotUnit", parseInt(e.target.value))}
+                                  className="text-[9px] font-black text-indigo-500 bg-transparent border-none p-0 outline-none cursor-pointer"
+                                >
+                                  <option value={100000}>100,000 (10万通貨)</option>
+                                  <option value={10000}>10,000 (1万通貨)</option>
+                                  <option value={1000}>1,000 (千通貨)</option>
+                                  <option value={1}>1 (1通貨)</option>
+                                </select>
+                                <p className="text-[9px] font-bold text-slate-400 leading-tight">
+                                  / レバレッジ 25倍
+                                </p>
+                              </div>
                             </div>
                            <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
                              <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.swap}</label>

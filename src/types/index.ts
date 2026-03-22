@@ -25,6 +25,7 @@ export interface Asset {
   requiredMargin?: number; // FX等の必要証拠金 (1単位あたり)
   swapPoints?: number; // 累積スワップポイント (円)
   depositMargin?: number; // FXの預託証拠金残高 (円)
+  lotUnit?: number; // 取引単位 (例: 10000)
 }
 
 export interface AssetCalculated extends Asset {
