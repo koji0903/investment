@@ -87,22 +87,28 @@ export const StockService = {
         currentPrice: 1000 + Math.random() * 5000,
         totalScore: score,
         signalLabel: score > 70 ? "買い優勢" : score > 50 ? "やや買い" : score > 30 ? "中立" : "やや売り",
+        
         technicalScore: score * 0.8,
+        technicalTrend: score > 60 ? "bullish" : score < 40 ? "bearish" : "neutral",
+        technicalReasons: ["移動平均線が上昇傾向です。", "RSIが中立圏内にあります。"],
+        
         fundamentalScore: score * 0.9,
+        growthProfile: score > 70 ? "growth" : "stable",
+        financialHealth: "strong",
+        fundamentalReasons: ["自己資本比率が安定しています。", "業績が堅調です。"],
+        
         valuationScore: score * 0.7,
+        valuationLabel: score > 60 ? "undervalued" : "fair",
+        valuationReasons: ["過去のPER水準と比較して割安です。"],
+        
         shareholderReturnScore: score * 0.6,
+        dividendProfile: score > 60 ? "high_dividend" : "stable_dividend",
+        holdSuitability: score > 50 ? "good_for_long_term" : "neutral",
+        shareholderReasons: ["配当利回りが魅力的な水準です。"],
+        
+        confidence: "中",
+        summaryComment: "サンプルデータです。実データの取得に失敗した際に表示されています。",
         updatedAt: new Date().toISOString(),
-        businessSummary: "AIによって自動生成されたサンプルデータです。",
-        technicalTrend: "不明",
-        fundamentalAnalysis: "分析中",
-        valuationLabel: "中立",
-        dividendProfile: "安定配当",
-        reasons: {
-          technical: ["サンプル"],
-          fundamental: ["サンプル"],
-          valuation: ["サンプル"],
-          shareholderReturn: ["サンプル"]
-        }
       } as StockJudgment;
     });
 
