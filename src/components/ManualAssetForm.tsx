@@ -158,19 +158,34 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
       
       if (data.success) {
         const usdJpyRate = prices["USDJPY=X"] || 151.2;
-        const currentPrice = prices[row.symbol] || row.currentPrice || usdJpyRate;
-        const FX_LOT_SIZE = 10000;
-        const baseRate = currentPrice > 10 ? currentPrice : usdJpyRate;
-        const estRequired = row.quantity * FX_LOT_SIZE * baseRate * data.marginRate;
-        const suggestedDeposit = Math.round(estRequired * 2.0);
         
+        // 通貨ペアのベース通貨の対円レートを特定
+        let baseRate = usdJpyRate;
+        if (row.name.includes("/")) {
+          const baseCcy = row.name.split("/")[0].trim();
+          if (baseCcy === "EUR" && prices["EURJPY=X"]) baseRate = prices["EURJPY=X"];
+          else if (baseCcy === "GBP" && prices["GBPJPY=X"]) baseRate = prices["GBPJPY=X"];
+          else if (baseCcy === "AUD" && prices["AUDJPY=X"]) baseRate = prices["AUDJPY=X"];
+          else if (baseCcy === "USD") baseRate = usdJpyRate;
+          else if (prices[`${baseCcy}JPY=X`]) baseRate = prices[`${baseCcy}JPY=X`];
+          else if (prices[`${baseCcy}USD=X`]) baseRate = prices[`${baseCcy}USD=X`] * usdJpyRate;
+        }
+
+        const FX_LOT_SIZE = 10000;
+        // 1ロットあたりの必要証拠金 = ベース通貨レート * 10,000 * 証拠金率(4%)
+        const marginPerLot = Math.round(baseRate * FX_LOT_SIZE * data.marginRate);
+        
+        // 預託証拠金 = 取引数量(Lot) * 1ロットあたりの必要証拠金
+        const suggestedDeposit = Math.round(row.quantity * marginPerLot);
+        
+        updateRow(rowId, "requiredMargin", marginPerLot); // ロットあたりの証拠金をセット
         updateRow(rowId, "depositMargin", suggestedDeposit);
         
         if (!silent) {
           notify({
             type: "success",
-            title: "自動取得完了",
-            message: `${row.brokerName || "FX会社"} の公開データに基づき、預託証拠金を ${suggestedDeposit.toLocaleString()}円 と推定しました。`,
+            title: "正確な証拠金を算出",
+            message: `${row.name} の1ロットあたり証拠金は ${marginPerLot.toLocaleString()}円 です。現在の数量(${row.quantity}Lot)に基づき、預託金残高を ${suggestedDeposit.toLocaleString()}円 に更新しました。`,
           });
         }
       }
@@ -194,7 +209,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
       case "銀行":
         return { name: "預金種別・口座名", quantity: "現在の残高", symbol: "コード", price: "評価単価", cost: "取得単価" };
       case "FX":
-        return { name: "通貨ペア", quantity: "取引数量 (Lot)", symbol: "コード", price: "評価単価", cost: "取得単価", margin: "必要証拠金 (1単位あたり)", swap: "累積スワップポイント (円)", deposit: "預託証拠金残高 (円)" };
+        return { name: "通貨ペア", quantity: "取引数量 (Lot)", symbol: "コード", price: "評価単価", cost: "取得単価", margin: "必要証拠金 (1ロット/1万通貨あたり)", swap: "累積スワップポイント (円)", deposit: "預託証拠金残高 (円)" };
       case "仮想通貨":
         return { name: "通貨名", quantity: "保有数量", symbol: "コード", price: "評価単価", cost: "取得単価" };
       case "日本株":
@@ -561,13 +576,18 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                                 </button>
                               </label>
                               <div className="relative">
-                                <div className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-black text-slate-500 flex items-center justify-between group-hover:border-indigo-500/30 transition-all">
-                                  <span>自動算出 (4%)</span>
-                                </div>
-                                <p className="text-[9px] font-bold text-slate-400 mt-1 ml-1 leading-tight">
-                                  25倍レバレッジ想定
-                                </p>
+                                <input
+                                  type="number"
+                                  step="any"
+                                  value={row.requiredMargin}
+                                  onChange={(e) => updateRow(row.id, "requiredMargin", e.target.value)}
+                                  className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">JPY</span>
                               </div>
+                              <p className="text-[9px] font-bold text-slate-400 mt-1 ml-1 leading-tight">
+                                1ロット(1万通貨)あたりの必要額
+                              </p>
                             </div>
                            <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
                              <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.swap}</label>
