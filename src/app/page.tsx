@@ -64,10 +64,24 @@ import { motion, AnimatePresence } from "framer-motion";
 type TabType = "overview" | "analysis" | "tools";
 
 export default function Home() {
-  const { calculatedAssets, totalAssetsValue, totalProfitAndLoss, totalDailyChange, lastUpdated, isFetching } = usePortfolio();
+  const { 
+    calculatedAssets, 
+    totalAssetsValue, 
+    totalProfitAndLoss, 
+    totalDailyChange, 
+    lastUpdated, 
+    isFetching,
+    refreshPrices 
+  } = usePortfolio();
   const { isDemo, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [selectedAssetCategory, setSelectedAssetCategory] = useState<string>("すべて");
+
+  const handleManualRefresh = async () => {
+    if (!isFetching) {
+      await refreshPrices();
+    }
+  };
 
   // 利用可能なカテゴリを抽出
   const categories = useMemo(() => {
@@ -125,9 +139,21 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               className="space-y-4"
             >
-              <h1 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em]">総資産額</h1>
+              <div className="flex items-center justify-center gap-4">
+                <h1 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.4em]">総資産額</h1>
+                {lastUpdated && (
+                  <button
+                    onClick={handleManualRefresh}
+                    disabled={isFetching}
+                    className="flex items-center gap-1.5 px-3 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full text-[10px] font-black text-slate-500 hover:text-indigo-500 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                  >
+                    <RefreshCw size={10} className={cn(isFetching && "animate-spin")} />
+                    <span>{new Date(lastUpdated).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}</span>
+                  </button>
+                )}
+              </div>
               <div className="text-5xl sm:text-7xl md:text-9xl font-black text-slate-900 dark:text-white tracking-tighter tabular-nums leading-none">
-                {isFetching ? <Skeleton className="w-48 sm:w-64 h-16 sm:h-24 mx-auto opacity-20" /> : formatCurrency(totalAssetsValue)}
+                {isFetching && !totalAssetsValue ? <Skeleton className="w-48 sm:w-64 h-16 sm:h-24 mx-auto opacity-20" /> : formatCurrency(totalAssetsValue)}
               </div>
             </motion.div>
 

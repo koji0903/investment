@@ -10,6 +10,7 @@ interface DashboardHeaderProps {
   totalProfitAndLoss: number;
   lastUpdated?: string | null;
   isFetching?: boolean;
+  onRefresh?: () => Promise<void>;
   hideAuth?: boolean;
   variant?: 'default' | 'minimal';
 }
@@ -19,12 +20,20 @@ export const DashboardHeader = ({
   totalProfitAndLoss, 
   lastUpdated, 
   isFetching,
+  onRefresh,
   hideAuth = false,
   variant = 'default'
 }: DashboardHeaderProps) => {
   const { user, logout } = useAuth();
   const router = useRouter();
   const isProfit = totalProfitAndLoss >= 0;
+
+  const handleRefresh = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onRefresh && !isFetching) {
+      await onRefresh();
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -125,19 +134,28 @@ export const DashboardHeader = ({
               総資産額
             </h2>
             {lastUpdated && (
-              <div className="w-fit flex items-center gap-1.5 text-xs font-medium text-slate-400 bg-slate-800/80 backdrop-blur-sm px-2.5 py-1.5 rounded-full border border-slate-700/50 hidden sm:flex">
+              <button 
+                onClick={handleRefresh}
+                disabled={isFetching}
+                className="w-fit flex items-center gap-1.5 text-xs font-medium text-slate-400 bg-slate-800/80 hover:bg-slate-700/80 backdrop-blur-sm px-2.5 py-1.5 rounded-full border border-slate-700/50 hidden sm:flex transition-all active:scale-95 disabled:opacity-50"
+                title="全ての資産価格を更新"
+              >
                 <RefreshCw className={cn("w-3 h-3 text-indigo-400", isFetching && "animate-spin")} />
                 {new Date(lastUpdated as string).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </div>
+              </button>
             )}
           </div>
           <div className="text-5xl md:text-6xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-br from-white to-slate-400 pb-1 flex flex-col sm:flex-row gap-4 sm:items-end">
             {formatCurrency(totalAssets)}
             {lastUpdated && (
-              <div className="sm:hidden flex items-center gap-1.5 text-[0.7rem] font-medium text-slate-400 bg-slate-800/80 backdrop-blur-sm px-2 py-1 rounded-full border border-slate-700/50 w-fit leading-none mb-1">
+              <button 
+                onClick={handleRefresh}
+                disabled={isFetching}
+                className="sm:hidden flex items-center gap-1.5 text-[0.7rem] font-medium text-slate-400 bg-slate-800/80 hover:bg-slate-700/80 backdrop-blur-sm px-2 py-1 rounded-full border border-slate-700/50 w-fit leading-none mb-1 transition-all active:scale-95 disabled:opacity-50"
+              >
                 <RefreshCw className={cn("w-3 h-3 text-indigo-400", isFetching && "animate-spin")} />
                 {new Date(lastUpdated as string).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
-              </div>
+              </button>
             )}
           </div>
         </div>

@@ -48,10 +48,15 @@ const CategoryIcon = ({ category, className }: { category: string; className?: s
 };
 
 export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
-  const { isDemo } = useAuth();
+  const { isDemo, user } = useAuth();
+  const { refreshPrices, isFetching: globalFetching } = usePortfolio();
   const isProfit = asset.profitAndLoss >= 0;
   const [sentiment, setSentiment] = useState<SentimentResult | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
+  const [localFetching, setLocalFetching] = useState(false);
+
+  // このアセットが更新の対象かどうか
+  const isUpdating = (globalFetching || localFetching) && !!asset.symbol;
 
   useEffect(() => {
     const fetchSentiment = async () => {
@@ -66,6 +71,18 @@ export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
     };
     fetchSentiment();
   }, [asset.name]);
+
+  const handleRefresh = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!asset.symbol || isUpdating) return;
+    
+    setLocalFetching(true);
+    try {
+      await refreshPrices();
+    } finally {
+      setLocalFetching(false);
+    }
+  };
 
   return (
     <div className="relative isolate">
@@ -131,9 +148,14 @@ export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
                 {asset.name}
               </h3>
               {asset.symbol && (
-                <div className="p-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-md group-hover:rotate-180 transition-transform duration-500">
-                  <RefreshCw size={12} className="animate-spin-slow" />
-                </div>
+                <button 
+                  onClick={handleRefresh}
+                  disabled={isUpdating}
+                  className="p-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-md hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors disabled:opacity-50"
+                  title="最新価格に更新"
+                >
+                  <RefreshCw size={12} className={cn(isUpdating && "animate-spin")} />
+                </button>
               )}
             </div>
             <div className="flex items-center gap-2 mt-1">

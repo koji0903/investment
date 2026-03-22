@@ -58,6 +58,7 @@ interface PortfolioContextType {
   isFetching: boolean;
   fetchError: string | null;
   retryFetch: () => void;
+  refreshPrices: () => Promise<void>;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -142,13 +143,22 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   }, [user, portfolioId]);
 
   // 外部APIからの価格フェッチ
-  const fetchMarketData = React.useCallback(async (retryCount = 0) => {
-    if (!user || assets.length === 0) return;
+  const fetchMarketData = React.useCallback(async (retryCount = 0, force = false) => {
+    if (!user || (assets.length === 0 && !force)) return;
     
     try {
       setIsFetching(true);
       setFetchError(null);
-      const res = await fetch("/api/market-data");
+      
+      // ポートフォリオに含まれる全銘柄のシンボルを抽出
+      const symbols = [...new Set(assets.map(a => a.symbol).filter(Boolean))];
+      
+      const res = await fetch("/api/market-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbols })
+      });
+      
       if (!res.ok) throw new Error("API Fetch Error");
       const data = await res.json();
 
@@ -171,7 +181,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     } finally {
       setIsFetching(false);
     }
-  }, [user, assets.length, notify]);
+  }, [user, assets, notify]);
 
   useEffect(() => {
     fetchMarketData(0);
@@ -361,6 +371,9 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         isFetching,
         fetchError,
         retryFetch: () => fetchMarketData(0),
+        refreshPrices: async () => {
+          await fetchMarketData(0, true);
+        },
       }}
     >
       {children}

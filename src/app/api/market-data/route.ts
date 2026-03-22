@@ -2,10 +2,15 @@ import { NextResponse } from "next/server";
 import yahooFinance from "yahoo-finance2";
 import { getTechnicalStatus } from "@/lib/technicalAnalysis";
 
-export async function GET() {
+import { NextResponse } from "next/server";
+import yahooFinance from "yahoo-finance2";
+import { getTechnicalStatus } from "@/lib/technicalAnalysis";
+
+// 共通のデータ取得ロジック
+async function getMarketData(requestedSymbols: string[] = []) {
   try {
     // 取得対象銘柄 (基本銘柄)
-    const baseSymbols = ["AAPL", "7203.T", "BTC-JPY", "^GSPC", "^N225", "^TNX"];
+    const baseSymbols = ["AAPL", "7203.T", "BTC-JPY", "^GSPC", "^N225", "^TNX", "JPY=X"];
     // FXペア (網羅的に取得)
     const fxPairs = [
       "JPY=X", "EURJPY=X", "GBPJPY=X", "AUDJPY=X", "NZDJPY=X", 
@@ -22,8 +27,8 @@ export async function GET() {
       "CHFJPY=X": { buy: 135, sell: -155 }
     };
     
-    // 全てのシンボルを結合
-    const allSymbols = [...new Set([...baseSymbols, ...fxPairs])];
+    // 全てのシンボルを結合 (リクエストされたものも含む)
+    const allSymbols = [...new Set([...baseSymbols, ...fxPairs, ...requestedSymbols])].filter(Boolean);
 
     // 外部APIを並列で実行 (現在の価格)
     const quoteResults = await Promise.all(
@@ -87,7 +92,7 @@ export async function GET() {
       }
     });
 
-    // 特殊なマッピング (US株の円換算など、シンボルが直接JYPでないもの用)
+    // 特殊なマッピング (US株の円換算など)
     if (priceMap["AAPL"]) priceMap["AAPL_JPY"] = priceMap["AAPL"] * usdJpy;
 
     // マクロ指標用データの整理
@@ -100,14 +105,35 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ 
+    return { 
       prices: priceMap, 
       macro: macroData,
       fxAnalysis: fxAnalysis,
       timestamp: new Date().toISOString() 
-    });
+    };
   } catch (error) {
-    console.error("Error fetching market data:", error);
+    throw error;
+  }
+}
+
+export async function GET() {
+  try {
+    const data = await getMarketData();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error in GET market-data:", error);
+    return NextResponse.json({ error: "Failed to fetch market data" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const symbols = body.symbols || [];
+    const data = await getMarketData(symbols);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error in POST market-data:", error);
     return NextResponse.json({ error: "Failed to fetch market data" }, { status: 500 });
   }
 }

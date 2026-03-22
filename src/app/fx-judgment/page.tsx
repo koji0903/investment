@@ -7,7 +7,7 @@ import { usePortfolio } from "@/context/PortfolioContext";
 import { AuthGuard } from "@/components/AuthGuard";
 
 export default function FXJudgmentPage() {
-  const { totalAssetsValue, totalProfitAndLoss, lastUpdated, isFetching } = usePortfolio();
+  const { totalAssetsValue, totalProfitAndLoss, lastUpdated, isFetching, refreshPrices } = usePortfolio();
 
   return (
     <AuthGuard>
@@ -18,6 +18,7 @@ export default function FXJudgmentPage() {
             totalProfitAndLoss={totalProfitAndLoss}
             lastUpdated={lastUpdated}
             isFetching={isFetching}
+            onRefresh={refreshPrices}
             hideAuth={true}
           />
 

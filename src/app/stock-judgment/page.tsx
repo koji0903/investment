@@ -7,7 +7,7 @@ import { StockJudgmentDashboard } from "@/components/stock/StockJudgmentDashboar
 import { usePortfolio } from "@/context/PortfolioContext";
 
 export default function StockJudgmentPage() {
-  const { totalAssetsValue, totalProfitAndLoss, lastUpdated, isFetching } = usePortfolio();
+  const { totalAssetsValue, totalProfitAndLoss, lastUpdated, isFetching, refreshPrices } = usePortfolio();
 
   return (
     <AuthGuard>
@@ -18,6 +18,7 @@ export default function StockJudgmentPage() {
             totalProfitAndLoss={totalProfitAndLoss} 
             lastUpdated={lastUpdated}
             isFetching={isFetching}
+            onRefresh={refreshPrices}
             hideAuth={true}
           />
           
