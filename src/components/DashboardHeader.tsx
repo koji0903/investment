@@ -2,7 +2,7 @@
 
 import { formatCurrency, cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { TrendingUp, TrendingDown, Wallet, RefreshCw, LogOut, User } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet, RefreshCw, LogOut, User, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface DashboardHeaderProps {
@@ -24,7 +24,19 @@ export const DashboardHeader = ({ totalAssets, totalProfitAndLoss, lastUpdated, 
 
   return (
     <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-8 md:p-10 shadow-xl border border-white/10">
-      {/* ユーザープロフィール & ログアウト (右上) */}
+      {/* ホームに戻る・ナビゲーション (左上) */}
+      <div className="absolute top-6 left-8 z-20 flex items-center gap-3">
+        <button 
+          onClick={() => router.push("/")}
+          className="flex items-center gap-2.5 px-5 py-2.5 rounded-[1.25rem] bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 backdrop-blur-xl text-white text-sm font-black transition-all hover:scale-105 active:scale-95 group shadow-2xl shadow-indigo-500/10"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> 
+          <span className="flex items-center">
+            ホーム
+          </span>
+        </button>
+      </div>
+
       {user && (
         <div className="absolute top-6 right-8 z-20 flex items-center gap-4">
           <div className="hidden sm:flex flex-col items-end">
