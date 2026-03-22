@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { AssetCalculated } from "@/types";
 import { formatCurrency, cn } from "@/lib/utils";
+import { usePortfolio } from "@/context/PortfolioContext";
 import { 
   TrendingUp, 
   TrendingDown, 

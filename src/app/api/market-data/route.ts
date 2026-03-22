@@ -2,10 +2,6 @@ import { NextResponse } from "next/server";
 import yahooFinance from "yahoo-finance2";
 import { getTechnicalStatus } from "@/lib/technicalAnalysis";
 
-import { NextResponse } from "next/server";
-import yahooFinance from "yahoo-finance2";
-import { getTechnicalStatus } from "@/lib/technicalAnalysis";
-
 // 共通のデータ取得ロジック
 async function getMarketData(requestedSymbols: string[] = []) {
   try {
