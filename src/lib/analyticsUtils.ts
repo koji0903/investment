@@ -295,13 +295,21 @@ const CATEGORY_BENCHMARKS: Record<string, { return: number, risk: number, color:
   "投資信託": { return: 4, risk: 10, color: "#10b981" },
   "仮想通貨": { return: 25, risk: 80, color: "#f43f5e" },
   "FX": { return: 10, risk: 35, color: "#f59e0b" },
+  "銀行": { return: 0.1, risk: 0, color: "#94a3b8" }, // 安定資産として追加
+};
+
+// カテゴリの正規化（集計用）
+const normalizeCategory = (cat: string): string => {
+  if (cat === "日本株" || cat === "外国株") return "株";
+  if (cat === "現金") return "銀行";
+  return cat;
 };
 
 // リスク許容度に応じた理想的な配分モデル (%)
 const RISK_MODELS: Record<string, Record<string, number>> = {
-  "low": { "株": 20, "投資信託": 70, "仮想通貨": 0, "FX": 10 },
-  "moderate": { "株": 40, "投資信託": 40, "仮想通貨": 5, "FX": 15 },
-  "high": { "株": 50, "投資信託": 10, "仮想通貨": 20, "FX": 20 },
+  "low": { "株": 10, "投資信託": 40, "仮想通貨": 0, "FX": 5, "銀行": 45 },
+  "moderate": { "株": 30, "投資信託": 30, "仮想通貨": 5, "FX": 10, "銀行": 25 },
+  "high": { "株": 50, "投資信託": 5, "仮想通貨": 20, "FX": 15, "銀行": 10 },
 };
 
 export const calculateOptimalPortfolio = (
@@ -311,10 +319,11 @@ export const calculateOptimalPortfolio = (
   const totalValue = assets.reduce((sum, a) => sum + Math.max(0, a.evaluatedValue), 0);
   const targetModel = RISK_MODELS[riskTolerance];
   
-  // 現在のカテゴリ別合計
+  // 現在のカテゴリ別合計 (正規化して集計)
   const categoryTotals: Record<string, number> = {};
   assets.forEach(a => {
-    categoryTotals[a.category] = (categoryTotals[a.category] || 0) + Math.max(0, a.evaluatedValue);
+    const normalizedCat = normalizeCategory(a.category);
+    categoryTotals[normalizedCat] = (categoryTotals[normalizedCat] || 0) + Math.max(0, a.evaluatedValue);
   });
 
   const segments: OptimizationSegment[] = Object.keys(CATEGORY_BENCHMARKS).map(cat => {
