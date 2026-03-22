@@ -10,6 +10,44 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { getJpyRate, getBaseCurrency } from "@/lib/fxUtils";
 
+// 数値のカンマ区切り入力をサポートするヘルパーコンポーネント
+const NumberInput = ({ value, onChange, className, placeholder, suffix, required }: any) => {
+  const [displayValue, setDisplayValue] = useState(value?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") || "");
+
+  useEffect(() => {
+    if (value === 0 || value === "0") setDisplayValue("0");
+    else if (!value) setDisplayValue("");
+    else {
+      // カンマ区切りに変換
+      const parts = value.toString().split(".");
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+      setDisplayValue(parts.join("."));
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/,/g, "");
+    if (val === "" || /^\d*\.?\d*$/.test(val)) {
+      setDisplayValue(e.target.value);
+      onChange(val);
+    }
+  };
+
+  return (
+    <div className="relative w-full">
+      <input
+        type="text"
+        required={required}
+        value={displayValue}
+        onChange={handleChange}
+        placeholder={placeholder}
+        className={className}
+      />
+      {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">{suffix}</span>}
+    </div>
+  );
+};
+
 interface ManualAssetFormProps {
   onClose: () => void;
   initialCategory?: AssetCategory;
@@ -164,19 +202,23 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
         
         const FX_LOT_SIZE = 10000;
         // 1ロットあたりの必要証拠金 = ベース通貨レート * 10,000 * 証拠金率(4%)
-        const marginPerLot = Math.round(baseRate * FX_LOT_SIZE * data.marginRate);
+        // TRY等の例外対応ロジック
+        let baseMarginRate = data.marginRate;
+        if (baseCcy === "TRY") baseMarginRate = 0.032; // ユーザー指摘の約1436円(レート4.5時)に近似
+
+        const marginPerLot = Math.round(baseRate * FX_LOT_SIZE * baseMarginRate);
         
-        // 預託証拠金 = 取引数量(Lot) * 1ロットあたりの必要証拠金
+        // 預託証拠金 = 取引数量(Lot) * 1ロットあたりの必要証拠金 (100%維持ベース)
         const suggestedDeposit = Math.round(row.quantity * marginPerLot);
         
-        updateRow(rowId, "requiredMargin", marginPerLot); // ロットあたりの証拠金をセット
-        updateRow(rowId, "depositMargin", suggestedDeposit);
+        updateRow(rowId, "requiredMargin", marginPerLot.toString());
+        updateRow(rowId, "depositMargin", suggestedDeposit.toString());
         
         if (!silent) {
           notify({
             type: "success",
-            title: "正確な証拠金を算出",
-            message: `${row.name} の1ロットあたり証拠金は ${marginPerLot.toLocaleString()}円 です。現在の数量(${row.quantity}Lot)に基づき、預託金残高を ${suggestedDeposit.toLocaleString()}円 に更新しました。`,
+            title: "証拠金を精密算出",
+            message: `${row.name} の1ロットあたり証拠金 ${marginPerLot.toLocaleString()}円 を算出しました。`,
           });
         }
       }
@@ -508,47 +550,29 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                         <>
                           <div className="md:col-span-2 space-y-1.5">
                             <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.price}</label>
-                            <div className="relative">
-                              {category === "外国株" && (
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                            <NumberInput
+                              required
+                              value={row.currentPrice}
+                              onChange={(val: string) => updateRow(row.id, "currentPrice", val)}
+                              className={cn(
+                                "w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all",
+                                category === "外国株" && "pl-7"
                               )}
-                              <input
-                                type="number"
-                                step="any"
-                                required
-                                value={row.currentPrice}
-                                onChange={(e) => updateRow(row.id, "currentPrice", e.target.value)}
-                                className={cn(
-                                  "w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all",
-                                  category === "外国株" && "pl-7 pr-12"
-                                )}
-                              />
-                              {category === "外国株" && (
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">USD</span>
-                              )}
-                            </div>
+                              suffix={category === "外国株" ? "USD" : undefined}
+                            />
                           </div>
                           <div className="md:col-span-2 space-y-1.5">
                             <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.cost}</label>
-                            <div className="relative">
-                              {category === "外国株" && (
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">$</span>
+                            <NumberInput
+                              required
+                              value={row.averageCost}
+                              onChange={(val: string) => updateRow(row.id, "averageCost", val)}
+                              className={cn(
+                                "w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all",
+                                category === "外国株" && "pl-7"
                               )}
-                              <input
-                                type="number"
-                                step="any"
-                                required
-                                value={row.averageCost}
-                                onChange={(e) => updateRow(row.id, "averageCost", e.target.value)}
-                                className={cn(
-                                  "w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all",
-                                  category === "外国株" && "pl-7 pr-12"
-                                )}
-                              />
-                              {category === "外国株" && (
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">USD</span>
-                              )}
-                            </div>
+                              suffix={category === "外国株" ? "USD" : undefined}
+                            />
                           </div>
                         </>
                       )}
@@ -566,45 +590,33 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                                   [ 残高を自動推定 ]
                                 </button>
                               </label>
-                              <div className="relative">
-                                <input
-                                  type="number"
-                                  step="any"
-                                  value={row.requiredMargin}
-                                  onChange={(e) => updateRow(row.id, "requiredMargin", e.target.value)}
-                                  className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
-                                />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">JPY</span>
-                              </div>
+                              <NumberInput
+                                value={row.requiredMargin}
+                                onChange={(val: string) => updateRow(row.id, "requiredMargin", val)}
+                                className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                                suffix="JPY"
+                              />
                               <p className="text-[9px] font-bold text-slate-400 mt-1 ml-1 leading-tight">
                                 1ロット(1万通貨)あたりの必要額
                               </p>
                             </div>
                            <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
                              <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.swap}</label>
-                             <div className="relative">
-                               <input
-                                 type="number"
-                                 step="any"
-                                 value={row.swapPoints}
-                                 onChange={(e) => updateRow(row.id, "swapPoints", e.target.value)}
-                                 className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
-                               />
-                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">JPY</span>
-                             </div>
+                             <NumberInput
+                               value={row.swapPoints}
+                               onChange={(val: string) => updateRow(row.id, "swapPoints", val)}
+                               className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                               suffix="JPY"
+                             />
                            </div>
                            <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
                              <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.deposit}</label>
-                             <div className="relative">
-                               <input
-                                 type="number"
-                                 step="any"
-                                 value={row.depositMargin}
-                                 onChange={(e) => updateRow(row.id, "depositMargin", e.target.value)}
-                                 className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
-                               />
-                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">JPY</span>
-                             </div>
+                             <NumberInput
+                               value={row.depositMargin}
+                               onChange={(val: string) => updateRow(row.id, "depositMargin", val)}
+                               className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                               suffix="JPY"
+                             />
                            </div>
                          </>
                        )}
