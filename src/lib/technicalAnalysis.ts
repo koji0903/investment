@@ -123,6 +123,37 @@ export function calculateBollingerBands(data: number[], period: number = 20) {
 /**
  * 現在のステータス判定
  */
+/**
+ * ATR (Average True Range)
+ */
+export function calculateATR(data: { high: number[], low: number[], close: number[] }, period: number = 14): number[] {
+  const tr: number[] = [0];
+  for (let i = 1; i < data.close.length; i++) {
+    const hl = data.high[i] - data.low[i];
+    const hcp = Math.abs(data.high[i] - data.close[i - 1]);
+    const lcp = Math.abs(data.low[i] - data.close[i - 1]);
+    tr.push(Math.max(hl, hcp, lcp));
+  }
+
+  const atr: number[] = [];
+  let sum = tr.slice(0, period).reduce((a, b) => a + b, 0);
+  
+  for (let i = 0; i < tr.length; i++) {
+    if (i < period - 1) {
+      atr.push(NaN);
+      continue;
+    }
+    if (i === period - 1) {
+      atr.push(sum / period);
+    } else {
+      const currentAtr = (atr[atr.length - 1] * (period - 1) + tr[i]) / period;
+      atr.push(currentAtr);
+    }
+  }
+
+  return atr;
+}
+
 export function getTechnicalStatus(lastPrice: number, data: number[]) {
   const rsi = calculateRSI(data, 14);
   const lastRSI = rsi[rsi.length - 1];

@@ -87,6 +87,21 @@ export interface SwapEvaluation {
 }
 
 /**
+ * 相場エネルギー分析結果
+ */
+export interface MarketEnergyAnalysis {
+  energyScore: number;           // 0〜100
+  energyLevel: "low" | "medium" | "high";
+  status: "accumulating" | "releasing"; // 蓄積中 / 放出中
+  breakoutDirection: "up" | "down" | "none";
+  breakoutStrength: "strong" | "medium" | "weak";
+  targetPrices: number[];        // 目標価格1, 2, 3
+  fakeBreakProbability: number;  // 0〜100 (%)
+  fakeFlag: boolean;             // だましフラグ
+  entryRecommendation: "enter" | "wait" | "avoid"; // 推奨アクション
+}
+
+/**
  * 統合判定結果 (Firestore 保存形式)
  */
 export interface FXJudgment {
@@ -122,6 +137,9 @@ export interface FXJudgment {
   mediumTermSignal: SignalLabel;
   suitability: TradingSuitability;
   
+  // 相場エネルギー分析 (新規追加)
+  energyAnalysis?: MarketEnergyAnalysis;
+
   updatedAt: string;
   
   // 詳細データ (UI表示用)

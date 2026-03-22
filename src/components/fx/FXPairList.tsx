@@ -27,7 +27,7 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
             <tr className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">
               <th className="px-6 py-4">通貨ペア / 価格</th>
               <th className="px-6 py-4">短期判定 (テクニカル)</th>
-              <th className="px-6 py-4">中長期判定 (基礎/SWAP)</th>
+              <th className="px-6 py-4">エネルギー</th>
               <th className="px-6 py-4">総合判定</th>
               <th className="px-6 py-4">売買適正</th>
               <th className="px-6 py-4">信頼度</th>
@@ -63,14 +63,19 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                   </div>
                 </td>
                 <td className="px-6 py-5">
-                  <div className="flex items-center gap-2">
-                    <Target size={14} className="text-blue-400" />
-                    <span className={cn("text-xs font-bold", 
-                      item.fundamentalScore > 25 ? "text-emerald-500" : item.fundamentalScore < -25 ? "text-rose-500" : "text-slate-400"
-                    )}>
-                      {item.mediumTermSignal}
-                    </span>
-                  </div>
+                  {item.energyAnalysis ? (
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-16 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div 
+                          className={cn("h-full rounded-full", item.energyAnalysis.energyScore > 70 ? "bg-yellow-400" : item.energyAnalysis.energyScore > 40 ? "bg-amber-400" : "bg-slate-300")}
+                          style={{ width: `${item.energyAnalysis.energyScore}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-black tabular-nums text-slate-600 dark:text-slate-300">
+                        {item.energyAnalysis.energyScore}
+                      </span>
+                    </div>
+                  ) : "-"}
                 </td>
                 <td className="px-6 py-5">
                   <SignalBadge label={item.signalLabel} />
@@ -114,14 +119,20 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
               <SignalBadge label={item.signalLabel} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 py-3 border-y border-slate-50 dark:border-slate-800/50">
+            <div className="grid grid-cols-3 gap-2 py-3 border-y border-slate-50 dark:border-slate-800/50">
               <div className="space-y-1">
-                <p className="text-[10px] font-black text-slate-400 capitalize">売買適正</p>
-                <div className="text-[10px] font-black text-slate-600 dark:text-slate-300">{item.suitability}</div>
+                <p className="text-[9px] font-black text-slate-400 uppercase">エネルギー</p>
+                <div className="text-[10px] font-black text-amber-500">{item.energyAnalysis?.energyScore || 0} pts</div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-[9px] font-black text-slate-400 uppercase">売買適正</p>
+                <div className="text-[10px] font-black text-slate-600 dark:text-slate-300 leading-tight">{item.suitability}</div>
               </div>
               <div className="space-y-1 text-right">
-                <p className="text-[10px] font-black text-slate-400 capitalize">信頼度</p>
-                <ConfidenceIndicator level={item.confidence} />
+                <p className="text-[9px] font-black text-slate-400 uppercase text-right">信頼度</p>
+                <div className="flex justify-end">
+                   <ConfidenceIndicator level={item.confidence} />
+                </div>
               </div>
             </div>
 

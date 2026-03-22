@@ -7,6 +7,7 @@ import {
   ConfidenceIndicator, 
   HoldingStyleBadge 
 } from "./FXUIComponents";
+import { FXEnergyBento } from "./FXEnergyBento";
 import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -93,6 +94,19 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
                  </div>
                </div>
             </div>
+
+            {/* Market Energy Analysis (Bento) */}
+            {judgment.energyAnalysis && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-yellow-400 rounded-lg text-slate-900">
+                    <Zap size={14} fill="currentColor" />
+                  </div>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">相場エネルギー分析</h3>
+                </div>
+                <FXEnergyBento analysis={judgment.energyAnalysis} pairCode={judgment.pairCode} />
+              </div>
+            )}
 
             {/* Analysis Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

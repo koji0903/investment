@@ -5,6 +5,7 @@ import { FXJudgment, FXPairMaster, CurrencyFundamental } from "@/types/fx";
 import { analyzeTechnical } from "@/utils/fx/technical";
 import { analyzeFundamental } from "@/utils/fx/fundamental";
 import { evaluateSwap, calculateTotalJudgment } from "@/utils/fx/scoring";
+import { calculateEnergyAnalysis } from "@/utils/fx/energy";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, getDocs, collection, query } from "firebase/firestore";
 
@@ -81,6 +82,9 @@ export async function syncFXRealData() {
 
       if (historical && historical.length >= 20) {
         const prices = historical.map(h => h.close).filter(p => typeof p === "number");
+        const highs = historical.map(h => h.high).filter(p => typeof p === "number");
+        const lows = historical.map(h => h.low).filter(p => typeof p === "number");
+        
         const currentPrice = prices[prices.length - 1];
         const technical = analyzeTechnical(prices, currentPrice);
         const fundamental = analyzeFundamental(
@@ -94,6 +98,9 @@ export async function syncFXRealData() {
           pair.pairCode, pair.baseCurrency, pair.quoteCurrency,
           currentPrice, technical, fundamental, swapEval
         );
+
+        // 相場エネルギー分析を追加
+        judgment.energyAnalysis = calculateEnergyAnalysis(prices, highs, lows, currentPrice);
       }
     } catch (e) {
       console.error(`Sync error for ${pair.pairCode}:`, e);
@@ -104,12 +111,17 @@ export async function syncFXRealData() {
       const score = Math.floor(Math.random() * 80) - 40;
       const isHighYield = ["ZAR", "MXN", "TRY"].includes(pair.baseCurrency);
       const swaps = getSemiRealSwaps(pair.pairCode);
-      
+      const dummyPrice = pair.quoteCurrency === "JPY" ? 150.0 : 1.1;
+
+      // エネルギースコアをランダム生成
+      const energyScore = Math.floor(Math.random() * 100);
+      const breakoutDir = energyScore > 80 ? (Math.random() > 0.5 ? "up" : "down") : "none" as any;
+
       judgment = {
         pairCode: pair.pairCode,
         baseCurrency: pair.baseCurrency,
         quoteCurrency: pair.quoteCurrency,
-        currentPrice: pair.quoteCurrency === "JPY" ? 150.0 : 1.1,
+        currentPrice: dummyPrice,
         technicalScore: score,
         technicalTrend: score > 20 ? "bullish" : score < -20 ? "bearish" : "neutral",
         technicalReasons: ["シミュレーション"],
@@ -129,6 +141,17 @@ export async function syncFXRealData() {
         shortTermSignal: score > 30 ? "買い優勢" : score < -30 ? "売り優勢" : "中立",
         mediumTermSignal: "中立",
         suitability: "様子見推奨",
+        energyAnalysis: {
+          energyScore,
+          energyLevel: energyScore > 70 ? "high" : energyScore > 40 ? "medium" : "low",
+          status: breakoutDir !== "none" ? "releasing" : "accumulating",
+          breakoutDirection: breakoutDir,
+          breakoutStrength: "medium",
+          targetPrices: [dummyPrice * 1.01, dummyPrice * 1.02, dummyPrice * 1.05],
+          fakeBreakProbability: 15,
+          fakeFlag: false,
+          entryRecommendation: breakoutDir === "none" ? "wait" : "enter"
+        },
         updatedAt: new Date().toISOString()
       };
     }

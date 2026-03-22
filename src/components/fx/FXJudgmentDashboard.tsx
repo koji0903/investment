@@ -5,6 +5,7 @@ import { FXJudgment, SignalLabel } from "@/types/fx";
 import { FXService } from "@/services/fxService";
 import { FXPairList } from "./FXPairList";
 import { FXPairDetailModal } from "./FXPairDetailModal";
+import { FXEnergyBento } from "./FXEnergyBento";
 import { FXFilterSort } from "./FXFilterSort";
 import { SignalBadge } from "./FXUIComponents";
 import { Zap, Info, ShieldAlert, Trophy, TrendingUp, TrendingDown, Coins, ChevronRight, Target } from "lucide-react";
@@ -39,6 +40,14 @@ export const FXJudgmentDashboard = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // エネルギーハイライトの作成
+  const energyHighlights = useMemo(() => {
+    return [...allJudgments]
+      .filter(j => j.energyAnalysis)
+      .sort((a, b) => (b.energyAnalysis?.energyScore || 0) - (a.energyAnalysis?.energyScore || 0))
+      .slice(0, 3);
+  }, [allJudgments]);
 
   // ランキングデータの作成
   const rankings = useMemo(() => {
@@ -92,6 +101,29 @@ export const FXJudgmentDashboard = () => {
           </p>
         </div>
       </div>
+
+      {/* Energy Highlights Section */}
+      {!loading && energyHighlights.length > 0 && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-yellow-400 rounded-xl text-slate-900 border border-yellow-500/20 shadow-sm">
+              <Zap size={20} fill="currentColor" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-800 dark:text-white leading-none">相場エネルギー・ハイライト</h2>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Top 3 Energy Accumulation Pairs</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 gap-6">
+            <FXEnergyBento analysis={energyHighlights[0].energyAnalysis!} pairCode={energyHighlights[0].pairCode} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {energyHighlights.slice(1).map(j => (
+                <FXEnergyBento key={j.pairCode} analysis={j.energyAnalysis!} pairCode={j.pairCode} />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Market Stats Summary */}
       {!loading && allJudgments.length > 0 && (

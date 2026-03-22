@@ -13,14 +13,14 @@ export default function FXJudgmentPage() {
     <AuthGuard>
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-          <DashboardHeader 
+          <DashboardHeader
             totalAssets={totalAssetsValue}
             totalProfitAndLoss={totalProfitAndLoss}
             lastUpdated={lastUpdated}
             isFetching={isFetching}
             hideAuth={true}
           />
-          
+
           <div className="mt-12">
             <FXJudgmentDashboard />
           </div>
