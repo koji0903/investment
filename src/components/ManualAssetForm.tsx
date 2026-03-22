@@ -8,6 +8,7 @@ import { useNotify } from "@/context/NotificationContext";
 import { Asset, AssetCategory } from "@/types";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { getJpyRate, getBaseCurrency } from "@/lib/fxUtils";
 
 interface ManualAssetFormProps {
   onClose: () => void;
@@ -157,20 +158,10 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
       const data = await res.json();
       
       if (data.success) {
-        const usdJpyRate = prices["USDJPY=X"] || 151.2;
+        // ベース通貨の対円レートを精密に取得
+        const baseCcy = getBaseCurrency(row.name, row.symbol);
+        const baseRate = getJpyRate(baseCcy, prices);
         
-        // 通貨ペアのベース通貨の対円レートを特定
-        let baseRate = usdJpyRate;
-        if (row.name.includes("/")) {
-          const baseCcy = row.name.split("/")[0].trim();
-          if (baseCcy === "EUR" && prices["EURJPY=X"]) baseRate = prices["EURJPY=X"];
-          else if (baseCcy === "GBP" && prices["GBPJPY=X"]) baseRate = prices["GBPJPY=X"];
-          else if (baseCcy === "AUD" && prices["AUDJPY=X"]) baseRate = prices["AUDJPY=X"];
-          else if (baseCcy === "USD") baseRate = usdJpyRate;
-          else if (prices[`${baseCcy}JPY=X`]) baseRate = prices[`${baseCcy}JPY=X`];
-          else if (prices[`${baseCcy}USD=X`]) baseRate = prices[`${baseCcy}USD=X`] * usdJpyRate;
-        }
-
         const FX_LOT_SIZE = 10000;
         // 1ロットあたりの必要証拠金 = ベース通貨レート * 10,000 * 証拠金率(4%)
         const marginPerLot = Math.round(baseRate * FX_LOT_SIZE * data.marginRate);

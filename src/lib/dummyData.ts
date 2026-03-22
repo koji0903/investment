@@ -1,4 +1,5 @@
 import { Asset, AssetCalculated } from "@/types";
+import { getJpyRate, getBaseCurrency } from "./fxUtils";
 
 export const dummyAssets: Asset[] = [
   { id: "1", symbol: "AAPL", name: "Apple Inc.", category: "外国株", currentPrice: 190.5, quantity: 50, averageCost: 175.2, currency: "USD" },
@@ -9,6 +10,7 @@ export const dummyAssets: Asset[] = [
 ];
 
 export const calculateAssetValues = (asset: Asset, prices: Record<string, number> = {}): AssetCalculated => {
+  // 対円レート取得
   const usdJpyRate = prices["JPY=X"] || prices["USDJPY=X"] || 151.2;
   
   // デフォルトのレート設定 (非FX用)
@@ -16,46 +18,27 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
   let currentPriceYen = asset.currentPrice * rate;
   let averageCostYen = asset.averageCost * rate;
 
-  let totalNotional = currentPriceYen * asset.quantity;
-  let totalCost = averageCostYen * asset.quantity;
-  let pricePnL = totalNotional - totalCost;
+  let pricePnL = (currentPriceYen - averageCostYen) * asset.quantity;
+  let evaluatedValue = currentPriceYen * asset.quantity;
   
-  let evaluatedValue = totalNotional;
-
-  // 対円レート取得関数
-  const getJpyRate = (ccy: string) => {
-    if (ccy === "JPY") return 1;
-    if (prices[`${ccy}JPY=X`]) return prices[`${ccy}JPY=X`];
-    // クロスレートの合成 (例: CHF -> CHFUSD * USDJPY)
-    if (prices[`${ccy}USD=X`]) return prices[`${ccy}USD=X`] * usdJpyRate;
-    if (prices[`USD${ccy}=X`]) return usdJpyRate / prices[`USD${ccy}=X`];
-    if (ccy === "USD") return usdJpyRate;
-    return null; // 不明な場合は null
-  };
-
   // FXの場合は特殊な計算 (クロス通貨対応)
   if (asset.category === "FX") {
-    // シンボルから通貨を解析 (例: EURCHF=X -> Base: EUR, Counter: CHF)
-    let base = "USD";
-    let counter = "JPY";
+    // シンボルまたは名前からベース通貨を解析
+    const base = getBaseCurrency(asset.name, asset.symbol);
     
+    // 対価通貨 (Counter Currency) を特定
+    let counter = "JPY";
     if (asset.symbol && asset.symbol.endsWith("=X")) {
       const pair = asset.symbol.replace("=X", "");
-      if (pair.length === 6) {
-        base = pair.substring(0, 3);
-        counter = pair.substring(3, 6);
-      }
+      if (pair.length === 6) counter = pair.substring(3, 6);
     } else if (asset.name.includes("/")) {
-      const parts = asset.name.split("/");
-      base = parts[0].trim();
-      counter = parts[1].trim();
+      counter = asset.name.split("/")[1].trim();
     }
 
-    const baseRate = getJpyRate(base) || usdJpyRate;
+    const baseRate = getJpyRate(base, prices);
     
-    // 対価通貨レートの合成優先
-    // CounterRate (CHF/JPY) = BaseRate (USD/JPY) / CurrentPrice (USD/CHF)
-    let counterRate = getJpyRate(counter);
+    // 対価通貨レートを取得
+    let counterRate = getJpyRate(counter, prices);
     if (!counterRate && asset.currentPrice > 0) {
       counterRate = baseRate / asset.currentPrice;
     }
@@ -82,7 +65,7 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
   
   // 騰落率の計算 (FXの場合は預託証拠金を分母とする)
   const marginForDenominator = asset.category === "FX" 
-    ? (asset.depositMargin || (Math.abs(asset.quantity * 10000) * (getJpyRate(asset.symbol.substring(0,3)) || usdJpyRate) * 0.04))
+    ? (asset.depositMargin || (Math.abs(asset.quantity * 10000) * (getJpyRate(getBaseCurrency(asset.name, asset.symbol), prices) || usdJpyRate) * 0.04))
     : (Math.abs(asset.quantity) * averageCostYen);
     
   const profitPercentage = marginForDenominator > 0 ? (profitAndLoss / marginForDenominator) * 100 : 0;

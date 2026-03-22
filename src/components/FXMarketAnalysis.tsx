@@ -271,7 +271,7 @@ export const FXMarketAnalysis = () => {
               </button>
            </div>
            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {indicators.filter(i => i.importance === "high").slice(0, 4).map(item => (
+              {indicators.filter(i => i.impact === "high").slice(0, 4).map(item => (
                 <div 
                    key={item.id} 
                    className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-[20px] border border-slate-100 dark:border-slate-800 flex items-center gap-4 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm"
@@ -293,7 +293,7 @@ export const FXMarketAnalysis = () => {
                    </div>
                 </div>
               ))}
-              {indicators.filter(i => i.importance === "high").length === 0 && (
+              {indicators.filter(i => i.impact === "high").length === 0 && (
                 <p className="col-span-full py-4 text-center text-xs font-bold text-slate-400 italic">直近の重要指標はありません</p>
               )}
            </div>

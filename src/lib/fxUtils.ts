@@ -1,109 +1,93 @@
-/**
- * FX 関連のユーティリティ関数
- */
-
-export interface EconomicIndicator {
-  id: string;
-  name: string;
-  country: string;
-  importance: "high" | "medium" | "low";
-  date: string;
-  forecast: string;
-  previous: string;
-  actual?: string;
-}
+import { getThisWeekEvents, EconomicEvent } from "./economicCalendarUtils";
 
 /**
- * 経済指標カレンダーデータを取得（現在は economicCalendarUtils から取得することを推奨）
+ * 経済カレンダーの取得 (エイリアス)
  */
-import { getThisWeekEvents } from "./economicCalendarUtils";
-
+export type EconomicIndicator = EconomicEvent;
 export const getEconomicCalendar = (): EconomicIndicator[] => {
-  const events = getThisWeekEvents(new Date());
-  return events.map(e => ({
-    id: e.id,
-    name: e.name,
-    country: e.country === "🇺🇸" ? "USD" : e.country === "🇯🇵" ? "JPY" : "EUR",
-    importance: e.impact,
-    date: e.date,
-    forecast: e.forecast || "-",
-    previous: e.previous || "-",
-    actual: e.actual || undefined
-  }));
+  return getThisWeekEvents(new Date());
 };
 
 /**
- * 通貨強弱データを計算
- * fxAnalysis データを元に、各通貨（USD, JPY, EUR, GBP, AUD）の相対的な強さを算出
+ * 通貨強弱（相対騰落率）の算出
  */
-export const calculateCurrencyStrengthFromAnalysis = (fxAnalysis: any[]) => {
-  // 各通貨のスコア（デフォルト0）
-  const scores: Record<string, number> = {
-    USD: 0, JPY: 0, EUR: 0, GBP: 0, AUD: 0
-  };
-
-  fxAnalysis.forEach(item => {
-    const change = item.change || 0;
+export const calculateCurrencyStrengthFromAnalysis = (fxAnalysis: any[]): any[] => {
+  const currencies = ["JPY", "USD", "EUR", "GBP", "AUD"];
+  const strengths = currencies.map(ccy => {
+    let score = 0;
+    let count = 0;
     
-    // 例: "JPY=X" (USD/JPY)
-    if (item.pair === "JPY=X") {
-      // 値上がり = USD強 / JPY弱
-      scores.USD += change;
-      scores.JPY -= change;
-    } else if (item.pair === "EURJPY=X") {
-      scores.EUR += change;
-      scores.JPY -= change;
-    } else if (item.pair === "GBPJPY=X") {
-      scores.GBP += change;
-      scores.JPY -= change;
-    } else if (item.pair === "AUDJPY=X") {
-      scores.AUD += change;
-      scores.JPY -= change;
-    } else if (item.pair === "EURUSD=X") {
-      scores.EUR += change;
-      scores.USD -= change;
-    }
+    fxAnalysis.forEach(item => {
+      const pair = item.pair.replace("=X", "");
+      if (pair.startsWith(ccy)) {
+        score += item.change || 0;
+        count++;
+      } else if (pair.endsWith(ccy)) {
+        score -= item.change || 0;
+        count++;
+      }
+    });
+    
+    return {
+      currency: ccy,
+      strength: count > 0 ? parseFloat((score / count).toFixed(2)) : 0
+    };
   });
-
-  return Object.entries(scores).map(([currency, strength]) => ({
-    currency,
-    strength: Number(strength.toFixed(2))
-  })).sort((a, b) => b.strength - a.strength);
+  
+  return strengths.sort((a, b) => b.strength - a.strength);
 };
 
 /**
- * FX 独自の AI アドバイスを生成
+ * FXマーケットアドバイスの生成
  */
-export const generateFXAdviceFromData = (indicators: EconomicIndicator[], fxAnalysis: any[]) => {
-  if (!fxAnalysis || fxAnalysis.length === 0) return "データの取得を待機中です...";
-
-  const usdjpy = fxAnalysis.find(a => a.pair === "JPY=X");
-  const strengths = calculateCurrencyStrengthFromAnalysis(fxAnalysis);
-  const strongest = strengths[0];
-  const weakest = strengths[strengths.length - 1];
+export const generateFXAdviceFromData = (econ: EconomicIndicator[], fxAnalysis: any[]): string => {
+  const highImpact = econ.filter(i => i.impact === "high");
+  const topAdvantage = fxAnalysis.sort((a, b) => (b.technical?.score || 0) - (a.technical?.score || 0))[0];
   
-  let advice = `現在は ${strongest.currency} が最強、${weakest.currency} が最弱の傾向にあります。`;
-  
-  if (usdjpy && usdjpy.technical) {
-    const { signal, reason } = usdjpy.technical;
-    advice += ` ドル円については、${reason}`;
-    
-    if (signal === "strong_buy") advice += " テクニカル的に絶好の買い場（ゴールデンクロス・売られすぎ）である可能性があります。";
-    else if (signal === "buy") advice += " 短期的な押し目買いを検討できる水準です。";
-    else if (signal === "strong_sell") advice += " 強い売りシグナル（デッドクロス・買われすぎ）が出ており、急落に警戒が必要です。";
-    else if (signal === "sell") advice += " 戻り売りを警戒すべき局面です。";
-
-    // スワップ情報の考慮
-    if (usdjpy.swap && usdjpy.swap.buy > 0 && signal.includes("buy")) {
-      advice += ` 買いスワップがプラス（${usdjpy.swap.buy}）であることも長期保有の追い風となります。`;
-    }
-  }
-
-  const highImpact = indicators.filter(i => i.importance === "high");
   if (highImpact.length > 0) {
-    const nextEvent = highImpact[0];
-    advice += ` 直近では ${nextEvent.name} (${nextEvent.country}) が予定されており、相場急変のリスクがあります。`;
+    return `今週は「${highImpact[0].name}」などの重要指標が控えており、ボラティリティの高まりが予想されます。特にテクニカルで${topAdvantage?.technical?.signal === 'strong_buy' ? '強い買い' : '注目'}シグナルが出ている ${topAdvantage?.pair.replace("=X", "")} は、指標後の動きを注視すべきでしょう。`;
   }
+  
+  return `現在は重要指標が少なく、テクニカル主導の展開です。${topAdvantage?.pair.replace("=X", "")} において${topAdvantage?.technical?.reason || '安定した推移'}が見られます。レンジ内での逆張り、またはトレンドフォローが有効な局面です。`;
+};
 
-  return advice;
+/**
+ * 通貨コードから対円レートを取得・合成する
+ */
+export const getJpyRate = (ccy: string, prices: Record<string, number>): number => {
+  if (ccy === "JPY") return 1;
+  const usdJpyRate = prices["JPY=X"] || prices["USDJPY=X"] || 151.2;
+  
+  // 1. 直接の対円レート (例: USDJPY, EURJPY)
+  if (prices[`${ccy}JPY=X`]) return prices[`${ccy}JPY=X`];
+  if (prices[`${ccy}JPY`]) return prices[`${ccy}JPY`];
+  if (ccy === "USD") return usdJpyRate;
+  
+  // 2. 対ドルレートからの合成 (例: EURUSD * USDJPY)
+  if (prices[`${ccy}USD=X`]) return prices[`${ccy}USD=X`] * usdJpyRate;
+  if (prices[`${ccy}USD`]) return prices[`${ccy}USD`] * usdJpyRate;
+  
+  // 3. ドル対通貨からの合成 (例: USDJPY / USDCHF)
+  if (prices[`USD${ccy}=X`]) return usdJpyRate / prices[`USD${ccy}=X`];
+  if (prices[`USD${ccy}`]) return usdJpyRate / prices[`USD${ccy}`];
+
+  // 4. 一般的なメジャー通貨のフォールバック
+  const fallbackRates: Record<string, number> = {
+    "EUR": 164.5,
+    "GBP": 191.2,
+    "AUD": 99.5,
+    "CHF": 170.8,
+    "CAD": 111.5
+  };
+  
+  return fallbackRates[ccy] || usdJpyRate;
+};
+
+/**
+ * FXペア名またはシンボルからベース通貨を取得する
+ */
+export const getBaseCurrency = (name: string, symbol: string): string => {
+  if (name && name.includes("/")) return name.split("/")[0].trim();
+  if (symbol && symbol.length >= 6) return symbol.substring(0, 3);
+  return "USD";
 };
