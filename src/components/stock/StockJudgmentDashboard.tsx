@@ -21,20 +21,33 @@ export const StockJudgmentDashboard = () => {
   
   const [filters, setFilters] = useState({ search: "", label: "all" });
   const [sort, setSort] = useState({ key: "totalScore", order: "desc" as "asc" | "desc" });
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const fetchData = async (forceRefresh = false) => {
-    setLoading(true);
+    if (!forceRefresh) setLoading(true);
     setError(null);
     try {
       const data = forceRefresh 
         ? await StockService.syncRealData()
         : await StockService.getJudgments();
       setAllJudgments(data);
+      
+      if (data.length > 0) {
+        const latest = [...data].sort((a, b) => 
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        )[0]?.updatedAt;
+        setLastUpdated(latest);
+      }
+
+      // 初回かつ最新化していない場合は、バックグラウンドで最新化を実行
+      if (!forceRefresh) {
+        fetchData(true);
+      }
     } catch (err) {
       console.error(err);
-      setError("日本株データの取得に失敗しました。もう一度お試しください。");
+      if (!forceRefresh) setError("日本株データの取得に失敗しました。もう一度お試しください。");
     } finally {
-      setLoading(false);
+      if (!forceRefresh) setLoading(false);
     }
   };
 
@@ -93,7 +106,14 @@ export const StockJudgmentDashboard = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white tracking-tight">日本株投資判断エンジン</h1>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Japanese Equities Judgment Matrix</p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Japanese Equities Judgment Matrix</p>
+                {lastUpdated && (
+                  <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-200/50">
+                    最終更新: {new Date(lastUpdated).toLocaleTimeString("ja-JP")}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex-shrink-0">

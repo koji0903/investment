@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   ArrowLeft, 
@@ -16,7 +16,8 @@ import {
   ShoppingBag,
   Building,
   MonitorPlay,
-  Settings2
+  Settings2,
+  RefreshCw
 } from "lucide-react";
 import Link from "next/link";
 import { MARKET_ANALYSIS_DATA } from "@/lib/marketData";
@@ -39,6 +40,9 @@ export default function MarketAnalysisPage() {
   const [selectedIndustryId, setSelectedIndustryId] = useState(MARKET_ANALYSIS_DATA[0].id);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [maxCompanyCount, setMaxCompanyCount] = useState(5);
+  const [liveData, setLiveData] = useState<Record<string, any>>({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const rawIndustry = MARKET_ANALYSIS_DATA.find(i => i.id === selectedIndustryId)!;
   
@@ -49,6 +53,33 @@ export default function MarketAnalysisPage() {
   }), [rawIndustry, maxCompanyCount]);
 
   const selectedCompany = selectedIndustry.companies.find(c => c.id === selectedCompanyId) || selectedIndustry.companies[0];
+
+  const fetchLivePrices = async () => {
+    setIsRefreshing(true);
+    try {
+      const symbols = selectedIndustry.companies.map(c => c.symbol);
+      const res = await fetch("/api/market-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ symbols })
+      });
+      const result = await res.json();
+      if (result.success && result.data) {
+        setLiveData(prev => ({ ...prev, ...result.data }));
+        setLastUpdated(new Date().toISOString());
+      }
+    } catch (err) {
+      console.error("Market Analysis Live Data Fetch Error:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLivePrices();
+  }, [selectedIndustryId]);
+
+  const currentLiveData = liveData[selectedCompany.symbol];
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-4 sm:p-8">
@@ -63,12 +94,19 @@ export default function MarketAnalysisPage() {
           </Link>
           <div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tighter gradient-text">日本市場分析・業界地図</h1>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Japanese Market Insight & Industry Map</p>
+            <div className="flex items-center gap-3 mt-1">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Japanese Market Insight & Industry Map</p>
+              {lastUpdated && (
+                <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-200/50">
+                  最終更新: {new Date(lastUpdated).toLocaleTimeString("ja-JP")}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         
         <div className="flex items-center gap-4">
-          {/* 表示企業数設定スライダー (NEW) */}
+          {/* 表示企業数設定スライダー */}
           <div className="bg-white dark:bg-slate-900 px-6 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-6">
             <div className="flex flex-col">
                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1.5">Display Count</span>
@@ -86,21 +124,17 @@ export default function MarketAnalysisPage() {
             </div>
           </div>
 
-           <div className="relative group hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
-            <input 
-              type="text" 
-              placeholder="銘柄・業界を検索..." 
-              className="pl-10 pr-4 py-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 outline-none focus:border-indigo-500 transition-all text-sm font-bold w-full sm:w-64 shadow-sm"
-            />
-          </div>
-          <button className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400">
-             <Settings2 size={20} />
+          <button 
+            onClick={fetchLivePrices}
+            disabled={isRefreshing}
+            className="p-2.5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-indigo-500 transition-colors"
+          >
+             <RefreshCw size={20} className={cn(isRefreshing && "animate-spin")} />
           </button>
         </div>
       </div>
 
-      {/* Industry Quick Overview (NEW) */}
+      {/* Industry Quick Overview */}
       <div className="max-w-7xl mx-auto mb-12">
         <div className="flex items-center justify-between mb-4 px-2">
            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] flex items-center gap-2">
@@ -289,10 +323,28 @@ export default function MarketAnalysisPage() {
                             </span>
                           </div>
                           <h4 className="text-2xl font-black tracking-tighter">{selectedCompany.name}</h4>
+                          {currentLiveData && (
+                             <div className="flex items-center gap-2 mt-1">
+                               <span className="text-sm font-black text-slate-800 dark:text-white">
+                                 {currentLiveData.price.toLocaleString("ja-JP")} <span className="text-[10px] font-bold">円</span>
+                               </span>
+                               <span className={cn(
+                                 "text-[10px] font-bold",
+                                 currentLiveData.change >= 0 ? "text-emerald-500" : "text-rose-500"
+                               )}>
+                                 {currentLiveData.change >= 0 ? "+" : ""}{currentLiveData.change.toLocaleString("ja-JP")} ({currentLiveData.changePercent.toFixed(2)}%)
+                               </span>
+                             </div>
+                          )}
                         </div>
                         <div className="text-right">
                           <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Market Cap</span>
-                          <span className="text-xl font-black">{selectedCompany.marketCap}<span className="text-xs ml-1">兆円</span></span>
+                          <span className="text-xl font-black">
+                             {currentLiveData?.marketCap 
+                               ? (currentLiveData.marketCap / 1000000000000).toFixed(1) 
+                               : selectedCompany.marketCap}
+                             <span className="text-xs ml-1">兆円</span>
+                          </span>
                         </div>
                       </div>
 

@@ -108,8 +108,14 @@ export async function syncStockRealData() {
     });
 
     const res = await Promise.all(tasks);
-    return { success: true, count: res.filter(r => r !== null).length };
+    const validResults = res.filter(r => r !== null) as StockJudgment[];
+    return { 
+      success: true, 
+      count: validResults.length, 
+      data: validResults.sort((a, b) => b.totalScore - a.totalScore),
+      updatedAt: new Date().toISOString()
+    };
   } catch (err) {
-    return { success: false, count: 0 };
+    return { success: false, count: 0, data: [], updatedAt: new Date().toISOString() };
   }
 }
