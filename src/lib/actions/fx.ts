@@ -72,37 +72,40 @@ export async function syncFXRealData() {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - 250); // テクニカル分析用に多めに取得
 
-    // 2. 通貨ペアごとに実データを取得して分析
-    for (const pair of SUPPORTED_PAIRS) {
+    const syncTasks = SUPPORTED_PAIRS.map(async (pair) => {
       const symbol = toYahooSymbol(pair.pairCode);
       
       try {
-        // ヒストリカルデータ取得
-        const historical = await yahooFinance.historical(symbol, {
-          period1: startDate,
-          period2: endDate,
-          interval: "1d"
-        }) as any[];
-
-        if (!historical || (historical as any[]).length < 50) {
-          console.warn(`Insufficient data for ${symbol}`);
-          continue;
+        // ヒストリカルデータ取得 (タイムアウトを考慮し並列処理)
+        let historical: any[] = [];
+        try {
+          historical = await yahooFinance.historical(symbol, {
+            period1: startDate,
+            period2: endDate,
+            interval: "1d"
+          }) as any[];
+        } catch (hErr) {
+          console.error(`History fetch error for ${symbol}:`, hErr);
+          return null;
         }
 
-        const prices = (historical as any[]).map(h => h.close).filter(p => typeof p === "number");
+        if (!historical || historical.length < 50) {
+          return null;
+        }
+
+        const prices = historical.map(h => h.close).filter(p => typeof p === "number");
         const currentPrice = prices[prices.length - 1];
 
         // テクニカル分析
         const technical = analyzeTechnical(prices, currentPrice);
         
-        // ファンダメンタル分析 (Firestore から取得したマスターデータを使用)
+        // ファンダメンタル分析
         const fundamental = analyzeFundamental(
           fundamentals[pair.baseCurrency],
           fundamentals[pair.quoteCurrency]
         );
 
-        // スワップ評価 (一旦ダミーベースだが、金利差に応じた動的評価も可能)
-        // ここでは既存のロジックを使用 (FXService.getDummySwaps相当を簡易化)
+        // スワップ評価
         const dummySwaps = getSemiRealSwaps(pair.pairCode, fundamentals[pair.baseCurrency]?.interestRate, fundamentals[pair.quoteCurrency]?.interestRate);
         const swapEval = evaluateSwap(dummySwaps.buy, dummySwaps.sell);
 
@@ -119,14 +122,19 @@ export async function syncFXRealData() {
 
         // 3. Firestore に保存
         await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), judgment);
-        results.push(judgment);
+        return judgment;
 
       } catch (err) {
         console.error(`Failed to Sync ${symbol}:`, err);
+        return null;
       }
-    }
+    });
 
-    return { success: true, count: results.length };
+    const syncResults = await Promise.all(syncTasks);
+    const successCount = syncResults.filter(r => r !== null).length;
+
+    console.log(`FX Sync Completed: ${successCount} pairs successful.`);
+    return { success: true, count: successCount };
 
   } catch (error) {
     console.error("Sync Error:", error);

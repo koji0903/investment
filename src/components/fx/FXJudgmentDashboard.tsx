@@ -137,6 +137,16 @@ export const FXJudgmentDashboard = () => {
               <div key={i} className="h-48 bg-slate-100 dark:bg-slate-800 rounded-[32px] animate-pulse" />
             ))}
           </div>
+        ) : filteredAndSortedJudgments.length === 0 ? (
+          <div className="py-24 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[40px] space-y-4">
+            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-300">
+               <Zap size={32} />
+            </div>
+            <div>
+              <p className="text-lg font-black text-slate-800 dark:text-white">表示できる判断情報がありません</p>
+              <p className="text-xs font-bold text-slate-400">検索条件を変更するか、右上の「データ再生成」をクリックしてください。</p>
+            </div>
+          </div>
         ) : (
           <FXPairList judgments={filteredAndSortedJudgments} onSelect={setSelectedJudgment} />
         )}

@@ -56,8 +56,9 @@ export const FXService = {
       const results = snapshot.docs.map(doc => doc.data() as FXJudgment);
       
       if (results.length === 0) {
-        // データがない場合は初期生成
-        return await FXService.generateAndSaveDummyData();
+        // データがない場合は実データを同期
+        console.log("No data found in Firestore, triggering real data sync...");
+        return await FXService.syncRealData();
       }
       return results;
     } catch (error) {
