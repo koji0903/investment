@@ -20,20 +20,34 @@ export const FXJudgmentDashboard = () => {
   
   const [filters, setFilters] = useState({ search: "", label: "all" });
   const [sort, setSort] = useState({ key: "totalScore", order: "desc" as "asc" | "desc" });
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const fetchData = async (forceRefresh = false) => {
-    setLoading(true);
+    if (!forceRefresh) setLoading(true);
     setError(null);
     try {
       const data = forceRefresh 
         ? await FXService.syncRealData()
         : await FXService.getPairs();
+      
       setAllJudgments(data);
+      if (data.length > 0) {
+        // 最も新しい更新日時を取得
+        const latest = [...data].sort((a, b) => 
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        )[0]?.updatedAt;
+        setLastUpdated(latest);
+      }
+
+      // 初回表示かつ最新化していない場合は、バックグラウンドで最新化を実行
+      if (!forceRefresh) {
+        fetchData(true);
+      }
     } catch (err) {
       console.error(err);
-      setError("データ取得に失敗しました。もう一度お試しください。");
+      if (!forceRefresh) setError("データ取得に失敗しました。もう一度お試しください。");
     } finally {
-      setLoading(false);
+      if (!forceRefresh) setLoading(false);
     }
   };
 
@@ -93,10 +107,17 @@ export const FXJudgmentDashboard = () => {
             </div>
             <div>
               <h1 className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white tracking-tight">FX 投資判断エンジン</h1>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Advanced Currency Judgment Matrix</p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Currency Judgment Matrix</p>
+                {lastUpdated && (
+                  <span className="text-[10px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-200/50">
+                    最終更新: {new Date(lastUpdated).toLocaleTimeString("ja-JP")}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-          <p className="max-w-xl text-sm font-bold text-slate-500 leading-relaxed">
+          <p className="max-w-xl text-sm font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
             テクニカル・ファンダメンタル・スワップ情報を統合。短期売買と中長期保有の優位性を個別に評価します。
           </p>
         </div>

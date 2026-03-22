@@ -208,7 +208,12 @@ export async function syncFXRealData() {
     await new Promise(r => setTimeout(r, 80));
   }
 
-  return { success: true, count: results.length, data: results };
+  return { 
+    success: true, 
+    count: results.length, 
+    data: results.sort((a, b) => b.totalScore - a.totalScore),
+    updatedAt: new Date().toISOString()
+  };
 }
 
 function diffToDirection(buySwap: number): any {
