@@ -25,6 +25,7 @@ interface AssetRow {
   brokerName: string;
   requiredMargin?: number;
   swapPoints?: number;
+  depositMargin?: number;
 }
 
 const CATEGORIES: { id: AssetCategory; label: string; icon: React.ElementType }[] = [
@@ -115,7 +116,7 @@ const CATEGORY_PLACEHOLDERS: Record<string, { name: string; symbol: string }> = 
 };
 
 export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: ManualAssetFormProps) => {
-  const { addAsset, updateAsset, deleteAsset } = usePortfolio();
+  const { addAsset, updateAsset, deleteAsset, prices } = usePortfolio();
   const { notify } = useNotify();
   
   const [category, setCategory] = useState<AssetCategory>(asset?.category || initialCategory);
@@ -137,10 +138,52 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           averageCost: asset.averageCost,
           brokerName: asset.brokerName || "",
           requiredMargin: asset.requiredMargin || 0,
-          swapPoints: asset.swapPoints || 0
+          swapPoints: asset.swapPoints || 0,
+          depositMargin: asset.depositMargin || 0
         }]
-      : [{ id: "1", name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: "", requiredMargin: 0, swapPoints: 0 }]
+      : [{ id: "1", name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: "", requiredMargin: 0, swapPoints: 0, depositMargin: 0 }]
   );
+
+  const handleFetchBrokerInfo = async (rowId: string) => {
+    const row = rows.find(r => r.id === rowId);
+    if (!row || !row.name) {
+      notify({ type: "error", title: "データ不足", message: "先に通貨ペアと数量を入力してください。" });
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/fx-broker-info?broker=${encodeURIComponent(row.brokerName || "default")}`);
+      const data = await res.json();
+      
+      if (data.success) {
+        // 現在レートを取得 (pricesから、なければ入力値を使用)
+        const usdJpyRate = prices["USDJPY=X"] || 151.2;
+        const currentPrice = prices[row.symbol] || row.currentPrice || usdJpyRate;
+        const FX_LOT_SIZE = 10000;
+        
+        // 推定必要証拠金 = 数量 * LotSize * 現在レート * 証拠金率
+        // (対円でない場合はレート換算が必要だが、ここでは簡易化のためベースレートを使用)
+        const baseRate = currentPrice > 10 ? currentPrice : usdJpyRate; // 簡易判定
+        const estRequired = row.quantity * FX_LOT_SIZE * baseRate * data.marginRate;
+        
+        // 預託証拠金 = 必要証拠金 * 2.0 (標準的なレバレッジ管理目安)
+        const suggestedDeposit = Math.round(estRequired * 2.0);
+        
+        updateRow(rowId, "depositMargin", suggestedDeposit);
+        
+        notify({
+          type: "success",
+          title: "自動取得完了",
+          message: `${row.brokerName || "FX会社"} の公開データに基づき、預託証拠金を ${suggestedDeposit.toLocaleString()}円 と推定しました。`,
+        });
+      }
+    } catch (error) {
+      console.error("Broker fetch failed", error);
+    } finally {
+      setLoading(false);
+    }
+  };
   
   const [loading, setLoading] = useState(false);
   const isEdit = !!asset;
@@ -155,7 +198,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
       case "銀行":
         return { name: "預金種別・口座名", quantity: "現在の残高", symbol: "コード", price: "評価単価", cost: "取得単価" };
       case "FX":
-        return { name: "通貨ペア", quantity: "取引数量 (Lot)", symbol: "コード", price: "評価単価", cost: "取得単価", margin: "必要証拠金 (1単位あたり)", swap: "累積スワップポイント (円)" };
+        return { name: "通貨ペア", quantity: "取引数量 (Lot)", symbol: "コード", price: "評価単価", cost: "取得単価", margin: "必要証拠金 (1単位あたり)", swap: "累積スワップポイント (円)", deposit: "預託証拠金残高 (円)" };
       case "仮想通貨":
         return { name: "通貨名", quantity: "保有数量", symbol: "コード", price: "評価単価", cost: "取得単価" };
       case "日本株":
@@ -170,7 +213,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
   }, [category]);
 
   const addRow = () => {
-    setRows([...rows, { id: Math.random().toString(36).substr(2, 9), name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: rows[rows.length-1]?.brokerName || "", requiredMargin: 0 }]);
+    setRows([...rows, { id: Math.random().toString(36).substr(2, 9), name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: rows[rows.length-1]?.brokerName || "", requiredMargin: 0, swapPoints: 0, depositMargin: 0 }]);
   };
 
   const removeRow = (id: string) => {
@@ -232,6 +275,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
 
         if (category === "FX") {
           updateData.swapPoints = Number(row.swapPoints || 0);
+          updateData.depositMargin = Number(row.depositMargin || 0);
         }
 
         await updateAsset(asset!.id, updateData);
@@ -262,6 +306,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
 
           if (category === "FX") {
             newData.swapPoints = Number(row.swapPoints || 0);
+            newData.depositMargin = Number(row.depositMargin || 0);
           }
 
           await addAsset(newData);
@@ -492,19 +537,28 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                         </>
                       )}
  
-                       {category === "FX" && (
-                         <>
-                           <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
-                             <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.margin}</label>
-                             <div className="relative">
-                               <div className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-black text-slate-500 flex items-center justify-between">
-                                 <span>自動算出 (4%)</span>
-                               </div>
-                               <p className="text-[9px] font-bold text-slate-400 mt-1 ml-1 leading-tight">
-                                 25倍レバレッジ
-                               </p>
-                             </div>
-                           </div>
+                        {category === "FX" && (
+                          <>
+                            <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
+                              <label className="text-[10px] font-bold text-slate-400 ml-1 flex justify-between">
+                                {labels.margin}
+                                <button 
+                                  type="button" 
+                                  onClick={() => handleFetchBrokerInfo(row.id)}
+                                  className="text-indigo-500 hover:text-indigo-400 font-black"
+                                >
+                                  [ 残高を自動推定 ]
+                                </button>
+                              </label>
+                              <div className="relative">
+                                <div className="w-full bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-black text-slate-500 flex items-center justify-between group-hover:border-indigo-500/30 transition-all">
+                                  <span>自動算出 (4%)</span>
+                                </div>
+                                <p className="text-[9px] font-bold text-slate-400 mt-1 ml-1 leading-tight">
+                                  25倍レバレッジ想定
+                                </p>
+                              </div>
+                            </div>
                            <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
                              <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.swap}</label>
                              <div className="relative">
@@ -513,6 +567,19 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                                  step="any"
                                  value={row.swapPoints}
                                  onChange={(e) => updateRow(row.id, "swapPoints", e.target.value)}
+                                 className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                               />
+                               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">JPY</span>
+                             </div>
+                           </div>
+                           <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
+                             <label className="text-[10px] font-bold text-slate-400 ml-1">{labels.deposit}</label>
+                             <div className="relative">
+                               <input
+                                 type="number"
+                                 step="any"
+                                 value={row.depositMargin}
+                                 onChange={(e) => updateRow(row.id, "depositMargin", e.target.value)}
                                  className="w-full bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-2.5 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
                                />
                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">JPY</span>

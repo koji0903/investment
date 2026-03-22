@@ -24,6 +24,7 @@ export interface Asset {
   brokerName?: string; // 証券会社・金融機関名
   requiredMargin?: number; // FX等の必要証拠金 (1単位あたり)
   swapPoints?: number; // 累積スワップポイント (円)
+  depositMargin?: number; // FXの預託証拠金残高 (円)
 }
 
 export interface AssetCalculated extends Asset {

@@ -22,6 +22,17 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
   
   let evaluatedValue = totalNotional;
 
+  // 対円レート取得関数
+  const getJpyRate = (ccy: string) => {
+    if (ccy === "JPY") return 1;
+    if (prices[`${ccy}JPY=X`]) return prices[`${ccy}JPY=X`];
+    // クロスレートの合成 (例: CHF -> CHFUSD * USDJPY)
+    if (prices[`${ccy}USD=X`]) return prices[`${ccy}USD=X`] * usdJpyRate;
+    if (prices[`USD${ccy}=X`]) return usdJpyRate / prices[`USD${ccy}=X`];
+    if (ccy === "USD") return usdJpyRate;
+    return null; // 不明な場合は null
+  };
+
   // FXの場合は特殊な計算 (クロス通貨対応)
   if (asset.category === "FX") {
     // シンボルから通貨を解析 (例: EURCHF=X -> Base: EUR, Counter: CHF)
@@ -39,17 +50,6 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
       base = parts[0].trim();
       counter = parts[1].trim();
     }
-
-    // 各通貨の対円レートを取得
-    const getJpyRate = (ccy: string) => {
-      if (ccy === "JPY") return 1;
-      if (prices[`${ccy}JPY=X`]) return prices[`${ccy}JPY=X`];
-      // クロスレートの合成 (例: CHF -> CHFUSD * USDJPY)
-      if (prices[`${ccy}USD=X`]) return prices[`${ccy}USD=X`] * usdJpyRate;
-      if (prices[`USD${ccy}=X`]) return usdJpyRate / prices[`USD${ccy}=X`];
-      if (ccy === "USD") return usdJpyRate;
-      return null; // 不明な場合は null
-    };
 
     const baseRate = getJpyRate(base) || usdJpyRate;
     
@@ -71,7 +71,7 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
     const nominalYen = Math.abs(totalQuantity) * baseRate;
     const margin = nominalYen * 0.04; 
     
-    evaluatedValue = pricePnL + (asset.swapPoints || 0);
+    evaluatedValue = (asset.depositMargin || 0) + pricePnL + (asset.swapPoints || 0);
     
     // 表示用により正確な情報をセット
     currentPriceYen = asset.currentPrice * counterRate;
@@ -80,10 +80,9 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
 
   const profitAndLoss = pricePnL + (asset.swapPoints || 0);
   
-  // 騰落率の計算 (FXの場合は必要証拠金を分母とする)
-  // 分母は「取得時のベース通貨価値 * 0.04」
+  // 騰落率の計算 (FXの場合は預託証拠金を分母とする)
   const marginForDenominator = asset.category === "FX" 
-    ? (Math.abs(asset.quantity * 10000) * (prices[asset.symbol.substring(0,3)+"JPY=X"] || usdJpyRate) * 0.04)
+    ? (asset.depositMargin || (Math.abs(asset.quantity * 10000) * (getJpyRate(asset.symbol.substring(0,3)) || usdJpyRate) * 0.04))
     : (Math.abs(asset.quantity) * averageCostYen);
     
   const profitPercentage = marginForDenominator > 0 ? (profitAndLoss / marginForDenominator) * 100 : 0;

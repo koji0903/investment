@@ -157,15 +157,12 @@ export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
         <div className="space-y-4">
           <div className="flex flex-col">
             <span className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-[0.2em] mb-1">
-              {asset.category === "FX" ? "評価損益" : "評価額"}
+              {asset.category === "FX" ? "口座評価額" : "評価額"}
             </span>
             <span className={cn(
               "text-2xl font-black",
-              asset.category === "FX" 
-                ? (asset.profitAndLoss >= 0 ? "text-emerald-500" : "text-rose-500")
-                : "gradient-text"
+              "gradient-text"
             )}>
-              {asset.category === "FX" && asset.profitAndLoss >= 0 ? "+" : ""}
               {formatCurrency(asset.evaluatedValue)}
             </span>
           </div>
@@ -182,6 +179,12 @@ export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
                 {isProfit ? "+" : ""}{asset.profitPercentage.toFixed(2)}%
               </span>
             </div>
+            {asset.depositMargin !== undefined && asset.depositMargin !== 0 && (
+              <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
+                <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 uppercase tracking-tighter">Deposit</span>
+                <span>{formatCurrency(asset.depositMargin)}</span>
+              </div>
+            )}
             {asset.swapPoints !== undefined && asset.swapPoints !== 0 && (
               <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
                 <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 uppercase tracking-tighter">Swap</span>

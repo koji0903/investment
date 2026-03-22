@@ -53,6 +53,7 @@ interface PortfolioContextType {
   updateAsset: (assetId: string, update: Partial<Asset>) => Promise<void>;
   deleteAsset: (assetId: string) => Promise<void>;
   syncExternalData?: (providerType: 'stock' | 'crypto' | 'fx') => Promise<void>;
+  prices: Record<string, number>;
   lastUpdated: string | null;
   isFetching: boolean;
   fetchError: string | null;
@@ -355,6 +356,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         updateAsset,
         deleteAsset,
         syncExternalData,
+        prices,
         lastUpdated,
         isFetching,
         fetchError,
