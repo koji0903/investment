@@ -184,55 +184,6 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
         }]
       : [{ id: "1", name: "", symbol: "", quantity: 0, currentPrice: 0, averageCost: 0, brokerName: "", requiredMargin: 0, swapPoints: 0, depositMargin: 0, lotUnit: 10000 }]
   );
-
-  const handleFetchBrokerInfo = async (rowId: string, silent = false) => {
-    const row = rows.find(r => r.id === rowId);
-    if (!row || !row.name || (silent && row.depositMargin && row.depositMargin > 0)) {
-      if (!silent) notify({ type: "error", title: "データ不足", message: "先に通貨ペアと数量を入力してください。" });
-      return;
-    }
-    
-    if (!silent) setLoading(true);
-    try {
-      const res = await fetch(`/api/fx-broker-info?broker=${encodeURIComponent(row.brokerName || "default")}`);
-      const data = await res.json();
-      
-      if (data.success) {
-        // ベース通貨の対円レートを精密に取得
-        const baseCcy = getBaseCurrency(row.name, row.symbol);
-        const baseRate = getJpyRate(baseCcy, prices);
-        
-        // ユーザー指定の公式: 現在レート × Lot数 × 取引単位 ÷ 25
-        const lotUnit = row.lotUnit || 10000;
-        const LEVERAGE = 25;
-        
-        // 1ロットあたりの必要証拠金 = ベース通貨レート * 取引単位 / レバレッジ
-        const marginPerLot = Math.round(baseRate * lotUnit / LEVERAGE);
-        
-        // ポジション必要証拠金 = Lot数 * 1ロットあたりの必要証拠金
-        const totalRequired = Math.round(row.quantity * marginPerLot);
-        
-        // 預託証拠金残高の提案 (100%維持ベースをデフォルトとする)
-        const suggestedDeposit = totalRequired;
-        
-        updateRow(rowId, "requiredMargin", marginPerLot.toString());
-        updateRow(rowId, "depositMargin", suggestedDeposit.toString());
-        
-        if (!silent) {
-          notify({
-            type: "success",
-            title: "証拠金を精密算出",
-            message: `公式 [${baseRate.toFixed(2)} × ${lotUnit.toLocaleString()} / 25] に基づき、1ロットあたり ${marginPerLot.toLocaleString()}円 と算出しました。`,
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Broker fetch failed", error);
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  };
-  
   const [loading, setLoading] = useState(false);
   const isEdit = !!asset;
   const isInvestment = category !== "銀行";
@@ -399,27 +350,19 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
-    
-    // FXの場合は初期表示時に自動推定を実行
-    if (category === "FX" && rows.length > 0 && rows[0].name) {
-      handleFetchBrokerInfo(rows[0].id, true);
-    }
   }, []);
 
-  // FXの数量・通貨ペア・単位が変更されたら自動再計算
+  // FXの数量・単位が変更されたら合計証拠金を自動計算
   useEffect(() => {
     if (category === "FX") {
       rows.forEach(row => {
-        if (row.quantity > 0 && (row.symbol || row.name)) {
-          // debounce 的な扱いで自動推定を実行
-          const timer = setTimeout(() => {
-            handleFetchBrokerInfo(row.id, true);
-          }, 1000);
-          return () => clearTimeout(timer);
+        const totalRequired = Math.round(Number(row.quantity || 0) * Number(row.requiredMargin || 0));
+        if (totalRequired > 0 && Number(row.depositMargin) !== totalRequired) {
+          updateRow(row.id, "depositMargin", totalRequired.toString());
         }
       });
     }
-  }, [category, JSON.stringify(rows.map(r => ({ q: r.quantity, s: r.symbol, u: r.lotUnit })))]);
+  }, [category, JSON.stringify(rows.map(r => ({ q: r.quantity, m: r.requiredMargin })))]);
 
   if (!mounted) return null;
 
@@ -596,13 +539,6 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
                             <div className="md:col-span-2 space-y-1.5 focus-within:z-10">
                               <label className="text-[10px] font-bold text-slate-400 ml-1 flex justify-between">
                                 {labels.margin}
-                                <button 
-                                  type="button" 
-                                  onClick={() => handleFetchBrokerInfo(row.id)}
-                                  className="text-indigo-500 hover:text-indigo-400 font-black"
-                                >
-                                  [ 残高を自動推定 ]
-                                </button>
                               </label>
                               <NumberInput
                                 value={row.requiredMargin}
