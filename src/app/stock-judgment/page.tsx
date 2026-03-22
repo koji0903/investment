@@ -18,6 +18,7 @@ export default function StockJudgmentPage() {
             totalProfitAndLoss={totalProfitAndLoss} 
             lastUpdated={lastUpdated}
             isFetching={isFetching}
+            hideAuth={true}
           />
           
           <div className="mt-12">

@@ -79,6 +79,10 @@ export const DashboardHeader = ({
 
   return (
     <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-8 md:p-10 shadow-xl border border-white/10">
+      <div className="absolute top-0 left-0 -translate-y-12 -translate-x-1/4 opacity-[0.03] pointer-events-none mix-blend-overlay">
+        <Wallet className="w-[32rem] h-[32rem]" />
+      </div>
+
       {/* ホームに戻る・ナビゲーション (左上) */}
       <div className="absolute top-6 left-8 z-20 flex items-center gap-3">
         <button 
@@ -92,11 +96,11 @@ export const DashboardHeader = ({
         </button>
       </div>
 
-      {user && (
+      {!hideAuth && user && (
         <div className="absolute top-6 right-8 z-20 flex items-center gap-4">
           <div className="hidden sm:flex flex-col items-end">
             <span className="text-xs font-bold text-slate-400">ログイン中</span>
-            <span className="text-sm font-black text-white">{user.displayName || user.email?.split('@')[0]}</span>
+            <span className="text-sm font-black text-white">{(user as any).displayName || (user as any).email?.split('@')[0]}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
@@ -113,10 +117,6 @@ export const DashboardHeader = ({
         </div>
       )}
 
-      <div className="absolute top-0 left-0 -translate-y-12 -translate-x-1/4 opacity-[0.03] pointer-events-none mix-blend-overlay">
-        <Wallet className="w-[32rem] h-[32rem]" />
-      </div>
-      
       <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8 mt-4 md:mt-0">
         <div className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
@@ -127,7 +127,7 @@ export const DashboardHeader = ({
             {lastUpdated && (
               <div className="w-fit flex items-center gap-1.5 text-xs font-medium text-slate-400 bg-slate-800/80 backdrop-blur-sm px-2.5 py-1.5 rounded-full border border-slate-700/50 hidden sm:flex">
                 <RefreshCw className={cn("w-3 h-3 text-indigo-400", isFetching && "animate-spin")} />
-                {new Date(lastUpdated).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                {new Date(lastUpdated as string).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </div>
             )}
           </div>
@@ -136,7 +136,7 @@ export const DashboardHeader = ({
             {lastUpdated && (
               <div className="sm:hidden flex items-center gap-1.5 text-[0.7rem] font-medium text-slate-400 bg-slate-800/80 backdrop-blur-sm px-2 py-1 rounded-full border border-slate-700/50 w-fit leading-none mb-1">
                 <RefreshCw className={cn("w-3 h-3 text-indigo-400", isFetching && "animate-spin")} />
-                {new Date(lastUpdated).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
+                {new Date(lastUpdated as string).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
               </div>
             )}
           </div>
