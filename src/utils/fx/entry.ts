@@ -106,7 +106,7 @@ export const calculateEntryTiming = (
   }
 
   // 3. リスクリワード評価と価格算出
-  let targetPrice = energy.targetPrices[0] || (currentPrice + atr * 2);
+  let targetPrice = currentPrice;
   let invalidationPrice = currentPrice;
   let suggestedEntryPrice = currentPrice;
 
@@ -117,20 +117,22 @@ export const calculateEntryTiming = (
     if (phase === "pullback_waiting") {
       suggestedEntryPrice = Math.max(recentLow, currentPrice - (atr * 0.5));
       invalidationPrice = recentLow - (atr * 0.5);
+      targetPrice = recentHigh + (atr * 1.0);
     } else {
       suggestedEntryPrice = currentPrice;
-      invalidationPrice = currentPrice - (atr * 1.5); // trailing stop
+      invalidationPrice = currentPrice - (atr * 1.5);
+      targetPrice = currentPrice + (atr * 2.5);
     }
-    targetPrice = energy.targetPrices[1] || (currentPrice + atr * 2.5); // 第2目標
   } else {
     if (phase === "pullback_waiting") {
       suggestedEntryPrice = Math.min(recentHigh, currentPrice + (atr * 0.5));
       invalidationPrice = recentHigh + (atr * 0.5);
+      targetPrice = recentLow - (atr * 1.0);
     } else {
       suggestedEntryPrice = currentPrice;
       invalidationPrice = currentPrice + (atr * 1.5);
+      targetPrice = currentPrice - (atr * 2.5);
     }
-    targetPrice = energy.targetPrices[1] || (currentPrice - atr * 2.5);
   }
 
   const risk = Math.abs(suggestedEntryPrice - invalidationPrice);

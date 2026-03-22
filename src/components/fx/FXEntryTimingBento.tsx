@@ -89,14 +89,14 @@ export const FXEntryTimingBento: React.FC<FXEntryTimingBentoProps> = ({ analysis
             <div className="flex flex-col justify-between py-2 border-b border-slate-100 dark:border-slate-800">
               <div className="flex justify-between items-center mb-1">
                 <span className="text-[10px] font-black text-slate-400">想定エントリー</span>
-                <span className="text-base font-black text-slate-700 dark:text-slate-200 tabular-nums">{analysis.suggestedEntryPrice}</span>
+                <span className="text-sm font-black text-slate-700 dark:text-slate-200 tabular-nums tracking-tighter">{analysis.suggestedEntryPrice.toFixed(pairCode.includes("JPY") ? 3 : 5)}</span>
               </div>
             </div>
             
             <div className="flex flex-col justify-between py-2 border-b border-slate-100 dark:border-slate-800">
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-1.5"><ShieldAlert size={12} className="text-rose-400" /><span className="text-[10px] font-black text-rose-400">損切りライン</span></div>
-                <span className="text-base font-black text-rose-500 tabular-nums">{analysis.invalidationPrice}</span>
+                <span className="text-sm font-black text-rose-500 tabular-nums tracking-tighter">{analysis.invalidationPrice.toFixed(pairCode.includes("JPY") ? 3 : 5)}</span>
               </div>
               <span className="text-[9px] font-bold text-slate-400 leading-tight">{analysis.stopComment}</span>
             </div>
@@ -104,7 +104,7 @@ export const FXEntryTimingBento: React.FC<FXEntryTimingBentoProps> = ({ analysis
             <div className="flex flex-col justify-between py-2 border-b border-slate-100 dark:border-slate-800">
               <div className="flex justify-between items-center mb-1">
                 <div className="flex items-center gap-1.5"><Crosshair size={12} className="text-emerald-500" /><span className="text-[10px] font-black text-emerald-500">目標価格</span></div>
-                <span className="text-base font-black text-emerald-500 tabular-nums">{analysis.targetPrice}</span>
+                <span className="text-sm font-black text-emerald-500 tabular-nums tracking-tighter">{analysis.targetPrice.toFixed(pairCode.includes("JPY") ? 3 : 5)}</span>
               </div>
               <span className="text-[9px] font-bold text-slate-400 leading-tight">{analysis.targetComment}</span>
             </div>

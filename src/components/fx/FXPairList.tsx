@@ -109,7 +109,7 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                         </span>
                       </div>
                       <span className="text-[9px] font-bold text-slate-400">
-                        目標: {item.entryTimingAnalysis.targetPrice}
+                        目標: {item.entryTimingAnalysis.targetPrice.toFixed(pairToDecimals(item.pairCode))}
                       </span>
                     </div>
                   ) : "-"}
