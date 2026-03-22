@@ -28,6 +28,7 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
               <th className="px-6 py-4">通貨ペア / 価格</th>
               <th className="px-6 py-4">エントリー判断</th>
               <th className="px-6 py-4">エネルギー</th>
+              <th className="px-6 py-4">推奨サイズ</th>
               <th className="px-6 py-4">RR比・目標</th>
               <th className="px-6 py-4">総合・適正</th>
               <th className="px-6 py-4">信頼度</th>
@@ -79,6 +80,21 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                       </div>
                       <span className="text-[10px] font-black tabular-nums text-slate-600 dark:text-slate-300">
                         {item.energyAnalysis.energyScore}
+                      </span>
+                    </div>
+                  ) : "-"}
+                </td>
+                <td className="px-6 py-5">
+                  {item.positionSizing ? (
+                    <div className="flex flex-col gap-1">
+                      <span className={cn(
+                        "text-sm font-black tabular-nums",
+                        item.positionSizing.cappedPositionSize > 0 ? "text-slate-800 dark:text-white" : "text-rose-500"
+                      )}>
+                        {item.positionSizing.suggestedLot}
+                      </span>
+                      <span className="text-[9px] font-bold text-slate-400">
+                        損失想定: {new Intl.NumberFormat('ja-JP', { notation: "compact" }).format(item.positionSizing.estimatedLossAmount)}円
                       </span>
                     </div>
                   ) : "-"}

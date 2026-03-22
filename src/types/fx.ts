@@ -129,10 +129,34 @@ export interface EntryTimingAnalysis {
   shouldWait: boolean;
   suggestedEntryPrice: number;
   invalidationPrice: number;    // 損切り候補
-  targetPrice: number;          // 目標価格 (追加)
+  targetPrice: number;          // 目標価格
   rrRatio: number;              // リスクリワード比
   stopComment: string;
   targetComment: string;
+}
+
+/**
+ * ポジションサイズ最適化・自動調整
+ */
+export interface PositionSizingAnalysis {
+  accountBalance: number;
+  riskPercent: number;
+  entryPrice: number;
+  stopPrice: number;
+  maxRiskAmount: number;
+  riskPerUnit: number;
+  basePositionSize: number;
+  breakoutFactor: number;
+  energyFactor: number;
+  fakeFactor: number;
+  rrFactor: number;
+  structureFactor: number;
+  finalPositionSize: number;
+  cappedPositionSize: number;
+  suggestedLot: string;         // "1.2 ロット" のような表示用文字列
+  estimatedLossAmount: number;
+  sizingComment: string;
+  riskWarningMessages: string[];
 }
 
 /**
@@ -176,6 +200,9 @@ export interface FXJudgment {
 
   // エントリータイミング分析 (新規追加)
   entryTimingAnalysis?: EntryTimingAnalysis;
+
+  // ポジションサイズ自動調整 (新規追加)
+  positionSizing?: PositionSizingAnalysis;
 
   updatedAt: string;
   

@@ -7,6 +7,7 @@ import { analyzeFundamental } from "@/utils/fx/fundamental";
 import { evaluateSwap, calculateTotalJudgment } from "@/utils/fx/scoring";
 import { calculateEnergyAnalysis } from "@/utils/fx/energy";
 import { calculateEntryTiming } from "@/utils/fx/entry";
+import { calculatePositionSizing } from "@/utils/fx/position";
 import { calculateATR } from "@/lib/technicalAnalysis";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, getDocs, collection, query } from "firebase/firestore";
@@ -118,6 +119,13 @@ export async function syncFXRealData() {
           recentHigh,
           recentLow
         );
+
+        // ポジションサイズ自動調整を追加
+        judgment.positionSizing = calculatePositionSizing(
+          pair.pairCode,
+          judgment.entryTimingAnalysis,
+          judgment.energyAnalysis
+        );
       }
     } catch (e) {
       console.error(`Sync error for ${pair.pairCode}:`, e);
@@ -180,6 +188,12 @@ export async function syncFXRealData() {
         ),
         updatedAt: new Date().toISOString()
       };
+
+      judgment.positionSizing = calculatePositionSizing(
+        pair.pairCode,
+        judgment.entryTimingAnalysis,
+        judgment.energyAnalysis
+      );
     }
 
     try {

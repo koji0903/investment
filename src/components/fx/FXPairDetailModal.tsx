@@ -9,7 +9,8 @@ import {
 } from "./FXUIComponents";
 import { FXEnergyBento } from "./FXEnergyBento";
 import { FXEntryTimingBento } from "./FXEntryTimingBento";
-import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle, Crosshair } from "lucide-react";
+import { FXPositionSizingBento } from "./FXPositionSizingBento";
+import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle, Crosshair, Calculator } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +120,19 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
                   <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">エントリー最適化ナビ</h3>
                 </div>
                 <FXEntryTimingBento analysis={judgment.entryTimingAnalysis} pairCode={judgment.pairCode} />
+              </div>
+            )}
+
+            {/* Position Sizing Analysis (Bento) */}
+            {judgment.positionSizing && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-blue-500 rounded-lg text-white">
+                    <Calculator size={14} fill="currentColor" />
+                  </div>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">ポジションサイズ自動調整</h3>
+                </div>
+                <FXPositionSizingBento sizing={judgment.positionSizing} />
               </div>
             )}
 
