@@ -7,7 +7,7 @@ import { FXPairList } from "./FXPairList";
 import { FXPairDetailModal } from "./FXPairDetailModal";
 import { FXFilterSort } from "./FXFilterSort";
 import { SignalBadge } from "./FXUIComponents";
-import { Zap, Info, ShieldAlert, Trophy, TrendingUp, TrendingDown, Coins, ChevronRight } from "lucide-react";
+import { Zap, Info, ShieldAlert, Trophy, TrendingUp, TrendingDown, Coins, ChevronRight, Target } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 

@@ -98,10 +98,17 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Technical Analysis */}
               <div className="space-y-4">
-                <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
-                  <TrendingUp size={16} className="text-emerald-500" />
-                  テクニカル分析 ({judgment.technicalScore})
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
+                    <TrendingUp size={16} className="text-emerald-500" />
+                    短期判定 (テクニカル)
+                  </h3>
+                  <span className={cn("text-xs font-black", 
+                    judgment.technicalScore > 25 ? "text-emerald-500" : judgment.technicalScore < -25 ? "text-rose-500" : "text-slate-400"
+                  )}>
+                    {judgment.shortTermSignal} ({judgment.technicalScore})
+                  </span>
+                </div>
                 <ul className="space-y-2">
                   {judgment.technicalReasons.map((reason, i) => (
                     <li key={i} className="flex gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 bg-emerald-50/30 dark:bg-emerald-500/5 p-2 rounded-lg border border-emerald-100/50 dark:border-emerald-500/10">
@@ -114,10 +121,17 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
 
               {/* Fundamental Analysis */}
               <div className="space-y-4">
-                <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
-                  <Target size={16} className="text-blue-500" />
-                  ファンダメンタル分析 ({judgment.fundamentalScore})
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
+                    <Target size={16} className="text-blue-500" />
+                    中長期判定 (基礎/SWAP)
+                  </h3>
+                  <span className={cn("text-xs font-black", 
+                    judgment.fundamentalScore > 25 ? "text-emerald-500" : judgment.fundamentalScore < -25 ? "text-rose-500" : "text-slate-400"
+                  )}>
+                    {judgment.mediumTermSignal} ({judgment.fundamentalScore})
+                  </span>
+                </div>
                 <ul className="space-y-2">
                   {judgment.fundamentalReasons.map((reason, i) => (
                     <li key={i} className="flex gap-2 text-xs font-bold text-slate-600 dark:text-slate-400 bg-blue-50/30 dark:bg-blue-500/5 p-2 rounded-lg border border-blue-100/50 dark:border-blue-500/10">
