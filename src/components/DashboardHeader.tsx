@@ -1,3 +1,5 @@
+"use client";
+
 import { formatCurrency, cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
 import { TrendingUp, TrendingDown, Wallet, RefreshCw, LogOut, User } from "lucide-react";

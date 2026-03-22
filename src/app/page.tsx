@@ -52,6 +52,8 @@ import { WinPatternAnalysis } from "@/components/WinPatternAnalysis";
 import { InvestmentRuleMonitor } from "@/components/InvestmentRuleMonitor";
 import { FXMarketAnalysis } from "@/components/FXMarketAnalysis";
 import { FXJudgmentLinkCard } from "@/components/FXJudgmentLinkCard";
+import { StockJudgmentLinkCard } from "@/components/StockJudgmentLinkCard";
+import { RadarLinkCard } from "@/components/RadarLinkCard";
 import { IndustryInsightLinkCard } from "@/components/IndustryInsightLinkCard";
 import { Footer } from "@/components/Footer";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -182,9 +184,10 @@ export default function Home() {
                   <PortfolioScoreCard />
 
                   {/* Strategic Link Cards */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <FXJudgmentLinkCard />
-                    <IndustryInsightLinkCard />
+                    <StockJudgmentLinkCard />
+                    <RadarLinkCard />
                   </div>
 
                   {/* Top: Market Intelligence Snapshot */}
