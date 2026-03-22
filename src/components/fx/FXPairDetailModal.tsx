@@ -7,7 +7,7 @@ import {
   ConfidenceIndicator, 
   HoldingStyleBadge 
 } from "./FXUIComponents";
-import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock } from "lucide-react";
+import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 

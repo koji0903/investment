@@ -8,8 +8,9 @@ export type TechnicalTrend = "bullish" | "bearish" | "neutral";
 export type MacroBias = "bullish" | "bearish" | "neutral";
 export type SwapDirection = "long_positive" | "short_positive" | "both_negative" | "neutral";
 export type HoldingStyle = "short_term_only" | "medium_term_long" | "medium_term_short" | "not_suitable_for_hold";
-export type SignalLabel = "買い優勢" | "やや買い" | "中立" | "やや売り" | "売り優勢";
+export type SignalLabel = "買い優勢" | "やや買い" | "中立" | "やや売り" | "売り優勢" | "押し目待ち" | "戻り売り待ち";
 export type ConfidenceLevel = "高" | "中" | "低";
+export type TradingSuitability = "短期売買向き" | "中長期保有向き" | "短期・中長期共に良好" | "様子見推奨";
 
 /**
  * 通貨ペアのマスタ情報
@@ -115,6 +116,11 @@ export interface FXJudgment {
   signalLabel: SignalLabel;
   confidence: ConfidenceLevel;
   summaryComment: string;
+  
+  // 短期・中長期の分離評価
+  shortTermSignal: SignalLabel;
+  mediumTermSignal: SignalLabel;
+  suitability: TradingSuitability;
   
   updatedAt: string;
   

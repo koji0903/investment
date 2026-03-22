@@ -10,7 +10,7 @@ import {
   Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SignalLabel, ConfidenceLevel, HoldingStyle } from "@/types/fx";
+import { SignalLabel, ConfidenceLevel, HoldingStyle, TradingSuitability } from "@/types/fx";
 
 /**
  * 判定シグナルバッジ
@@ -22,9 +22,11 @@ export const SignalBadge = ({ label }: { label: SignalLabel }) => {
     "中立": "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700",
     "やや売り": "bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30",
     "売り優勢": "bg-rose-500 text-white shadow-lg shadow-rose-500/20",
+    "押し目待ち": "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30",
+    "戻り売り待ち": "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30",
   };
 
-  const Icon = label.includes("買い") ? TrendingUp : label.includes("売り") ? TrendingDown : Minus;
+  const Icon = label.includes("買い") || label === "押し目待ち" ? TrendingUp : label.includes("売り") || label === "戻り売り待ち" ? TrendingDown : Minus;
 
   return (
     <div className={cn(
@@ -84,5 +86,23 @@ export const HoldingStyleBadge = ({ style }: { style: HoldingStyle }) => {
     <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", color)}>
       {label}
     </span>
+  );
+};
+
+/**
+ * 売買適正バッジ
+ */
+export const TradingSuitabilityBadge = ({ suitability }: { suitability: TradingSuitability }) => {
+  const styles = {
+    "短期売買向き": "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20",
+    "中長期保有向き": "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20",
+    "短期・中長期共に良好": "bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20",
+    "様子見推奨": "bg-slate-50 dark:bg-slate-800 text-slate-400 border border-slate-100 dark:border-slate-800",
+  };
+
+  return (
+    <div className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black", styles[suitability])}>
+      {suitability}
+    </div>
   );
 };

@@ -6,11 +6,12 @@ import {
   SignalLabel,
   ConfidenceLevel,
   HoldingStyle,
-  CurrencyCode
+  CurrencyCode,
+  TradingSuitability
 } from "@/types/fx";
 
 /**
- * 総合判定スコアリングエンジン
+ * 総合判定スコアリングエンジン (追加要件反映版)
  */
 export function calculateTotalJudgment(
   pairCode: string,
@@ -21,56 +22,79 @@ export function calculateTotalJudgment(
   fundamental: FundamentalAnalysisResult,
   swap: SwapEvaluation
 ): FXJudgment {
-  // 重み付け計算
-  // テクニカル: 50%, ファンダメンタル: 35%, スワップ: 15%
-  // スワップは -50〜+50 なので、2倍して -100〜+100 スケールに合わせる
+  // 1. 短期判定 (主にテクニカル)
+  let shortTermSignal: SignalLabel = getSignalFromScore(technical.score);
+  
+  // 2. 中長期判定 (ファンダメンタル + スワップ)
+  // スワップスコアを -100〜+100 スケールに換算して合算
+  const mediumTermScore = fundamental.score * 0.7 + (swap.score * 2) * 0.3;
+  let mediumTermSignal: SignalLabel = getSignalFromScore(mediumTermScore);
+
+  // 3. 総合判定の算出と特殊ラベルの適用
   const totalScore = 
     technical.score * 0.50 +
     fundamental.score * 0.35 +
     (swap.score * 2) * 0.15;
 
   const finalScore = Math.round(Math.max(-100, Math.min(100, totalScore)));
+  let signalLabel: SignalLabel = getSignalFromScore(finalScore);
 
-  // 判定ラベルの決定
-  let signalLabel: SignalLabel = "中立";
-  if (finalScore >= 60) signalLabel = "買い優勢";
-  else if (finalScore >= 25) signalLabel = "やや買い";
-  else if (finalScore <= -60) signalLabel = "売り優勢";
-  else if (finalScore <= -25) signalLabel = "やや売り";
+  // 【追加要件】押し目待ち判定
+  // ファンダメンタルが強く(買い)、かつテクニカルが買われすぎ(RSI > 70 等)の場合
+  if (fundamental.score > 30 && technical.indicators.rsi > 70) {
+    signalLabel = "押し目待ち";
+  } else if (fundamental.score < -30 && technical.indicators.rsi < 30) {
+    signalLabel = "戻り売り待ち";
+  }
 
-  // 信頼度の決定 (テクニカルとファンダメンタルの方向性が一致しているほど高い)
+  // 【追加要件】スワップ考慮
+  // スワップが大幅マイナスの場合、中長期保有を不向きとする
+  let effectiveHoldingStyle = swap.holdingStyle;
+  if (swap.buySwap < -200 && (signalLabel === "買い優勢" || signalLabel === "やや買い")) {
+    effectiveHoldingStyle = "not_suitable_for_hold";
+  }
+
+  // 4. 売買適正 (suitability)
+  let suitability: TradingSuitability = "様子見推奨";
+  const isShortGood = technical.score > 25;
+  const isMediumGood = mediumTermScore > 25;
+  const isShortBad = technical.score < -25;
+  const isMediumBad = mediumTermScore < -25;
+
+  if ((isShortGood || isShortBad) && (isMediumGood || isMediumBad)) {
+    suitability = "短期・中長期共に良好";
+  } else if (isShortGood || isShortBad) {
+    suitability = "短期売買向き";
+  } else if (isMediumGood || isMediumBad) {
+    suitability = "中長期保有向き";
+  }
+
+  // 信頼度の決定
   let confidence: ConfidenceLevel = "低";
   const techDir = technical.score > 0 ? 1 : technical.score < 0 ? -1 : 0;
   const fundDir = fundamental.score > 0 ? 1 : fundamental.score < 0 ? -1 : 0;
 
   if (techDir === fundDir && techDir !== 0) {
-    if (Math.abs(technical.score) > 50 && Math.abs(fundamental.score) > 50) {
-      confidence = "高";
-    } else {
-      confidence = "中";
-    }
+    confidence = Math.abs(technical.score) > 50 && Math.abs(fundamental.score) > 50 ? "高" : "中";
   } else if (techDir === 0 || fundDir === 0) {
     confidence = "中";
-  } else {
-    confidence = "低"; // 方向性が逆
   }
 
-  // サマリーコメントの生成
+  // サマリーコメントの生成 (日本語理由の充実)
   let summaryComment = "";
-  if (signalLabel === "買い優勢") {
-    summaryComment = `${pairCode}はテクニカル・ファンダメンタル共に強い買いシグナルを示しています。`;
-  } else if (signalLabel === "売り優勢") {
-    summaryComment = `${pairCode}は下落トレンドが明確で、ファンダメンタル面でも売りが推奨される局面です。`;
-  } else if (signalLabel === "中立") {
-    summaryComment = "現在は明確な方向性がなく、様子見が妥当な局面です。";
-  } else {
-    summaryComment = `押し目買いや戻り売りを検討できる、${signalLabel}の状況です。`;
+  const techReason = technical.score > 0 ? "上昇トレンド" : technical.score < 0 ? "下落トレンド" : "レンジ推移";
+  const fundReason = fundamental.score > 0 ? "金利・景気面での買い支持" : fundamental.score < 0 ? "ファンダメンタル面の弱気" : "材料視される要因が乏しい";
+
+  summaryComment = `${pairCode}は現在、テクニカル面で${techReason}、ファンダメンタル面で${fundReason}となっています。`;
+
+  if (signalLabel === "押し目待ち") {
+    summaryComment += " 中長期的には強気ですが、短期的には過熱感があるため、一時的な調整（押し目）を待つのが賢明です。";
+  } else if (signalLabel === "戻り売り待ち") {
+    summaryComment += " 短期的に売られすぎの兆候があり、戻り売りを検討できる水準までの回復を待ちたい局面です。";
   }
 
-  if (swap.holdingStyle === "medium_term_long") {
-    summaryComment += " スワップポイントが有利なため、中長期での買い保有も検討に値します。";
-  } else if (swap.holdingStyle === "medium_term_short") {
-    summaryComment += " スワップポイントが有利なため、中長期での売り保有も検討に値します。";
+  if (effectiveHoldingStyle === "not_suitable_for_hold") {
+    summaryComment += " スワップポイントの負担が大きいため、長期保有には向きません。";
   }
 
   return {
@@ -89,14 +113,25 @@ export function calculateTotalJudgment(
     swapScore: swap.score,
     swapDirection: swap.swapDirection,
     swapComment: swap.swapComment,
-    holdingStyle: swap.holdingStyle,
+    holdingStyle: effectiveHoldingStyle,
     totalScore: finalScore,
     signalLabel,
     confidence,
     summaryComment,
+    shortTermSignal,
+    mediumTermSignal,
+    suitability,
     updatedAt: new Date().toISOString(),
     indicators: technical.indicators
   };
+}
+
+function getSignalFromScore(score: number): SignalLabel {
+  if (score >= 60) return "買い優勢";
+  if (score >= 25) return "やや買い";
+  if (score <= -60) return "売り優勢";
+  if (score <= -25) return "やや売り";
+  return "中立";
 }
 
 /**
@@ -110,32 +145,20 @@ export function evaluateSwap(buySwap: number, sellSwap: number): SwapEvaluation 
 
   if (buySwap > 0 && sellSwap < 0) {
     swapDirection = "long_positive";
-    score = Math.min(50, buySwap / 2); // 簡易計算
-    swapComment = "買い保有でスワップ受取が期待できます。";
-    if (buySwap > 100) holdingStyle = "medium_term_long";
+    score = Math.min(50, buySwap / 4); 
+    swapComment = `買いスワップが1日あたり ${buySwap} 円と有利です。`;
+    if (buySwap > 150) holdingStyle = "medium_term_long";
   } else if (sellSwap > 0 && buySwap < 0) {
     swapDirection = "short_positive";
-    score = -Math.min(50, sellSwap / 2); // 売りが有利ならマイナス方向にスコアをつける
-    // 注意: totalScore計算時にプラスに働くように調整が必要
-    // 実際には fundamentalScore/technicalScore と同じ方向 (+ = 買い, - = 売り) を向くようにする
-    swapComment = "売り保有でスワップ受取が期待できます。";
-    if (sellSwap > 100) holdingStyle = "medium_term_short";
+    score = -Math.min(50, sellSwap / 4); 
+    swapComment = `売りスワップが1日あたり ${sellSwap} 円と有利です。`;
+    if (sellSwap > 150) holdingStyle = "medium_term_short";
   } else {
     swapDirection = "both_negative";
     score = -10;
-    swapComment = "買い・売り共にマイナススワップが発生します。短期売買向き。";
-    holdingStyle = "short_term_only";
+    swapComment = "両方向でスワップ負担が発生するため、中長期保有には不向きです。";
+    holdingStyle = "not_suitable_for_hold";
   }
-
-  // スワップスコアの符号を「買いベース」にする (+ = 買いに有利, - = 売りに有利)
-  // analyzeTechnical/Fundamental も + = 買い, - = 売り なので合わせる。
   
-  return {
-    score, // + = 買いに有利, - = 売りに有利
-    buySwap,
-    sellSwap,
-    swapDirection,
-    swapComment,
-    holdingStyle
-  };
+  return { score, buySwap, sellSwap, swapDirection, swapComment, holdingStyle };
 }

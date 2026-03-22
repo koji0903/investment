@@ -6,8 +6,10 @@ import { FXService } from "@/services/fxService";
 import { FXPairList } from "./FXPairList";
 import { FXPairDetailModal } from "./FXPairDetailModal";
 import { FXFilterSort } from "./FXFilterSort";
-import { Zap, Info, ShieldAlert } from "lucide-react";
+import { SignalBadge } from "./FXUIComponents";
+import { Zap, Info, ShieldAlert, Trophy, TrendingUp, TrendingDown, Coins, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 export const FXJudgmentDashboard = () => {
   const [allJudgments, setAllJudgments] = useState<FXJudgment[]>([]);
@@ -38,17 +40,19 @@ export const FXJudgmentDashboard = () => {
     fetchData();
   }, []);
 
+  // ランキングデータの作成
+  const rankings = useMemo(() => {
+    const buyRanking = [...allJudgments].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
+    const sellRanking = [...allJudgments].sort((a, b) => a.totalScore - b.totalScore).slice(0, 3);
+    const swapRanking = [...allJudgments].sort((a, b) => b.swapScore - a.swapScore).slice(0, 3);
+    return { buyRanking, sellRanking, swapRanking };
+  }, [allJudgments]);
+
   const filteredAndSortedJudgments = useMemo(() => {
     let result = [...allJudgments];
-
-    // Search
     if (filters.search) {
-      result = result.filter(j => 
-        j.pairCode.toLowerCase().includes(filters.search.toLowerCase())
-      );
+      result = result.filter(j => j.pairCode.toLowerCase().includes(filters.search.toLowerCase()));
     }
-
-    // Filter
     if (filters.label !== "all") {
       if (filters.label === "confidence_high") {
         result = result.filter(j => j.confidence === "高");
@@ -58,8 +62,6 @@ export const FXJudgmentDashboard = () => {
         result = result.filter(j => j.signalLabel === filters.label);
       }
     }
-
-    // Sort
     result.sort((a: any, b: any) => {
       const aVal = a[sort.key];
       const bVal = b[sort.key];
@@ -68,12 +70,11 @@ export const FXJudgmentDashboard = () => {
       }
       return 0;
     });
-
     return result;
   }, [allJudgments, filters, sort]);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-12">
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-3">
@@ -87,26 +88,34 @@ export const FXJudgmentDashboard = () => {
             </div>
           </div>
           <p className="max-w-xl text-sm font-bold text-slate-500 leading-relaxed">
-            テクニカル・ファンダメンタル・スワップ情報を統合し、全主要通貨ペアの投資優位性をリアルタイム（デモ）で算出します。
+            テクニカル・ファンダメンタル・スワップ情報を統合。短期売買と中長期保有の優位性を個別に評価します。
           </p>
         </div>
-
-        <div className="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 px-6 py-4 rounded-[24px] border border-slate-100 dark:border-slate-800">
-          <div className="text-right">
-            <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">分析ステータス</p>
-            <p className="text-sm font-black text-emerald-500 leading-none">
-              {loading ? "更新中..." : "正常稼働中"}
-            </p>
-          </div>
-          <div className="w-px h-8 bg-slate-200 dark:bg-slate-700" />
-          <div className="text-right">
-            <p className="text-[10px] font-black text-slate-400 uppercase leading-none mb-1">判定ペア数</p>
-            <p className="text-sm font-black text-slate-800 dark:text-white leading-none">
-              {allJudgments.length}
-            </p>
-          </div>
-        </div>
       </div>
+
+      {/* Rankings Section */}
+      {!loading && allJudgments.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <RankingCard 
+            title="買い優勢ランキング" 
+            items={rankings.buyRanking} 
+            icon={<TrendingUp size={18} className="text-emerald-500" />}
+            onSelect={setSelectedJudgment}
+          />
+          <RankingCard 
+            title="売り優勢ランキング" 
+            items={rankings.sellRanking} 
+            icon={<TrendingDown size={18} className="text-rose-500" />}
+            onSelect={setSelectedJudgment}
+          />
+          <RankingCard 
+            title="スワップ妙味ランキング" 
+            items={rankings.swapRanking} 
+            icon={<Coins size={18} className="text-amber-500" />}
+            onSelect={setSelectedJudgment}
+          />
+        </div>
+      )}
 
       {/* Main Dashboard Content */}
       <div className="space-y-8">
@@ -121,12 +130,6 @@ export const FXJudgmentDashboard = () => {
           <div className="p-12 text-center bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-[32px] space-y-4">
             <ShieldAlert size={48} className="mx-auto text-rose-500" />
             <p className="text-lg font-black text-rose-600 dark:text-rose-400">{error}</p>
-            <button 
-              onClick={() => fetchData()}
-              className="px-6 py-3 bg-rose-500 text-white rounded-2xl text-sm font-black"
-            >
-              再試行する
-            </button>
           </div>
         ) : loading && allJudgments.length === 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -135,10 +138,7 @@ export const FXJudgmentDashboard = () => {
             ))}
           </div>
         ) : (
-          <FXPairList 
-            judgments={filteredAndSortedJudgments} 
-            onSelect={setSelectedJudgment} 
-          />
+          <FXPairList judgments={filteredAndSortedJudgments} onSelect={setSelectedJudgment} />
         )}
       </div>
 
@@ -148,42 +148,63 @@ export const FXJudgmentDashboard = () => {
           <div className="p-2 bg-indigo-500 rounded-xl text-white">
             <Info size={20} />
           </div>
-          <h2 className="text-xl font-black text-slate-800 dark:text-white">分析判定ロジックについて</h2>
+          <h2 className="text-xl font-black text-slate-800 dark:text-white">分析判定ロジックの詳細</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-           <div className="space-y-3">
-             <h3 className="text-sm font-black text-emerald-500 uppercase tracking-wider">テクニカル (50%)</h3>
-             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
-               SMA20/50/200のトレンド方向、RSIの過熱感、MACDのクロス、ボリンジャーバンドの乖離を統合評価。直近高値・安値のブレイクも加点要素。
-             </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+           <div className="space-y-4">
+             <h3 className="text-sm font-black text-indigo-500 uppercase tracking-wider flex items-center gap-2">
+               <Zap size={16} /> 短期判定 (主にテクニカル)
+             </h3>
+             <ul className="text-xs font-bold text-slate-500 dark:text-slate-400 space-y-2 leading-relaxed">
+               <li>・移動平均線のパーフェクトオーダーによるトレンド追随</li>
+               <li>・RSI 30/70 による売られすぎ・買われすぎの転換点</li>
+               <li>・MACDクロスによるモメンタム加速の判定</li>
+               <li className="text-amber-500">・強気相場でもRSI過熱時は「押し目待ち」として警告</li>
+             </ul>
            </div>
-           <div className="space-y-3">
-             <h3 className="text-sm font-black text-blue-500 uppercase tracking-wider">ファンダメンタル (35%)</h3>
-             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
-               政策金利差（キャリー）、中央銀行のバイアス(タカ/ハト)、景気強弱、安全通貨・資源国通貨の特性をベース対クォートで比較算出。
-             </p>
+           <div className="space-y-4">
+             <h3 className="text-sm font-black text-emerald-500 uppercase tracking-wider flex items-center gap-2">
+               <Target size={16} /> 中長期判定 (基礎 & スワップ)
+             </h3>
+             <ul className="text-xs font-bold text-slate-500 dark:text-slate-400 space-y-2 leading-relaxed">
+               <li>・通貨ペア間の政策金利差（キャリートレードの優位性）</li>
+               <li>・中央銀行のタカ派・ハト派スタンスの乖離</li>
+               <li>・景気指標およびインフレ傾向の相対評価</li>
+               <li className="text-rose-500">・スワップが大幅マイナス（-200/日超）の場合は長期保有不向きと判定</li>
+             </ul>
            </div>
-           <div className="space-y-3">
-             <h3 className="text-sm font-black text-amber-500 uppercase tracking-wider">スワップ評価 (15%)</h3>
-             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed">
-               保有コストと利益への影響を評価。金利差が大きく、かつトレンドが順方向の場合に中長期保有の信頼度を上方修正します。
-             </p>
-           </div>
-        </div>
-
-        <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
-           <p className="text-[11px] font-bold text-slate-400 italic text-center">
-             ※ 本エンジンは定期的なデータ同期とAIロジックによって構築されており、投資助言を目的としたものではありません。
-           </p>
         </div>
       </div>
 
-      {/* Detail Modal */}
-      <FXPairDetailModal 
-        judgment={selectedJudgment} 
-        onClose={() => setSelectedJudgment(null)} 
-      />
+      <FXPairDetailModal judgment={selectedJudgment} onClose={() => setSelectedJudgment(null)} />
     </div>
   );
 };
+
+const RankingCard = ({ title, items, icon, onSelect }: { title: string, items: FXJudgment[], icon: React.ReactNode, onSelect: (j: FXJudgment) => void }) => (
+  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] p-6 shadow-sm">
+    <div className="flex items-center gap-3 mb-5">
+      <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl">{icon}</div>
+      <h3 className="text-sm font-black text-slate-800 dark:text-white">{title}</h3>
+    </div>
+    <div className="space-y-3">
+      {items.map((item, i) => (
+        <div 
+          key={item.pairCode} 
+          onClick={() => onSelect(item)}
+          className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-black text-slate-300 w-4">{i + 1}</span>
+            <span className="text-sm font-black text-slate-700 dark:text-slate-200">{item.pairCode}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <SignalBadge label={item.signalLabel} />
+            <ChevronRight size={14} className="text-slate-200 group-hover:text-slate-400 transition-colors" />
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
