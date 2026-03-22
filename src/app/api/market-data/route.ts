@@ -2,49 +2,95 @@ import { NextResponse } from "next/server";
 import yahooFinance from "yahoo-finance2";
 import { getTechnicalStatus } from "@/lib/technicalAnalysis";
 
+// 銘柄コードの正規化ロジック
+function normalizeSymbol(sym: string): string {
+  if (!sym) return "";
+  const s = sym.toUpperCase().trim();
+  
+  // 1. 日本株: 4桁数字のみ -> .T を付与
+  if (/^\d{4}$/.test(s)) return `${s}.T`;
+  
+  // 2. 暗号資産: 日本円ペアを優先 (BTC -> BTC-JPY)
+  if (["BTC", "ETH", "XRP", "LTC", "ADA", "SOL", "DOGE"].includes(s)) return `${s}-JPY`;
+  
+  // 3. 為替: 6桁のアルファベット (USDJPY -> USDJPY=X)
+  if (/^[A-Z]{6}$/.test(s)) return `${s}=X`;
+  
+  // 既にサフィックスがある場合はそのまま
+  return s;
+}
+
 // 共通のデータ取得ロジック
 async function getMarketData(requestedSymbols: string[] = []) {
   try {
+    // リクエストされたシンボルと正規化後のマッピングを作成
+    const symbolMap = new Map<string, string>();
+    requestedSymbols.forEach(orig => {
+      symbolMap.set(orig, normalizeSymbol(orig));
+    });
+
     // 取得対象銘柄 (基本銘柄)
     const baseSymbols = ["AAPL", "7203.T", "BTC-JPY", "^GSPC", "^N225", "^TNX", "JPY=X"];
-    // FXペア (網羅的に取得)
     const fxPairs = [
       "JPY=X", "EURJPY=X", "GBPJPY=X", "AUDJPY=X", "NZDJPY=X", 
       "CADJPY=X", "CHFJPY=X", "ZARJPY=X", "MXNJPY=X", "EURUSD=X"
     ];
     
-    // スワップポイント (1Lotあたりの参考値)
-    const swapData: Record<string, { buy: number; sell: number }> = {
-      "JPY=X": { buy: 232, sell: -251 },
-      "EURJPY=X": { buy: 158, sell: -182 },
-      "GBPJPY=X": { buy: 215, sell: -241 },
-      "AUDJPY=X": { buy: 184, sell: -205 },
-      "EURUSD=X": { buy: -125, sell: 102 },
-      "CHFJPY=X": { buy: 135, sell: -155 }
-    };
-    
-    // 全てのシンボルを結合 (リクエストされたものも含む)
-    const allSymbols = [...new Set([...baseSymbols, ...fxPairs, ...requestedSymbols])].filter(Boolean);
+    // 全てのユニークな正規化シンボルを抽出
+    const allNormalizedSymbols = [...new Set([
+      ...baseSymbols, 
+      ...fxPairs, 
+      ...Array.from(symbolMap.values())
+    ])].filter(Boolean);
 
-    // 外部APIを並列で実行 (現在の価格)
+    // 外部APIを並列で実行
     const quoteResults = await Promise.all(
-      allSymbols.map(async (sym) => {
+      allNormalizedSymbols.map(async (normalizedSym) => {
         try {
-          const quote: any = await yahooFinance.quote(sym);
+          const quote: any = await yahooFinance.quote(normalizedSym);
           const price = quote.regularMarketPrice ?? quote.price ?? quote.regularMarketPreviousClose ?? quote.previousClose;
           return { 
-            symbol: sym, 
+            symbol: normalizedSym, 
             price: price,
+            currency: quote.currency || (normalizedSym.endsWith(".T") ? "JPY" : "USD"),
             changePercent: quote.regularMarketChangePercent || 0
           };
         } catch (e) {
-          console.error(`Failed to fetch quote for ${sym}:`, e);
-          return { symbol: sym, price: null, changePercent: 0 };
+          console.error(`Failed to fetch quote for ${normalizedSym}:`, e);
+          return { symbol: normalizedSym, price: null, currency: null, changePercent: 0 };
         }
       })
     );
 
-    // FXヒストリカルデータ取得 (テクニカル分析用)
+    // ドル円レートの取得 (変換用)
+    const usdJpyResult = quoteResults.find(m => m.symbol === "JPY=X" || m.symbol === "USDJPY=X");
+    const usdJpy = usdJpyResult?.price ?? 151.20;
+
+    // レスポンス用の価格マップ (オリジナルシンボル -> 価格)
+    const priceMap: Record<string, number> = {};
+    
+    // 1. 正規化されたシンボルでマッピング
+    quoteResults.forEach(res => {
+      if (res.price !== null) {
+        priceMap[res.symbol] = res.price;
+      }
+    });
+
+    // 2. オリジナルシンボルでマッピング (ユーザーが入力した形式で返却)
+    symbolMap.forEach((normalized, original) => {
+      const res = quoteResults.find(r => r.symbol === normalized);
+      if (res && res.price !== null) {
+        priceMap[original] = res.price;
+        
+        // 特殊対応: 日本株で .T を付け忘れた場合など、通貨変換が必要な場合は検討の余地あり
+        // 現状は、正規化した結果の価格をそのまま返す
+      }
+    });
+
+    // 3. 特殊なマッピング (US株の円換算エイリアス)
+    if (priceMap["AAPL"]) priceMap["AAPL_JPY"] = priceMap["AAPL"] * usdJpy;
+
+    // FXヒストリカルデータ取得
     const fxAnalysisPairs = ["JPY=X", "EURJPY=X", "GBPJPY=X", "EURUSD=X"];
     const fxAnalysis = await Promise.all(
       fxAnalysisPairs.map(async (pair) => {
@@ -63,6 +109,15 @@ async function getMarketData(requestedSymbols: string[] = []) {
           const lastPrice = prices[prices.length - 1];
           const tech = getTechnicalStatus(lastPrice, prices);
 
+          const swapData: Record<string, { buy: number; sell: number }> = {
+            "JPY=X": { buy: 232, sell: -251 },
+            "EURJPY=X": { buy: 158, sell: -182 },
+            "GBPJPY=X": { buy: 215, sell: -241 },
+            "AUDJPY=X": { buy: 184, sell: -205 },
+            "EURUSD=X": { buy: -125, sell: 102 },
+            "CHFJPY=X": { buy: 135, sell: -155 }
+          };
+
           return {
             pair,
             price: lastPrice,
@@ -72,26 +127,11 @@ async function getMarketData(requestedSymbols: string[] = []) {
             history: prices.slice(-20)
           };
         } catch (e) {
-          console.error(`Failed to fetch history for ${pair}:`, e);
           return { pair, price: null, change: 0, technical: null, history: [] };
         }
       })
     );
 
-    const usdJpy = quoteResults.find(m => m.symbol === "JPY=X")?.price ?? 151.20;
-    
-    // 資産価格の更新用Map (シンボルをキーにする)
-    const priceMap: Record<string, number> = {};
-    quoteResults.forEach(res => {
-      if (res.price !== null) {
-        priceMap[res.symbol] = res.price;
-      }
-    });
-
-    // 特殊なマッピング (US株の円換算など)
-    if (priceMap["AAPL"]) priceMap["AAPL_JPY"] = priceMap["AAPL"] * usdJpy;
-
-    // マクロ指標用データの整理
     const macroData = ["^GSPC", "^N225", "^TNX", "JPY=X"].map(sym => {
       const r = quoteResults.find(res => res.symbol === sym);
       return {

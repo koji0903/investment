@@ -293,7 +293,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   };
 
   const calculatedAssets = useMemo(() => {
-    const usdJpyRate = prices["USDJPY=X"] || 151.2; // 最新レート、なければデフォルト
+    const usdJpyRate = prices["JPY=X"] || prices["USDJPY=X"] || 151.2; // 最新レート、なければデフォルト
     return assets.map(asset => {
       // 手動入力かつ市場価格シンボルがない場合は、保存されている currentPrice を優先
       const latestPrice = asset.isManual && !asset.symbol 
