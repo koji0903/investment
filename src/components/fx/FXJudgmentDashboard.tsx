@@ -25,7 +25,7 @@ export const FXJudgmentDashboard = () => {
     setError(null);
     try {
       const data = forceRefresh 
-        ? await FXService.generateAndSaveDummyData()
+        ? await FXService.syncRealData()
         : await FXService.getPairs();
       setAllJudgments(data);
     } catch (err) {

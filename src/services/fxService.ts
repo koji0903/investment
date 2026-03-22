@@ -18,6 +18,7 @@ import {
 import { analyzeTechnical } from "@/utils/fx/technical";
 import { analyzeFundamental } from "@/utils/fx/fundamental";
 import { evaluateSwap, calculateTotalJudgment } from "@/utils/fx/scoring";
+import { syncFXRealData } from "@/lib/actions/fx";
 
 // 対象とする通貨ペア
 const SUPPORTED_PAIRS: FXPairMaster[] = [
@@ -80,7 +81,21 @@ export const FXService = {
   },
 
   /**
-   * ダミーデータを生成して Firestore に保存
+   * 実データを同期して取得
+   */
+  syncRealData: async (): Promise<FXJudgment[]> => {
+    try {
+      await syncFXRealData();
+      return await FXService.getPairs();
+    } catch (error) {
+      console.error("Error syncing real FX data:", error);
+      // 失敗した場合は既存のデータを返す
+      return await FXService.getPairs();
+    }
+  },
+
+  /**
+   * ダミーデータを生成して Firestore に保存 (初期化/テスト用)
    */
   generateAndSaveDummyData: async (): Promise<FXJudgment[]> => {
     const fundamentals = FXService.generateDummyFundamentals();
