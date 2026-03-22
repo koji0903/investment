@@ -29,6 +29,9 @@ const SUPPORTED_PAIRS: FXPairMaster[] = [
   { pairCode: "NZD/JPY", baseCurrency: "NZD", quoteCurrency: "JPY" },
   { pairCode: "CAD/JPY", baseCurrency: "CAD", quoteCurrency: "JPY" },
   { pairCode: "CHF/JPY", baseCurrency: "CHF", quoteCurrency: "JPY" },
+  { pairCode: "ZAR/JPY", baseCurrency: "ZAR", quoteCurrency: "JPY" },
+  { pairCode: "MXN/JPY", baseCurrency: "MXN", quoteCurrency: "JPY" },
+  { pairCode: "TRY/JPY", baseCurrency: "TRY", quoteCurrency: "JPY" },
   { pairCode: "EUR/USD", baseCurrency: "EUR", quoteCurrency: "USD" },
   { pairCode: "GBP/USD", baseCurrency: "GBP", quoteCurrency: "USD" },
   { pairCode: "AUD/USD", baseCurrency: "AUD", quoteCurrency: "USD" },
@@ -150,6 +153,9 @@ export const FXService = {
       NZD: { currencyCode: "NZD", interestRate: 5.5, inflationScore: 4, growthScore: 4, centralBankBias: "neutral", riskSensitivity: 8, safeHavenScore: 0, commodityLinkedScore: 7, updatedAt: now },
       CAD: { currencyCode: "CAD", interestRate: 5.0, inflationScore: 3, growthScore: 6, centralBankBias: "dovish", riskSensitivity: 5, safeHavenScore: 0, commodityLinkedScore: 8, updatedAt: now },
       CHF: { currencyCode: "CHF", interestRate: 1.5, inflationScore: 1, growthScore: 2, centralBankBias: "dovish", riskSensitivity: 0, safeHavenScore: 9, commodityLinkedScore: 0, updatedAt: now },
+      ZAR: { currencyCode: "ZAR", interestRate: 8.25, inflationScore: 7, growthScore: 2, centralBankBias: "hawkish", riskSensitivity: 9, safeHavenScore: 0, commodityLinkedScore: 8, updatedAt: now },
+      MXN: { currencyCode: "MXN", interestRate: 11.25, inflationScore: 5, growthScore: 4, centralBankBias: "hawkish", riskSensitivity: 7, safeHavenScore: 0, commodityLinkedScore: 6, updatedAt: now },
+      TRY: { currencyCode: "TRY", interestRate: 45.0, inflationScore: 10, growthScore: 1, centralBankBias: "hawkish", riskSensitivity: 6, safeHavenScore: 0, commodityLinkedScore: 2, updatedAt: now },
     };
   },
 

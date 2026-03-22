@@ -2,7 +2,7 @@
  * FX投資判断エンジン 型定義
  */
 
-export type CurrencyCode = "USD" | "JPY" | "EUR" | "GBP" | "AUD" | "NZD" | "CAD" | "CHF";
+export type CurrencyCode = "USD" | "JPY" | "EUR" | "GBP" | "AUD" | "NZD" | "CAD" | "CHF" | "ZAR" | "MXN" | "TRY";
 
 export type TechnicalTrend = "bullish" | "bearish" | "neutral";
 export type MacroBias = "bullish" | "bearish" | "neutral";

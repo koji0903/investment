@@ -93,6 +93,36 @@ export const FXJudgmentDashboard = () => {
         </div>
       </div>
 
+      {/* Market Stats Summary */}
+      {!loading && allJudgments.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <StatBox 
+            label="分析対象" 
+            value={`${allJudgments.length} ペア`} 
+            color="indigo" 
+            sub="主要・資源国・高金利"
+          />
+          <StatBox 
+            label="買いサイン" 
+            value={`${allJudgments.filter(j => j.signalLabel.includes("買い")).length}`} 
+            color="emerald" 
+            sub="買い優勢・やや買い"
+          />
+          <StatBox 
+            label="売りサイン" 
+            value={`${allJudgments.filter(j => j.signalLabel.includes("売り")).length}`} 
+            color="rose" 
+            sub="売り優勢・やや売り"
+          />
+          <StatBox 
+            label="高信頼度" 
+            value={`${allJudgments.filter(j => j.confidence === "高").length}`} 
+            color="amber" 
+            sub="分析精度：高"
+          />
+        </div>
+      )}
+
       {/* Rankings Section */}
       {!loading && allJudgments.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -218,3 +248,25 @@ const RankingCard = ({ title, items, icon, onSelect }: { title: string, items: F
     </div>
   </div>
 );
+
+const StatBox = ({ label, value, color, sub }: { label: string, value: string, color: string, sub?: string }) => (
+  <div className={cn(
+    "p-6 rounded-[28px] border transition-all shadow-sm",
+    color === "indigo" ? "bg-indigo-50/50 border-indigo-100 dark:bg-indigo-500/5 dark:border-indigo-500/20" :
+    color === "emerald" ? "bg-emerald-50/50 border-emerald-100 dark:bg-emerald-500/5 dark:border-emerald-500/20" :
+    color === "rose" ? "bg-rose-50/50 border-rose-100 dark:bg-rose-500/5 dark:border-rose-500/20" :
+    "bg-amber-50/50 border-amber-100 dark:bg-amber-500/5 dark:border-amber-500/20"
+  )}>
+    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+    <p className={cn(
+      "text-2xl font-black",
+      color === "indigo" ? "text-indigo-600 dark:text-indigo-400" :
+      color === "emerald" ? "text-emerald-600 dark:text-emerald-400" :
+      color === "rose" ? "text-rose-600 dark:text-rose-400" :
+      "text-amber-600 dark:text-amber-400"
+    )}>{value}</p>
+    {sub && <p className="text-[10px] font-bold text-slate-400 mt-1">{sub}</p>}
+  </div>
+);
+
+export default FXJudgmentDashboard;
