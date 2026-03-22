@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { AuthGuard } from "@/components/AuthGuard";
 import { GlobalInvestmentAdvisor } from "@/components/GlobalInvestmentAdvisor";
@@ -56,7 +56,10 @@ import { StockJudgmentLinkCard } from "@/components/StockJudgmentLinkCard";
 import { RadarLinkCard } from "@/components/RadarLinkCard";
 import { IndustryInsightLinkCard } from "@/components/IndustryInsightLinkCard";
 import { Footer } from "@/components/Footer";
+import { NisaLinkCard } from "@/components/NisaLinkCard";
 import { formatCurrency, cn } from "@/lib/utils";
+import { getNisaSettings } from "@/lib/actions/nisa";
+import { NisaAccumulationSetting } from "@/types/nisa";
 import { TrendingUp, TrendingDown, DollarSign, Clock, RefreshCw, Sparkles, LayoutDashboard, LineChart, Settings } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
@@ -73,9 +76,26 @@ export default function Home() {
     isFetching,
     refreshPrices 
   } = usePortfolio();
-  const { isDemo, logout } = useAuth();
+  const { user, isDemo, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>("overview");
   const [selectedAssetCategory, setSelectedAssetCategory] = useState<string>("すべて");
+  const [nisaUsage, setNisaUsage] = useState({ growth: 0, accumulation: 0 });
+
+  // Fetch NISA Usage
+  useEffect(() => {
+    if (user?.uid) {
+      getNisaSettings(user.uid).then(settings => {
+        const activeSettings = settings.filter(s => s.status === "active");
+        const growth = activeSettings
+          .filter(s => s.accountType === "growth")
+          .reduce((acc, s) => acc + (s.amount * 12), 0);
+        const accumulation = activeSettings
+          .filter(s => s.accountType === "accumulation")
+          .reduce((acc, s) => acc + (s.amount * 12), 0);
+        setNisaUsage({ growth, accumulation });
+      });
+    }
+  }, [user?.uid]);
 
   const handleManualRefresh = async () => {
     if (!isFetching) {
@@ -210,7 +230,11 @@ export default function Home() {
                   <PortfolioScoreCard />
 
                   {/* Strategic Link Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <NisaLinkCard 
+                      growthUsage={nisaUsage.growth} 
+                      accumulationUsage={nisaUsage.accumulation}
+                    />
                     <FXJudgmentLinkCard />
                     <StockJudgmentLinkCard />
                     <RadarLinkCard />
