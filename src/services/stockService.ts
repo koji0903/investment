@@ -35,23 +35,11 @@ export const StockService = {
    */
   getJudgments: async (): Promise<StockJudgment[]> => {
     try {
-      const q = query(collection(db, "japanese_stocks"), orderBy("totalScore", "desc"));
-      const snapshot = await getDocs(q);
-      const results = snapshot.docs.map(doc => doc.data() as StockJudgment);
-      
-      if (results.length === 0) {
-        // データがない場合は同期を実行
-        console.log("No stock data found, triggering initial sync...");
-        const syncResults = await StockService.syncRealData();
-        if (syncResults.length === 0) {
-          return await StockService.generateAndSaveDummyData();
-        }
-        return syncResults;
-      }
-      return results;
+      const { getStockJudgmentsAction } = await import("@/lib/actions/stockActions");
+      return await getStockJudgmentsAction();
     } catch (error) {
       console.error("Error fetching stock judgments:", error);
-      return await StockService.generateAndSaveDummyData().catch(() => []);
+      return [];
     }
   },
 
@@ -60,17 +48,14 @@ export const StockService = {
    */
   syncRealData: async (): Promise<StockJudgment[]> => {
     try {
-      const res = await syncStockRealData();
-      if (!res || res.count === 0) {
-        return await StockService.generateAndSaveDummyData();
-      }
-      // 同期後に再取得
-      const q = query(collection(db, "japanese_stocks"), orderBy("totalScore", "desc"));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => doc.data() as StockJudgment);
+      const { syncStockRealData } = await import("@/lib/actions/stock");
+      const { getStockJudgmentsAction } = await import("@/lib/actions/stockActions");
+      await syncStockRealData();
+      return await getStockJudgmentsAction();
     } catch (error) {
       console.error("Error syncing real stock data:", error);
-      return await StockService.generateAndSaveDummyData().catch(() => []);
+      const { generateStockDummyDataAction } = await import("@/lib/actions/stockActions");
+      return await generateStockDummyDataAction().catch(() => []);
     }
   },
 

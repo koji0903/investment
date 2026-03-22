@@ -51,25 +51,11 @@ export const FXService = {
    */
   getPairs: async (): Promise<FXJudgment[]> => {
     try {
-      const q = query(collection(db, "fx_judgments"), orderBy("totalScore", "desc"));
-      const snapshot = await getDocs(q);
-      const results = snapshot.docs.map(doc => doc.data() as FXJudgment);
-      
-      if (results.length === 0) {
-        // データがない場合は実データを同期
-        console.log("No data found in Firestore, triggering real data sync...");
-        const syncResults = await FXService.syncRealData();
-        if (syncResults.length === 0) {
-          console.log("Real data sync returned no results, falling back to dummy data...");
-          return await FXService.generateAndSaveDummyData();
-        }
-        return syncResults;
-      }
-      return results;
+      const { getFXJudgmentsAction } = await import("@/lib/actions/fx");
+      return await getFXJudgmentsAction();
     } catch (error) {
       console.error("Error fetching FX judgments:", error);
-      // エラー時も最終手段としてダミーデータを試みる
-      return await FXService.generateAndSaveDummyData().catch(() => []);
+      return [];
     }
   },
 
@@ -92,16 +78,13 @@ export const FXService = {
    */
   syncRealData: async (): Promise<FXJudgment[]> => {
     try {
-      const res = await syncFXRealData();
-      if (!res || res.count === 0) {
-        console.warn("syncFXRealData returned 0 results, generating dummy data instead.");
-        return await FXService.generateAndSaveDummyData();
-      }
-      return await FXService.getPairs();
+      const { syncFXRealData, getFXJudgmentsAction } = await import("@/lib/actions/fx");
+      await syncFXRealData();
+      return await getFXJudgmentsAction();
     } catch (error) {
       console.error("Error syncing real FX data:", error);
-      // 失敗した場合はダミーデータを生成して返す
-      return await FXService.generateAndSaveDummyData().catch(() => []);
+      const { generateFXDummyDataAction } = await import("@/lib/actions/fx");
+      return await generateFXDummyDataAction().catch(() => []);
     }
   },
 
