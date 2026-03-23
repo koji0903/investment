@@ -135,13 +135,25 @@ export const FXJudgmentDashboard = () => {
               <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Top 3 Energy Accumulation Pairs</p>
             </div>
           </div>
-          <div className="grid grid-cols-1 gap-6">
-            <FXEnergyBento analysis={energyHighlights[0].energyAnalysis!} pairCode={energyHighlights[0].pairCode} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {energyHighlights.slice(1).map(j => (
-                <FXEnergyBento key={j.pairCode} analysis={j.energyAnalysis!} pairCode={j.pairCode} />
-              ))}
-            </div>
+          <div className="space-y-12">
+            {energyHighlights.map((j, idx) => (
+              <div key={j.pairCode} className="p-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-[48px] border border-slate-100 dark:border-slate-800/50 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-8 opacity-[0.03] -z-10 pointer-events-none">
+                  <Zap size={200} fill="currentColor" className="text-slate-900 dark:text-white" />
+                </div>
+                <div className="flex items-center gap-4 mb-8">
+                  <span className="flex items-center justify-center w-10 h-10 rounded-2xl bg-white dark:bg-slate-900 text-xs font-black text-slate-400 border border-slate-200/60 dark:border-slate-800 shadow-sm">
+                    {idx + 1}
+                  </span>
+                  <div>
+                    <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight leading-none">{j.pairCode}</h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Energy Unit {idx + 1}</p>
+                  </div>
+                  <div className="h-px flex-1 bg-slate-200/60 dark:bg-slate-800/60 ml-4" />
+                </div>
+                <FXEnergyBento analysis={j.energyAnalysis!} pairCode={j.pairCode} />
+              </div>
+            ))}
           </div>
         </div>
       )}
