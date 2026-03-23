@@ -18,6 +18,8 @@ export const calculateEntryTiming = (
   const waitReasons: string[] = [];
   let shouldWait = false;
 
+  const dataProgress = energy?.dataProgress ?? 0;
+
   // データ不足時のフォールバック (閾値を energy.ts と合わせる)
   if (!technical || !energy || atr === 0) {
     return {
@@ -34,7 +36,8 @@ export const calculateEntryTiming = (
       targetPrice: currentPrice,
       rrRatio: 0,
       stopComment: "-",
-      targetComment: "-"
+      targetComment: "-",
+      dataProgress
     };
   }
 
@@ -194,7 +197,8 @@ export const calculateEntryTiming = (
     targetPrice: Number(targetPrice.toFixed(decimals)),
     rrRatio,
     stopComment,
-    targetComment
+    targetComment,
+    dataProgress
   };
 };
 

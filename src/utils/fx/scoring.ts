@@ -200,6 +200,11 @@ export function consolidateJudgments(
   let finalConfidence = initial.confidence;
   if (energy.energyScore > 70 && entry.entryScore > 75) finalConfidence = "高";
 
+  // 3. データ取得進捗の表示
+  if (entry.dataProgress < 100) {
+    finalComment = `[データ収集中: ${entry.dataProgress}%] ${finalComment}`;
+  }
+
   return {
     ...initial,
     signalLabel: finalLabel,

@@ -12,8 +12,9 @@ export function calculateEnergyAnalysis(
   pivots?: { p: number, r1: number, r2: number, s1: number, s2: number }
 ): MarketEnergyAnalysis {
   const period = 20;
+  const dataProgress = Math.min(100, Math.round((prices.length / 20) * 100));
   if (prices.length < 20) {
-    return getDefaultAnalysis(currentPrice, pivots);
+    return getDefaultAnalysis(currentPrice, dataProgress, pivots);
   }
 
   // 1. ボリンジャーバンド幅 (BB Width)
@@ -122,11 +123,12 @@ export function calculateEnergyAnalysis(
     targetPrices: targetPrices.map(p => Number(p.toFixed(5))),
     fakeBreakProbability,
     fakeFlag,
-    entryRecommendation
+    entryRecommendation,
+    dataProgress
   };
 }
 
-function getDefaultAnalysis(price: number, pivots?: { p: number, r1: number, r2: number, s1: number, s2: number }): MarketEnergyAnalysis {
+function getDefaultAnalysis(price: number, dataProgress: number, pivots?: { p: number, r1: number, r2: number, s1: number, s2: number }): MarketEnergyAnalysis {
   return {
     energyScore: 50,
     energyLevel: "medium",
@@ -136,6 +138,7 @@ function getDefaultAnalysis(price: number, pivots?: { p: number, r1: number, r2:
     targetPrices: pivots ? [pivots.r1, pivots.s1, pivots.p] : [price * 1.005, price * 0.995, price],
     fakeBreakProbability: 0,
     fakeFlag: false,
-    entryRecommendation: "wait"
+    entryRecommendation: "wait",
+    dataProgress
   };
 }

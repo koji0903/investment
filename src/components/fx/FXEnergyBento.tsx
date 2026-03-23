@@ -48,7 +48,12 @@ export const FXEnergyBento: React.FC<FXEnergyBentoProps> = ({ analysis, pairCode
             {analysis.status === "accumulating" ? (
               <>
                 <Pause size={14} className="text-blue-400" />
-                <span>エネルギー蓄積中</span>
+                <span>
+                  エネルギー蓄積中
+                  {analysis.dataProgress < 100 && (
+                    <span className="ml-1 text-[10px] text-blue-400 opacity-80">(収集中: {analysis.dataProgress}%)</span>
+                  )}
+                </span>
               </>
             ) : (
               <>

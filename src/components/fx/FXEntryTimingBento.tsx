@@ -155,7 +155,12 @@ export const FXEntryTimingBento: React.FC<FXEntryTimingBentoProps> = ({ analysis
                     ) : (
                       <AlertTriangle size={12} className="text-orange-500 mt-0.5 shrink-0" />
                     )}
-                    <span className="leading-snug">{reason}</span>
+                    <span className="leading-snug">
+                      {reason}
+                      {reason === "ヒストリカルデータ収集中" && analysis.dataProgress < 100 && (
+                        <span className="ml-1 text-orange-500">({analysis.dataProgress}%)</span>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -176,7 +181,11 @@ export const FXEntryTimingBento: React.FC<FXEntryTimingBentoProps> = ({ analysis
           ) : (
             <>
               <Clock size={16} />
-              <span>現在は待機を推奨</span>
+              <span>
+                {analysis.dataProgress < 100 
+                  ? `データ収集中 (${analysis.dataProgress}%)` 
+                  : "現在は待機を推奨"}
+              </span>
             </>
           )}
         </div>

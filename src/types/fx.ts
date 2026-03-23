@@ -99,6 +99,7 @@ export interface MarketEnergyAnalysis {
   fakeBreakProbability: number;  // 0〜100 (%)
   fakeFlag: boolean;             // だましフラグ
   entryRecommendation: "enter" | "wait" | "avoid"; // 推奨アクション
+  dataProgress: number;          // 0-100 (%)
 }
 
 /**
@@ -133,6 +134,7 @@ export interface EntryTimingAnalysis {
   rrRatio: number;              // リスクリワード比
   stopComment: string;
   targetComment: string;
+  dataProgress: number;          // 0-100 (%)
 }
 
 /**
