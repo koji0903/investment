@@ -307,7 +307,7 @@ export default function NisaPage() {
       {/* Modal Overlay for Form */}
         <AnimatePresence>
           {showForm && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
               {/* Backdrop */}
               <motion.div 
                 initial={{ opacity: 0 }}
@@ -317,22 +317,25 @@ export default function NisaPage() {
                   setShowForm(false);
                   setEditingSetting(null);
                 }}
-                className="absolute inset-0 bg-slate-950/60 backdrop-blur-md cursor-pointer"
+                className="fixed inset-0 bg-slate-950/60 backdrop-blur-md cursor-pointer z-0"
               />
               
               {/* Modal Content Container */}
-              <div className="relative z-[110] w-full max-w-2xl pointer-events-none">
-                <div className="pointer-events-auto">
-                  <NisaAccumulationForm 
-                    onSave={handleSave} 
-                    onCancel={() => {
-                      setShowForm(false);
-                      setEditingSetting(null);
-                    }} 
-                    initialData={editingSetting || undefined}
-                  />
-                </div>
-              </div>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative z-10 w-full max-w-2xl my-auto"
+              >
+                <NisaAccumulationForm 
+                  onSave={handleSave} 
+                  onCancel={() => {
+                    setShowForm(false);
+                    setEditingSetting(null);
+                  }} 
+                  initialData={editingSetting || undefined}
+                />
+              </motion.div>
             </div>
           )}
         </AnimatePresence>

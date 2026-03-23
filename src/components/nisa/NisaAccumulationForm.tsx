@@ -43,16 +43,32 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // バリデーション
+    if (!formData.name) {
+      alert("銘柄名を選択または入力してください。");
+      return;
+    }
+    
+    const amountNum = Number(formData.amount);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      alert("有効な積立額を入力してください。");
+      return;
+    }
+
     setLoading(true);
+    console.log("Submitting NISA Setting:", formData);
+    
     try {
       await onSave({
         id: initialData?.id || crypto.randomUUID(),
         userId: initialData?.userId || "",
         ...formData,
-        amount: Number(formData.amount)
+        amount: amountNum
       });
     } catch (error) {
-      console.error(error);
+      console.error("Submit error:", error);
+      alert("保存中にエラーが発生しました。");
     } finally {
       setLoading(false);
     }
