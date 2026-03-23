@@ -6,7 +6,8 @@ import { useAuth } from "@/context/AuthContext";
 import { 
   getNisaSettings, 
   saveNisaSetting, 
-  deleteNisaSetting 
+  deleteNisaSetting,
+  syncNisaAccumulations
 } from "@/lib/actions/nisa";
 import { NisaAccumulationSetting, NisaProgress } from "@/types/nisa";
 import { NisaStatusCard } from "@/components/nisa/NisaStatusCard";
@@ -30,7 +31,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function NisaPage() {
   const { user } = useAuth();
-  const { totalAssetsValue, totalProfitAndLoss } = usePortfolio();
+  const { totalAssetsValue, totalProfitAndLoss, calculatedAssets } = usePortfolio();
   const [settings, setSettings] = useState<NisaAccumulationSetting[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingSetting, setEditingSetting] = useState<NisaAccumulationSetting | null>(null);
@@ -39,7 +40,13 @@ export default function NisaPage() {
   // 初回データ取得
   useEffect(() => {
     if (user?.uid) {
-      fetchSettings();
+      const init = async () => {
+        setLoading(true);
+        await syncNisaAccumulations(user.uid);
+        await fetchSettings();
+        setLoading(false);
+      };
+      init();
     }
   }, [user?.uid]);
 
@@ -79,6 +86,8 @@ export default function NisaPage() {
   // 進捗状況の計算
   const progress = useMemo((): NisaProgress => {
     const activeSettings = settings.filter(s => s.status === "active");
+    
+    // 年間枠の使用額（現在の積立設定から概算）
     const growthYearlyUsage = activeSettings
       .filter(s => s.accountType === "growth")
       .reduce((acc, s) => acc + (s.amount * 12), 0);
@@ -86,8 +95,9 @@ export default function NisaPage() {
       .filter(s => s.accountType === "accumulation")
       .reduce((acc, s) => acc + (s.amount * 12), 0);
     
-    // 簡易的な合計計算 (実際には過去の実績をFirestoreから集計する必要があるが、ここでは設定ベース)
-    const totalAccumulated = growthYearlyUsage + accumulationYearlyUsage; 
+    // 生涯投資枠（実際の保有資産から集計）
+    const nisaAssets = calculatedAssets.filter(a => a.nisaAccountType || a.category === "投資信託");
+    const totalAccumulated = nisaAssets.reduce((acc, a) => acc + (a.quantity * a.averageCost), 0);
 
     return {
       totalAccumulated,
@@ -101,7 +111,7 @@ export default function NisaPage() {
         lifetimeTotal: 18000000
       }
     };
-  }, [settings]);
+  }, [settings, calculatedAssets]);
 
   return (
     <AuthGuard>

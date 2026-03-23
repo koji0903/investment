@@ -43,6 +43,7 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
+      onClick={(e) => e.stopPropagation()}
       className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-10 border border-slate-200 dark:border-slate-800 shadow-2xl max-w-2xl w-full mx-auto"
     >
       <div className="flex items-center justify-between mb-10">

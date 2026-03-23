@@ -9,9 +9,12 @@ export interface NisaAccumulationSetting {
   amount: number; // 毎月の積立額 (円)
   dayOfMonth: number; // 積立日 (1-28)
   status: "active" | "paused";
+  lastProcessedMonth?: string; // "YYYY-MM"
   createdAt: string;
   updatedAt: string;
 }
+
+
 
 export interface NisaProgress {
   totalAccumulated: number; // 累計積立額 (生涯合計)
