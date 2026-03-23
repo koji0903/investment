@@ -308,21 +308,31 @@ export default function NisaPage() {
         <AnimatePresence>
           {showForm && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              {/* Backdrop */}
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={() => setShowForm(false)}
-                className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
-              />
-              <NisaAccumulationForm 
-                onSave={handleSave} 
-                onCancel={() => {
+                onClick={() => {
                   setShowForm(false);
                   setEditingSetting(null);
-                }} 
-                initialData={editingSetting || undefined}
+                }}
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-md cursor-pointer"
               />
+              
+              {/* Modal Content Container */}
+              <div className="relative z-[110] w-full max-w-2xl pointer-events-none">
+                <div className="pointer-events-auto">
+                  <NisaAccumulationForm 
+                    onSave={handleSave} 
+                    onCancel={() => {
+                      setShowForm(false);
+                      setEditingSetting(null);
+                    }} 
+                    initialData={editingSetting || undefined}
+                  />
+                </div>
+              </div>
             </div>
           )}
         </AnimatePresence>

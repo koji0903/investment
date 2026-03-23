@@ -18,10 +18,19 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
     accountType: initialData?.accountType || "accumulation" as NisaAccountType,
     name: initialData?.name || "",
     symbol: initialData?.symbol || "",
-    amount: initialData?.amount || 33333,
+    amount: initialData?.amount?.toString() || "33333",
     dayOfMonth: initialData?.dayOfMonth || 1,
     status: initialData?.status || "active" as const
   });
+
+  const nameInputRef = React.useRef<HTMLInputElement>(null);
+
+  // 初回表示時にフォーカスを当てる
+  React.useEffect(() => {
+    if (nameInputRef.current) {
+      nameInputRef.current.focus();
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +38,9 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
     try {
       await onSave({
         id: initialData?.id || crypto.randomUUID(),
-        userId: initialData?.userId || "", // Parent should handle userId or useAuth inside action
-        ...formData
+        userId: initialData?.userId || "",
+        ...formData,
+        amount: Number(formData.amount)
       });
     } catch (error) {
       console.error(error);
@@ -43,8 +53,7 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
     <motion.div 
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      onClick={(e) => e.stopPropagation()}
-      className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-10 border border-slate-200 dark:border-slate-800 shadow-2xl max-w-2xl w-full mx-auto"
+      className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-8 md:p-10 border border-slate-200 dark:border-slate-800 shadow-2xl max-w-2xl w-full mx-auto relative z-50"
     >
       <div className="flex items-center justify-between mb-10">
         <div>
@@ -100,6 +109,7 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
               <Tag size={14} /> 銘柄名
             </label>
             <input
+              ref={nameInputRef}
               type="text"
               required
               value={formData.name}
@@ -121,7 +131,7 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
             />
           </div>
         </div>
-
+ 
         {/* Amount & Date */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
@@ -130,17 +140,20 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
             </label>
             <div className="relative">
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 required
-                min="100"
                 value={formData.amount}
-                onChange={e => setFormData(prev => ({ ...prev, amount: Number(e.target.value) }))}
+                onChange={e => {
+                  const val = e.target.value.replace(/[^\d]/g, "");
+                  setFormData(prev => ({ ...prev, amount: val }));
+                }}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all pr-12"
               />
               <span className="absolute right-5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400 uppercase">円</span>
             </div>
             <p className="text-[10px] text-slate-400 font-bold px-1">
-              {formatCurrency(formData.amount)} / 月
+              {formatCurrency(Number(formData.amount) || 0)} / 月
             </p>
           </div>
           <div className="space-y-3">
