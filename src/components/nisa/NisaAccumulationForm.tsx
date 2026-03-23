@@ -24,8 +24,17 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
     amount: initialData?.amount?.toString() || "33333",
     dayOfMonth: initialData?.dayOfMonth || 1,
     status: initialData?.status || "active" as const,
-    assetId: initialData?.assetId || ""
+    assetId: initialData?.assetId || "",
+    lastProcessedMonth: initialData?.lastProcessedMonth || ""
   });
+
+  const generateId = () => {
+    try {
+      return crypto.randomUUID();
+    } catch (e) {
+      return Math.random().toString(36).substring(2) + Date.now().toString(36);
+    }
+  };
 
   const nameInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -61,7 +70,7 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
     
     try {
       await onSave({
-        id: initialData?.id || crypto.randomUUID(),
+        id: initialData?.id || generateId(),
         userId: initialData?.userId || "",
         ...formData,
         amount: amountNum
