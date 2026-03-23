@@ -134,10 +134,10 @@ export const FXEnergyBento: React.FC<FXEnergyBentoProps> = ({ analysis, pairCode
             <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl flex items-center justify-between group hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors">
               <div className="flex flex-col">
                 <span className="text-[10px] font-black text-slate-400 uppercase">Target {idx + 1}</span>
-                <span className="text-xs font-bold text-slate-500">{idx === 0 ? "レンジ拡張" : idx === 1 ? "ATR拡張" : "BB拡張"}</span>
+                <span className="text-xs font-bold text-slate-500">{idx === 0 ? "理論第1標的" : idx === 1 ? "理論第2標的" : "ボラティリティ上限"}</span>
               </div>
               <span className="text-lg font-black text-slate-800 dark:text-white tabular-nums group-hover:text-orange-500 transition-colors">
-                {price}
+                {price.toFixed(pairCode.includes("JPY") ? 3 : 5)}
               </span>
             </div>
           ))}

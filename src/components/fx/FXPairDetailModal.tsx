@@ -84,17 +84,20 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
                <div className="absolute right-0 top-0 opacity-[0.05]">
                  <Zap size={120} className="text-indigo-500" />
                </div>
-               <div className="flex gap-4 relative z-10">
-                 <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-sm text-indigo-500">
-                   <Info size={20} />
-                 </div>
-                 <div className="space-y-1 flex-1">
-                   <p className="text-sm font-black text-slate-800 dark:text-white">AI 総合コメント</p>
-                   <p className="text-sm font-bold text-slate-600 dark:text-slate-300 leading-relaxed">
-                     {judgment.summaryComment}
-                   </p>
-                 </div>
-               </div>
+                <div className="flex gap-4 relative z-10">
+                  <div className="w-10 h-10 bg-white dark:bg-slate-800 rounded-xl flex items-center justify-center shadow-md text-orange-500 border border-orange-100 dark:border-orange-950/30">
+                    <Zap size={20} fill="currentColor" />
+                  </div>
+                  <div className="space-y-1 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">AI 統合分析マスター</p>
+                      <span className="px-1.5 py-0.5 rounded-md bg-orange-100 dark:bg-orange-500/20 text-[9px] font-black text-orange-600 dark:text-orange-400">FINAL VERDICT</span>
+                    </div>
+                    <p className="text-[13px] font-bold text-slate-700 dark:text-slate-200 leading-relaxed bg-white/40 dark:bg-black/20 p-4 rounded-2xl border border-white/60 dark:border-white/5 mt-2 shadow-inner">
+                      {judgment.summaryComment}
+                    </p>
+                  </div>
+                </div>
             </div>
 
             {/* Market Energy Analysis (Bento) */}

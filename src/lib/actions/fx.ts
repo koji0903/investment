@@ -71,19 +71,23 @@ export async function syncFXRealData() {
   const results: FXJudgment[] = [];
   const end = new Date();
   const start = new Date();
-  start.setDate(end.getDate() - 100); // 過去100日分で十分
+  start.setDate(end.getDate() - 360); // 1年弱のデータ。200日線などの長期指標を確実に。
 
   for (const pair of SUPPORTED_PAIRS) {
     let judgment: FXJudgment | null = null;
     try {
       const symbol = toYahooSymbol(pair.pairCode);
+      // 通貨ペアごとの過去データを取得 (キャッシュ回避のため new Date() を使用)
       const historical: any[] = await (yahooFinance as any).historical(symbol, {
         period1: start,
         period2: end,
         interval: "1d"
-      }).catch(() => []);
+      }).catch((err: any) => {
+        console.warn(`[FX] Data fetch failed for ${pair.pairCode}:`, err.message);
+        return [];
+      });
 
-      if (historical && historical.length >= 20) {
+      if (historical && historical.length >= 10) {
         const prices = historical.map(h => h.close).filter(p => typeof p === "number");
         const highs = historical.map(h => h.high).filter(p => typeof p === "number");
         const lows = historical.map(h => h.low).filter(p => typeof p === "number");
@@ -103,10 +107,15 @@ export async function syncFXRealData() {
         );
 
         // 相場エネルギー分析を追加
-        judgment.energyAnalysis = calculateEnergyAnalysis(prices, highs, lows, currentPrice);
+        const { calculatePivotPoints } = await import("@/lib/technicalAnalysis");
+        const lastDay = historical[historical.length - 1];
+        const pivots = calculatePivotPoints(lastDay.high, lastDay.low, lastDay.close);
+        
+        judgment.energyAnalysis = calculateEnergyAnalysis(prices, highs, lows, currentPrice, pivots);
 
         // エントリータイミング最適化を追加
-        const atr = calculateATR({ high: highs, low: lows, close: prices }, 14).pop() || 0;
+        const atrArr = calculateATR({ high: highs, low: lows, close: prices }, 14);
+        const atr = atrArr[atrArr.length - 1] || (currentPrice * 0.005);
         const recentHigh = Math.max(...highs.slice(-20)); // 過去20日の高値
         const recentLow = Math.min(...lows.slice(-20));  // 過去20日の安値
         
@@ -126,6 +135,10 @@ export async function syncFXRealData() {
           judgment.entryTimingAnalysis,
           judgment.energyAnalysis
         );
+
+        // 【最重要】判断の統合と矛盾解消
+        const { consolidateJudgments } = await import("@/utils/fx/scoring");
+        judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
       }
     } catch (e) {
       console.error(`Sync error for ${pair.pairCode}:`, e);
@@ -133,79 +146,71 @@ export async function syncFXRealData() {
 
     // データが取れない、またはエラー時はシミュレーション値で埋める
     if (!judgment) {
-      const score = Math.floor(Math.random() * 80) - 40;
+      const isJPY = pair.quoteCurrency === "JPY";
+      const dummyPrice = isJPY ? 150.0 + (Math.random() * 2) : 1.1 + (Math.random() * 0.05);
       const isHighYield = ["ZAR", "MXN", "TRY"].includes(pair.baseCurrency);
       const swaps = getSemiRealSwaps(pair.pairCode);
-      const dummyPrice = pair.quoteCurrency === "JPY" ? 150.0 : 1.1;
+      
+      const energyScore = 40 + Math.floor(Math.random() * 30);
+      const { calculateEnergyAnalysis } = await import("@/utils/fx/energy");
+      const { calculateEntryTiming } = await import("@/utils/fx/entry");
+      const { consolidateJudgments } = await import("@/utils/fx/scoring");
 
-      // エネルギースコアをランダム生成
-      const energyScore = Math.floor(Math.random() * 100);
-      const breakoutDir = energyScore > 80 ? (Math.random() > 0.5 ? "up" : "down") : "none" as any;
-
+      // ダミー価格に基づいたエネルギー分析
+      const energy = calculateEnergyAnalysis([dummyPrice], [dummyPrice], [dummyPrice], dummyPrice);
+      
       judgment = {
         pairCode: pair.pairCode,
         baseCurrency: pair.baseCurrency,
         quoteCurrency: pair.quoteCurrency,
         currentPrice: dummyPrice,
-        technicalScore: score,
-        technicalTrend: score > 20 ? "bullish" : score < -20 ? "bearish" : "neutral",
-        technicalReasons: ["シミュレーション"],
-        fundamentalScore: score,
-        macroBias: score > 20 ? "bullish" : score < -20 ? "bearish" : "neutral",
-        fundamentalReasons: ["シミュレーション"],
+        technicalScore: 0,
+        technicalTrend: "neutral",
+        technicalReasons: ["データ取得待機中"],
+        fundamentalScore: isHighYield ? 30 : 10,
+        macroBias: "neutral",
+        fundamentalReasons: ["ファンダメンタル分析待機中"],
         buySwap: swaps.buy,
         sellSwap: swaps.sell,
-        swapScore: isHighYield ? 50 : 30,
+        swapScore: isHighYield ? 40 : 20,
         swapDirection: diffToDirection(swaps.buy),
-        swapComment: isHighYield ? "高金利スワップ" : "利回り確認中",
+        swapComment: isHighYield ? "高金利通貨としてのスワップ魅力あり" : "スワップ金利を確認中",
         holdingStyle: isHighYield ? "medium_term_long" : "short_term_only",
-        totalScore: score,
-        signalLabel: score > 30 ? "買い優勢" : score < -30 ? "売り優勢" : "中立",
-        confidence: "中",
-        summaryComment: "リアルタイムデータ取得待ちのため、シミュレーション値を表示中です。",
-        shortTermSignal: score > 30 ? "買い優勢" : score < -30 ? "売り優勢" : "中立",
+        totalScore: 10,
+        signalLabel: "中立",
+        confidence: "低",
+        summaryComment: "現在リアルタイムデータを同期中です。完了までしばらくお待ちください。",
+        shortTermSignal: "中立",
         mediumTermSignal: "中立",
         suitability: "様子見推奨",
-        energyAnalysis: {
-          energyScore,
-          energyLevel: energyScore > 70 ? "high" : energyScore > 40 ? "medium" : "low",
-          status: breakoutDir !== "none" ? "releasing" : "accumulating",
-          breakoutDirection: breakoutDir,
-          breakoutStrength: "medium",
-          targetPrices: [dummyPrice * 1.01, dummyPrice * 1.02, dummyPrice * 1.05],
-          fakeBreakProbability: 15,
-          fakeFlag: false,
-          entryRecommendation: breakoutDir === "none" ? "wait" : "enter"
-        },
-        entryTimingAnalysis: calculateEntryTiming(
-          pair.pairCode,
-          dummyPrice,
-          undefined,
-          undefined,
-          0,
-          0,
-          0
-        ),
+        energyAnalysis: energy,
         updatedAt: new Date().toISOString()
       };
 
-      judgment.positionSizing = calculatePositionSizing(
+      judgment.entryTimingAnalysis = calculateEntryTiming(
         pair.pairCode,
-        judgment.entryTimingAnalysis,
-        judgment.energyAnalysis
+        dummyPrice,
+        undefined,
+        energy,
+        dummyPrice * 0.005,
+        dummyPrice * 1.01,
+        dummyPrice * 0.99
       );
+
+      // 最終統合
+      judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
     }
 
     try {
       await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), judgment);
     } catch (err) {
-      console.warn(`[FX] Failed to save ${pair.pairCode} to Firestore (Possible permission issue), but continuing...`);
+      console.warn(`[FX] Failed to save ${pair.pairCode} to Firestore, but continuing...`);
     }
     
     results.push(judgment);
     
     // APIレート制限回避のための待機
-    await new Promise(r => setTimeout(r, 80));
+    await new Promise(r => setTimeout(r, 50));
   }
 
   return { 

@@ -162,3 +162,49 @@ export function evaluateSwap(buySwap: number, sellSwap: number): SwapEvaluation 
   
   return { score, buySwap, sellSwap, swapDirection, swapComment, holdingStyle };
 }
+
+/**
+ * 複数の分析結果を統合し、ユーザーに提示する最終結論を導き出す
+ */
+export function consolidateJudgments(
+  initial: FXJudgment,
+  energy: FXJudgment["energyAnalysis"],
+  entry: FXJudgment["entryTimingAnalysis"]
+): FXJudgment {
+  if (!energy || !entry) return initial;
+
+  let finalLabel = initial.signalLabel;
+  let finalComment = initial.summaryComment;
+
+  // 1. 判断の矛盾解消 (Conflict Resolution)
+  // エネルギーが「enter (即エントリ)」かつ エントリタイミングが「見送り/待機」の場合
+  if (energy.entryRecommendation === "enter" && (entry.entryLabel === "見送り" || entry.entryLabel === "待機を推奨")) {
+    // モメンタムはあるが、エントリ位置が悪い（伸び切り等）
+    finalLabel = "押し目待ち";
+    finalComment = `【判断統合】${initial.pairCode}は現在強いモメンタムが発生していますが、価格が伸び切っているため、現在は「深追い厳禁」です。一歩引いて、有利な価格（押し目・戻り）まで引きつけるのを待ちましょう。`;
+  } else if (energy.entryRecommendation === "enter" && entry.entryScore >= 65) {
+    // 両方 Go
+    finalLabel = "買い優勢"; // または銘柄に合わせた方向
+    if (energy.breakoutDirection === "down") finalLabel = "売り優勢";
+    finalComment = `【判断統合】トレンドの初動とエントリ条件が完全に一致しました。非常に優位性の高い局面です。目標価格 ${entry.targetPrice} を目指した積極的な戦略が検討できます。`;
+  } else if (entry.entryLabel === "エントリー好機") {
+    finalLabel = "買い優勢";
+    if (initial.totalScore < 0) finalLabel = "売り優勢";
+    finalComment = `【判断統合】構造的に非常に有利なポイントに到達しました。${entry.structureComment}`;
+  } else if (energy.fakeFlag || entry.structurePhase === "possible_fakeout") {
+    finalLabel = "中立";
+    finalComment = "【判断統合】ブレイクアウトの兆候がありますが、だましのリスクが極めて高い波形です。無理な参加は避け、底堅さ/上値の重さを再確認するまで静観を推奨します。";
+  }
+
+  // 2. 信頼度の調整
+  let finalConfidence = initial.confidence;
+  if (energy.energyScore > 70 && entry.entryScore > 75) finalConfidence = "高";
+
+  return {
+    ...initial,
+    signalLabel: finalLabel,
+    summaryComment: finalComment,
+    confidence: finalConfidence,
+    updatedAt: new Date().toISOString()
+  };
+}
