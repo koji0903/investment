@@ -51,7 +51,7 @@ export default function NisaPage() {
     if (user?.uid) {
       const init = async () => {
         setLoading(true);
-        await syncNisaAccumulations(user.uid);
+        // 保有資産への自動反映は行わず、設定の取得のみ行う
         await fetchSettings();
         setLoading(false);
       };
