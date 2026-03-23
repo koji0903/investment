@@ -83,7 +83,7 @@ export const MARKET_ANALYSIS_DATA: IndustryAnalysis[] = [
     name: "金融・証券",
     iconName: "Banknote",
     trend: "sunny",
-    trendReason: "日銀の政策修正に伴う利ざや改善期待。新NISA導入による証券・投信への資金流入。",
+    trendReason: "日銀の政策修正に伴う利ざや改善期待。",
     overview: "銀行、証券、保険、フィンテック。金利のある世界への回帰とデジタル金融が焦点。",
     companies: [
       { id: "mufg", name: "三菱UFJフィナンシャルG", symbol: "8306.T", marketCap: 19.5, revenue: [6.1, 9.2, 10.1, 11.5], profit: [1.1, 1.3, 1.5, 1.9], description: "国内最大手。米モルガン・スタンレー等との提携強み。", sentiment: "bullish" },

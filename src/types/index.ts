@@ -26,7 +26,7 @@ export interface Asset {
   swapPoints?: number; // 累積スワップポイント (円)
   depositMargin?: number; // FXの預託証拠金残高 (円)
   lotUnit?: number; // 取引単位 (例: 10000)
-  nisaAccountType?: "accumulation" | "growth";
+  transactions?: Transaction[];
 }
 
 export interface AssetCalculated extends Asset {
