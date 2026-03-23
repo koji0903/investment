@@ -165,8 +165,13 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       const data = await res.json();
 
       if (data.prices) {
-        setPrices(data.prices);
+        setPrices(prev => ({ ...prev, ...data.prices }));
         if (data.timestamp) setLastUpdated(data.timestamp);
+        
+        // オプティミスティックにFirestoreの最新価格も更新 (バックグラウンド)
+        if (user && !isDemo) {
+          updateAssetPricesInDb(user.uid, data.prices, assets);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch market data", error);
@@ -183,7 +188,26 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
     } finally {
       setIsFetching(false);
     }
-  }, [user, assets, notify]);
+  }, [user, assets, notify, isDemo, portfolioId]);
+
+  // Firestoreの現在価格を更新するユーティリティ (頻度を制限)
+  const updateAssetPricesInDb = async (uid: string, newPrices: Record<string, number>, currentAssets: Asset[]) => {
+    try {
+      for (const asset of currentAssets) {
+        const freshPrice = newPrices[asset.symbol];
+        // 価格に一定以上の変化があった場合のみ保存 (0.1%以上の変化)
+        if (freshPrice && Math.abs(freshPrice - asset.currentPrice) / (asset.currentPrice || 1) > 0.001) {
+          const assetRef = doc(db, "users", uid, "portfolios", portfolioId, "assets", asset.id);
+          await updateDoc(assetRef, {
+            currentPrice: freshPrice,
+            updatedAt: new Date().toISOString()
+          });
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to background sync prices to DB", e);
+    }
+  };
 
   useEffect(() => {
     fetchMarketData(0);

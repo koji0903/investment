@@ -43,24 +43,42 @@ async function getMarketData(requestedSymbols: string[] = []) {
       ...Array.from(symbolMap.values())
     ])].filter(Boolean);
 
-    // 外部APIを並列で実行
-    const quoteResults = await Promise.all(
-      allNormalizedSymbols.map(async (normalizedSym) => {
-        try {
-          const quote: any = await yahooFinance.quote(normalizedSym);
+    // 外部APIをチャンクに分けて実行 (一度に大量のリクエストを防ぐ)
+    const CHUNK_SIZE = 10;
+    const chunks = [];
+    for (let i = 0; i < allNormalizedSymbols.length; i += CHUNK_SIZE) {
+      chunks.push(allNormalizedSymbols.slice(i, i + CHUNK_SIZE));
+    }
+
+    const quoteResults: { symbol: string; price: number | null; currency: string | null; changePercent: number }[] = [];
+    for (const chunk of chunks) {
+      try {
+        // yahooFinance.quote は配列を受け取りバルク取得が可能
+        const results: any = await yahooFinance.quote(chunk);
+        
+        // 単体と配列の両方のレスポンス形式に対応
+        const resultsArray = Array.isArray(results) ? results : [results];
+        
+        resultsArray.forEach(quote => {
+          if (!quote) return;
           const price = quote.regularMarketPrice ?? quote.price ?? quote.regularMarketPreviousClose ?? quote.previousClose;
-          return { 
-            symbol: normalizedSym, 
+          quoteResults.push({
+            symbol: quote.symbol,
             price: price,
-            currency: quote.currency || (normalizedSym.endsWith(".T") ? "JPY" : "USD"),
+            currency: quote.currency || (quote.symbol.endsWith(".T") ? "JPY" : "USD"),
             changePercent: quote.regularMarketChangePercent || 0
-          };
-        } catch (e) {
-          console.error(`Failed to fetch quote for ${normalizedSym}:`, e);
-          return { symbol: normalizedSym, price: null, currency: null, changePercent: 0 };
-        }
-      })
-    );
+          });
+        });
+      } catch (e) {
+        console.error(`Failed to fetch quotes for chunk: ${chunk.join(",")}`, e);
+        // エラー時はフォールバックとしてnullを埋める
+        chunk.forEach(sym => {
+          if (!quoteResults.find(r => r.symbol === sym)) {
+            quoteResults.push({ symbol: sym, price: null, currency: null, changePercent: 0 });
+          }
+        });
+      }
+    }
 
     // ドル円レートの取得 (変換用)
     const usdJpyResult = quoteResults.find(m => m.symbol === "JPY=X" || m.symbol === "USDJPY=X");
