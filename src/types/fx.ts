@@ -100,6 +100,7 @@ export interface MarketEnergyAnalysis {
   fakeFlag: boolean;             // だましフラグ
   entryRecommendation: "enter" | "wait" | "avoid"; // 推奨アクション
   dataProgress: number;          // 0-100 (%)
+  certainty: number;             // 0-100 (%) 分析の確からしさ
 }
 
 /**
@@ -135,6 +136,7 @@ export interface EntryTimingAnalysis {
   stopComment: string;
   targetComment: string;
   dataProgress: number;          // 0-100 (%)
+  certainty: number;             // 0-100 (%) 分析の確からしさ
 }
 
 /**
@@ -206,6 +208,7 @@ export interface FXJudgment {
   // ポジションサイズ自動調整 (新規追加)
   positionSizing?: PositionSizingAnalysis;
 
+  certainty: number;           // 0-100 (%) 統合判断の確からしさ
   updatedAt: string;
   
   // 詳細データ (UI表示用)

@@ -114,6 +114,14 @@ export function calculateEnergyAnalysis(
     ? "avoid" 
     : "enter";
 
+  // 8. 確からしさ (Certainty) の計算
+  let certainty = dataProgress * 0.7; // データ量ベース (max 70)
+  const lower = bb.lower[bb.lower.length - 1];
+  const upper = bb.upper[bb.upper.length - 1];
+  if (currentPrice >= lower && currentPrice <= upper) certainty += 20; // バンド内であれば安定 (max +20)
+  if (Math.abs(energyScore - 50) > 20 && status === "releasing") certainty += 10; // 反応期は確信度アップ (max +10)
+  certainty = Math.min(100, Math.round(certainty));
+
   return {
     energyScore,
     energyLevel,
@@ -124,7 +132,8 @@ export function calculateEnergyAnalysis(
     fakeBreakProbability,
     fakeFlag,
     entryRecommendation,
-    dataProgress
+    dataProgress,
+    certainty
   };
 }
 
@@ -139,6 +148,7 @@ function getDefaultAnalysis(price: number, dataProgress: number, pivots?: { p: n
     fakeBreakProbability: 0,
     fakeFlag: false,
     entryRecommendation: "wait",
-    dataProgress
+    dataProgress,
+    certainty: Math.round(dataProgress * 0.5) // データ不足時はデータ量比例
   };
 }

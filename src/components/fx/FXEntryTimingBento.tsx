@@ -10,7 +10,8 @@ import {
   CheckCircle2, 
   Map, 
   Scale, 
-  AlertTriangle 
+  AlertTriangle,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +57,13 @@ export const FXEntryTimingBento: React.FC<FXEntryTimingBentoProps> = ({ analysis
         </div>
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-[10px] font-black uppercase tracking-widest text-white/70">Structure Phase</span>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/70">Structure Phase</span>
+              <div className="flex items-center gap-1 mt-1 text-[9px] font-black text-white/60">
+                 <ShieldCheck size={10} className="text-emerald-400" />
+                 <span>条件精度 {analysis.certainty}%</span>
+              </div>
+            </div>
             <div className="px-3 py-1 rounded-full bg-white/20 text-[10px] font-black backdrop-blur-sm border border-white/10">
               SCORE: {analysis.entryScore}
             </div>

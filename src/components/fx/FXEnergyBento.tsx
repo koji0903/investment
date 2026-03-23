@@ -3,7 +3,7 @@
 import React from "react";
 import { MarketEnergyAnalysis } from "@/types/fx";
 import { motion } from "framer-motion";
-import { Zap, ArrowUpRight, ArrowDownRight, Target, AlertTriangle, Play, Pause } from "lucide-react";
+import { Zap, ArrowUpRight, ArrowDownRight, Target, AlertTriangle, Play, Pause, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FXEnergyBentoProps {
@@ -44,23 +44,30 @@ export const FXEnergyBento: React.FC<FXEnergyBentoProps> = ({ analysis, pairCode
           <div className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-[10px] font-black">
             LEVEL: {analysis.energyLevel.toUpperCase()}
           </div>
-          <div className="flex items-center gap-2 text-xs font-bold">
-            {analysis.status === "accumulating" ? (
-              <>
-                <Pause size={14} className="text-blue-400" />
-                <span>
-                  エネルギー蓄積中
-                  {analysis.dataProgress < 100 && (
-                    <span className="ml-1 text-[10px] text-blue-400 opacity-80">(収集中: {analysis.dataProgress}%)</span>
-                  )}
-                </span>
-              </>
-            ) : (
-              <>
-                <Play size={14} className="text-emerald-400" />
-                <span>エネルギー放出中</span>
-              </>
-            )}
+          <div className="flex items-center justify-between gap-2 text-xs font-bold">
+            <div className="flex items-center gap-2">
+              {analysis.status === "accumulating" ? (
+                <>
+                  <Pause size={14} className="text-blue-400" />
+                  <span>
+                    エネルギー蓄積中
+                    {analysis.dataProgress < 100 && (
+                      <span className="ml-1 text-[10px] text-blue-400 opacity-80">(収集中: {analysis.dataProgress}%)</span>
+                    )}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Play size={14} className="text-emerald-400" />
+                  <span>エネルギー放出中</span>
+                </>
+              )}
+            </div>
+            {/* Certainty Indicator */}
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-[9px] font-black text-white/60">
+               <ShieldCheck size={10} className="text-indigo-400" />
+               <span>精度 {analysis.certainty}%</span>
+            </div>
           </div>
         </div>
       </div>

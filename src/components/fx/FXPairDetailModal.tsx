@@ -10,7 +10,7 @@ import {
 import { FXEnergyBento } from "./FXEnergyBento";
 import { FXEntryTimingBento } from "./FXEntryTimingBento";
 import { FXPositionSizingBento } from "./FXPositionSizingBento";
-import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle, Crosshair, Calculator } from "lucide-react";
+import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle, Crosshair, Calculator, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -92,6 +92,10 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">AI 統合分析マスター</p>
                       <span className="px-1.5 py-0.5 rounded-md bg-orange-100 dark:bg-orange-500/20 text-[9px] font-black text-orange-600 dark:text-orange-400">FINAL VERDICT</span>
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-[9px] font-black text-indigo-600 dark:text-indigo-400">
+                         <ShieldCheck size={10} />
+                         <span>統合精度 {judgment.certainty}%</span>
+                      </div>
                     </div>
                     <p className="text-[13px] font-bold text-slate-700 dark:text-slate-200 leading-relaxed bg-white/40 dark:bg-black/20 p-4 rounded-2xl border border-white/60 dark:border-white/5 mt-2 shadow-inner">
                       {judgment.summaryComment}

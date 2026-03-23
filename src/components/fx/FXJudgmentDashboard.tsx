@@ -8,7 +8,7 @@ import { FXPairDetailModal } from "./FXPairDetailModal";
 import { FXEnergyBento } from "./FXEnergyBento";
 import { FXFilterSort } from "./FXFilterSort";
 import { SignalBadge } from "./FXUIComponents";
-import { Zap, Info, ShieldAlert, Trophy, TrendingUp, TrendingDown, Coins, ChevronRight, Target } from "lucide-react";
+import { Zap, Info, ShieldAlert, Trophy, TrendingUp, TrendingDown, Coins, ChevronRight, Target, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -280,6 +280,27 @@ export const FXJudgmentDashboard = () => {
              </ul>
            </div>
         </div>
+
+        {/* Certainty & Feedback Logic Info */}
+        <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
+          <h3 className="text-sm font-black text-indigo-500 uppercase tracking-wider flex items-center gap-2 mb-4">
+            <ShieldCheck size={16} /> 分析精度と自己フィードバック・アルゴリズム
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mb-2">① データ充足性 (信頼の基礎)</p>
+              <p className="text-[10px] font-bold text-slate-500 leading-relaxed">過去20日間のヒストリカルデータ取得状況に基づき、分析の母集団が十分かを判定。未収集データが多いほど精度は低下します。</p>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mb-2">② インジケーター収束 (不一致検知)</p>
+              <p className="text-[10px] font-bold text-slate-500 leading-relaxed">テクニカル、ファンダメンタル、相場エネルギーの方向性が一致しているかを自己分析。不一致時は精度を下方修正し「慎重」シグナルを出します。</p>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mb-2">③ ボラティリティ適合 (環境分析)</p>
+              <p className="text-[10px] font-bold text-slate-500 leading-relaxed">現在の価格がボリンジャーバンド内に収まっているか、ATRが極端に拡大していないかをチェック。異常値検出時は精度を自動調整します。</p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <FXPairDetailModal judgment={selectedJudgment} onClose={() => setSelectedJudgment(null)} />
@@ -302,7 +323,13 @@ const RankingCard = ({ title, items, icon, onSelect }: { title: string, items: F
         >
           <div className="flex items-center gap-3">
             <span className="text-xs font-black text-slate-300 w-4">{i + 1}</span>
-            <span className="text-sm font-black text-slate-700 dark:text-slate-200">{item.pairCode}</span>
+            <div className="flex flex-col">
+              <span className="text-sm font-black text-slate-700 dark:text-slate-200">{item.pairCode}</span>
+              <div className="flex items-center gap-1 mt-0.5 text-[8px] font-black text-indigo-500">
+                <ShieldCheck size={8} />
+                <span>精度 {item.certainty}%</span>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <SignalBadge label={item.signalLabel} />

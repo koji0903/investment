@@ -37,7 +37,8 @@ export const calculateEntryTiming = (
       rrRatio: 0,
       stopComment: "-",
       targetComment: "-",
-      dataProgress
+      dataProgress,
+      certainty: Math.round(dataProgress * 0.4)
     };
   }
 
@@ -198,7 +199,12 @@ export const calculateEntryTiming = (
     rrRatio,
     stopComment,
     targetComment,
-    dataProgress
+    dataProgress,
+    certainty: Math.min(100, Math.round(
+      (dataProgress * 0.6) + // データ量 (max 60)
+      (rrRatio >= 1.5 ? 20 : 0) + // RR比の妥当性 (max 20)
+      (entryScore > 60 ? 20 : 0) // エントリスコアの強さ (max 20)
+    ))
   };
 };
 

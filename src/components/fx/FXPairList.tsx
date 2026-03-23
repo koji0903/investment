@@ -8,7 +8,7 @@ import {
   HoldingStyleBadge,
   TradingSuitabilityBadge
 } from "./FXUIComponents";
-import { ChevronRight, Zap, Target } from "lucide-react";
+import { ChevronRight, Zap, Target, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -121,7 +121,13 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                   </div>
                 </td>
                 <td className="px-6 py-5">
-                  <ConfidenceIndicator level={item.confidence} />
+                  <div className="flex flex-col gap-1">
+                    <ConfidenceIndicator level={item.confidence} />
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-[9px] font-black text-indigo-600 dark:text-indigo-400 w-fit">
+                      <ShieldCheck size={10} />
+                      <span>精度 {item.certainty}%</span>
+                    </div>
+                  </div>
                 </td>
                 <td className="px-6 py-5 text-right">
                   <ChevronRight size={18} className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
@@ -187,9 +193,12 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                 <div className="text-[10px] font-black text-slate-600 dark:text-slate-300 leading-tight">{item.suitability}</div>
               </div>
               <div className="space-y-1 text-right">
-                <p className="text-[9px] font-black text-slate-400 uppercase text-right">信頼度</p>
-                <div className="flex justify-end">
+                <p className="text-[9px] font-black text-slate-400 uppercase text-right">信頼度・精度</p>
+                <div className="flex flex-col items-end gap-1">
                    <ConfidenceIndicator level={item.confidence} />
+                   <div className="text-[9px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-500/20">
+                     精度 {item.certainty}%
+                   </div>
                 </div>
               </div>
             </div>

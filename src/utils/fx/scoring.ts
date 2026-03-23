@@ -121,6 +121,7 @@ export function calculateTotalJudgment(
     shortTermSignal,
     mediumTermSignal,
     suitability,
+    certainty: 100,
     updatedAt: new Date().toISOString(),
     indicators: technical.indicators
   };
@@ -200,9 +201,25 @@ export function consolidateJudgments(
   let finalConfidence = initial.confidence;
   if (energy.energyScore > 70 && entry.entryScore > 75) finalConfidence = "高";
 
-  // 3. データ取得進捗の表示
+  // 3. 確からしさ (Integrated Certainty) の計算
+  let certainty = Math.round((energy.certainty + entry.certainty) / 2);
+  
+  // コンバージェンス（方向性の一致）ボーナス
+  const techDir = initial.technicalScore > 25 ? "up" : initial.technicalScore < -25 ? "down" : "none";
+  const fundDir = initial.fundamentalScore > 25 ? "up" : initial.fundamentalScore < -25 ? "down" : "none";
+  const energyDir = energy.breakoutDirection;
+
+  if (techDir !== "none" && techDir === fundDir && techDir === energyDir) {
+    certainty = Math.min(100, certainty + 20); // 3つ一致で大幅プラス
+  } else if ((techDir === fundDir && techDir !== "none") || (techDir === energyDir && techDir !== "none")) {
+    certainty = Math.min(100, certainty + 5);  // 2つ一致で微プラス
+  }
+
+  // 4. データ取得進捗・確からしさの表示
   if (entry.dataProgress < 100) {
-    finalComment = `[データ収集中: ${entry.dataProgress}%] ${finalComment}`;
+    finalComment = `[データ収集中: ${entry.dataProgress}% / 精度: ${certainty}%] ${finalComment}`;
+  } else {
+    finalComment = `[分析精度: ${certainty}%] ${finalComment}`;
   }
 
   return {
@@ -210,6 +227,7 @@ export function consolidateJudgments(
     signalLabel: finalLabel,
     summaryComment: finalComment,
     confidence: finalConfidence,
+    certainty,
     updatedAt: new Date().toISOString()
   };
 }

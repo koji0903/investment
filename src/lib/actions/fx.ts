@@ -184,6 +184,7 @@ export async function syncFXRealData() {
         mediumTermSignal: "中立",
         suitability: "様子見推奨",
         energyAnalysis: energy,
+        certainty: 10,
         updatedAt: new Date().toISOString()
       };
 
