@@ -31,7 +31,14 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function NisaPage() {
   const { user } = useAuth();
-  const { totalAssetsValue, totalProfitAndLoss, calculatedAssets } = usePortfolio();
+  const { 
+    totalAssetsValue, 
+    totalProfitAndLoss, 
+    calculatedAssets,
+    lastUpdated,
+    isFetching,
+    refreshPrices
+  } = usePortfolio();
   const [settings, setSettings] = useState<NisaAccumulationSetting[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editingSetting, setEditingSetting] = useState<NisaAccumulationSetting | null>(null);
@@ -115,16 +122,20 @@ export default function NisaPage() {
 
   return (
     <AuthGuard>
-      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
-        <DashboardHeader 
-          totalAssets={totalAssetsValue} 
-          totalProfitAndLoss={totalProfitAndLoss}
-          hideAuth
-        />
+      <main className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20 transition-colors duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <DashboardHeader 
+            totalAssets={totalAssetsValue} 
+            totalProfitAndLoss={totalProfitAndLoss}
+            lastUpdated={lastUpdated}
+            isFetching={isFetching}
+            onRefresh={refreshPrices}
+            hideAuth
+          />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 space-y-12">
-          {/* Page Title */}
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="mt-12 space-y-12">
+            {/* Page Title */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-1.5 h-8 bg-indigo-500 rounded-full" />
@@ -291,8 +302,9 @@ export default function NisaPage() {
             </div>
           </section>
         </div>
+      </div>
 
-        {/* Modal Overlay for Form */}
+      {/* Modal Overlay for Form */}
         <AnimatePresence>
           {showForm && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
