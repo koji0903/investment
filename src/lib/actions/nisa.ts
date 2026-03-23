@@ -29,8 +29,14 @@ export async function saveNisaSetting(setting: Omit<NisaAccumulationSetting, "cr
     return { success: false, error: "ユーザーIDが不足しています。" };
   }
 
-  try {
-    const colRef = getNisaCol(setting.userId);
+    // デモユーザーの場合はFirestoreには保存せず、成功を返す
+    if (setting.userId === "demo-user-stable-id") {
+      console.log("Mock saving NISA setting for demo user");
+      return { success: true };
+    }
+
+    try {
+      const colRef = getNisaCol(setting.userId);
     const docRef = doc(colRef, setting.id);
     const docSnap = await getDoc(docRef);
     const now = new Date().toISOString();
@@ -60,7 +66,14 @@ export async function saveNisaSetting(setting: Omit<NisaAccumulationSetting, "cr
     return { success: true };
   } catch (error: any) {
     console.error("Error saving NISA setting:", error);
-    return { success: false, error: error.message || "データベースへの保存に失敗しました（権限エラーの可能性があります）。" };
+    // 権限エラーの場合の分かりやすいメッセージ
+    if (error.code === 'permission-denied') {
+      return { 
+        success: false, 
+        error: "アクセス権限がありません。ログインし直すか、デモモードの制約を確認してください。" 
+      };
+    }
+    return { success: false, error: error.message || "データベースへの保存に失敗しました。" };
   }
 }
 
@@ -225,6 +238,36 @@ export async function syncNisaAccumulations(userId: string) {
  * ユーザーの全てのNISA積立設定を取得
  */
 export async function getNisaSettings(userId: string): Promise<NisaAccumulationSetting[]> {
+  // デモユーザー用のモックデータ
+  if (userId === "demo-user-stable-id") {
+    return [
+      {
+        id: "demo-1",
+        userId: userId,
+        accountType: "accumulation",
+        symbol: "eMAXIS Slim 全世界株式",
+        name: "eMAXIS Slim 全世界株式（オール・カントリー）",
+        amount: 33333,
+        dayOfMonth: 1,
+        status: "active",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "demo-2",
+        userId: userId,
+        accountType: "growth",
+        symbol: "VOO",
+        name: "バンガード S&P 500 ETF",
+        amount: 50000,
+        dayOfMonth: 15,
+        status: "active",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ];
+  }
+
   try {
     const q = query(
       getNisaCol(userId), 
@@ -244,12 +287,18 @@ export async function getNisaSettings(userId: string): Promise<NisaAccumulationS
 /**
  * NISA積立設定を削除
  */
-export async function deleteNisaSetting(userId: string, id: string) {
+export async function deleteNisaSetting(userId: string, settingId: string) {
+  // デモユーザーの場合は何もしない
+  if (userId === "demo-user-stable-id") {
+    return { success: true };
+  }
+
   try {
-    await deleteDoc(doc(getNisaCol(userId), id));
+    const docRef = doc(getNisaCol(userId), settingId);
+    await deleteDoc(docRef);
     return { success: true };
   } catch (error) {
     console.error("Error deleting NISA setting:", error);
-    throw new Error("NISA設定の削除に失敗しました。");
+    return { success: false, error: "削除に失敗しました。" };
   }
 }
