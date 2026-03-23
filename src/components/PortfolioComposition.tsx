@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useMemo, useEffect, useState } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { getCompositionData, CompositionData } from "@/lib/chartUtils";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
@@ -8,6 +9,12 @@ import { formatCurrency } from "@/lib/utils";
 
 export const PortfolioComposition = () => {
   const { calculatedAssets } = usePortfolio();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   const data = getCompositionData(calculatedAssets);
 
   const total = data.reduce((sum, item) => sum + item.value, 0);
@@ -33,13 +40,13 @@ export const PortfolioComposition = () => {
 
   return (
     <div className="flex flex-col h-[400px] w-full">
-      {data.length === 0 ? (
+      {!hasMounted || data.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
-          データがありません
+          {hasMounted ? "データがありません" : "読み込み中..."}
         </div>
       ) : (
         <div className="flex-1 w-full relative">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <PieChart>
               <Pie
                 data={data}

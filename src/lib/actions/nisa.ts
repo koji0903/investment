@@ -1,4 +1,4 @@
-"use server";
+// Client-side NISA actions
 
 import { db } from "@/lib/firebase";
 import { 

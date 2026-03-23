@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { generateTrendData } from "@/lib/chartUtils";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -9,6 +9,11 @@ import { formatCurrency } from "@/lib/utils";
 
 export const AssetTrendChart = () => {
   const { totalAssetsValue } = usePortfolio();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
   
   const data = useMemo(() => {
     return generateTrendData(totalAssetsValue, 30);
@@ -38,13 +43,13 @@ export const AssetTrendChart = () => {
         資産推移 (過去30日)
       </h3>
       
-      {data.length === 0 ? (
+      {!hasMounted || data.length === 0 ? (
         <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">
-          データがありません
+          {hasMounted ? "データがありません" : "読み込み中..."}
         </div>
       ) : (
         <div className="flex-1 w-full min-h-[300px] mt-2">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">

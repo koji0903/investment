@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { useAuth } from "@/context/AuthContext";
 import { calculateOptimalPortfolio, OptimizationSegment } from "@/lib/analyticsUtils";
@@ -17,6 +17,11 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export const PortfolioOptimization = () => {
   const { calculatedAssets } = usePortfolio();
+  const [hasMounted, setHasMounted] = useState(false);
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
   // 注意: 本来はFirestoreなどからユーザーのリスク許容度を取得するが、
   // ここではデモとして moderate をデフォルトとする
   const riskTolerance: "low" | "moderate" | "high" = "moderate"; 
@@ -72,34 +77,38 @@ export const PortfolioOptimization = () => {
             {/* Current */}
             <div className="flex flex-col items-center">
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">現在</p>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={currentAllocationData}
-                    innerRadius={45}
-                    outerRadius={70}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {currentAllocationData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.8} stroke="none" />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg">
-                            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{payload[0].name}</p>
-                            <p className="text-sm font-black text-slate-800 dark:text-white">{payload[0].value}%</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {!hasMounted ? (
+                <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">読み込み中...</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <PieChart>
+                    <Pie
+                      data={currentAllocationData}
+                      innerRadius={45}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {currentAllocationData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.8} stroke="none" />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg">
+                              <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{payload[0].name}</p>
+                              <p className="text-sm font-black text-slate-800 dark:text-white">{payload[0].value}%</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </div>
 
             {/* Target */}
@@ -110,34 +119,38 @@ export const PortfolioOptimization = () => {
                 </div>
               </div>
               <p className="text-[10px] font-black text-sky-500 uppercase tracking-[0.2em] mb-4">目標配分</p>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={targetAllocationData}
-                    innerRadius={45}
-                    outerRadius={80} // ターゲットを少し大きくして強調
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {targetAllocationData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg">
-                            <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{payload[0].name}</p>
-                            <p className="text-sm font-black text-sky-500">{payload[0].value}%</p>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {!hasMounted ? (
+                <div className="flex-1 flex items-center justify-center text-slate-500 font-medium">読み込み中...</div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <PieChart>
+                    <Pie
+                      data={targetAllocationData}
+                      innerRadius={45}
+                      outerRadius={80} // ターゲットを少し大きくして強調
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {targetAllocationData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg">
+                              <p className="text-[10px] font-black text-slate-400 uppercase mb-1">{payload[0].name}</p>
+                              <p className="text-sm font-black text-sky-500">{payload[0].value}%</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
