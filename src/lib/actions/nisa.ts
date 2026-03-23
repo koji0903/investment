@@ -15,10 +15,14 @@ import {
 } from "firebase/firestore";
 import { NisaAccumulationSetting } from "@/types/nisa";
 
-const COLLECTION_NAME = "nisa_settings";
+// ユーザーごとのNISA設定コレクションへの参照を取得
+const getNisaCol = (userId: string) => collection(db, "users", userId, "nisa_settings");
 
+/**
+ * NISA積立設定を保存または更新
+ */
 export async function saveNisaSetting(setting: Omit<NisaAccumulationSetting, "createdAt" | "updatedAt">) {
-  console.log("Saving NISA setting - Data:", JSON.stringify(setting));
+  console.log("Saving NISA setting to user-nested path - Data:", JSON.stringify(setting));
   
   if (!setting.userId) {
     console.error("Missing userId in setting");
@@ -26,12 +30,14 @@ export async function saveNisaSetting(setting: Omit<NisaAccumulationSetting, "cr
   }
 
   try {
-    const docRef = doc(db, COLLECTION_NAME, setting.id);
+    const colRef = getNisaCol(setting.userId);
+    const docRef = doc(colRef, setting.id);
     const docSnap = await getDoc(docRef);
     const now = new Date().toISOString();
     
     // クリーンなデータオブジェクトを作成（undefinedを除外）
     const data: any = {
+      id: setting.id,
       accountType: setting.accountType,
       name: setting.name,
       symbol: setting.symbol || "",
@@ -50,11 +56,11 @@ export async function saveNisaSetting(setting: Omit<NisaAccumulationSetting, "cr
 
     await setDoc(docRef, data, { merge: true });
     
-    console.log("Successfully saved NISA setting:", setting.id);
+    console.log("Successfully saved NISA setting to user path:", setting.id);
     return { success: true };
   } catch (error: any) {
     console.error("Error saving NISA setting:", error);
-    return { success: false, error: error.message || "データベースへの保存に失敗しました。" };
+    return { success: false, error: error.message || "データベースへの保存に失敗しました（権限エラーの可能性があります）。" };
   }
 }
 
@@ -198,7 +204,8 @@ export async function syncNisaAccumulations(userId: string) {
 
         // NISA設定の最終処理月を更新
         const lastMonthProcessed = transactionsToCreate[transactionsToCreate.length - 1].month;
-        await setDoc(doc(db, COLLECTION_NAME, setting.id), {
+        const nisaDocRef = doc(getNisaCol(userId), setting.id);
+        await setDoc(nisaDocRef, {
           lastProcessedMonth: lastMonthProcessed,
           updatedAt: new Date().toISOString()
         }, { merge: true });
@@ -220,8 +227,7 @@ export async function syncNisaAccumulations(userId: string) {
 export async function getNisaSettings(userId: string): Promise<NisaAccumulationSetting[]> {
   try {
     const q = query(
-      collection(db, COLLECTION_NAME), 
-      where("userId", "==", userId),
+      getNisaCol(userId), 
       orderBy("createdAt", "desc")
     );
     const snapshot = await getDocs(q);
@@ -230,7 +236,7 @@ export async function getNisaSettings(userId: string): Promise<NisaAccumulationS
       id: doc.id
     })) as NisaAccumulationSetting[];
   } catch (error) {
-    console.error("Error fetching NISA settings:", error);
+    console.error("Error fetching NISA settings from user path:", error);
     return [];
   }
 }
@@ -238,9 +244,9 @@ export async function getNisaSettings(userId: string): Promise<NisaAccumulationS
 /**
  * NISA積立設定を削除
  */
-export async function deleteNisaSetting(id: string) {
+export async function deleteNisaSetting(userId: string, id: string) {
   try {
-    await deleteDoc(doc(db, COLLECTION_NAME, id));
+    await deleteDoc(doc(getNisaCol(userId), id));
     return { success: true };
   } catch (error) {
     console.error("Error deleting NISA setting:", error);

@@ -12,6 +12,7 @@ import {
 import { NisaAccumulationSetting, NisaProgress } from "@/types/nisa";
 import { NisaStatusCard } from "@/components/nisa/NisaStatusCard";
 import { NisaAccumulationForm } from "@/components/nisa/NisaAccumulationForm";
+import { NisaSimulation } from "@/components/nisa/NisaSimulation";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { 
@@ -24,7 +25,8 @@ import {
   Info,
   Wallet,
   Calendar,
-  Layers
+  Layers,
+  TrendingUp
 } from "lucide-react";
 import { formatCurrency, cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -80,8 +82,8 @@ export default function NisaPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("この積立設定を削除しますか？")) {
-      await deleteNisaSetting(id);
+    if (user?.uid && window.confirm("この積立設定を削除してもよろしいですか？")) {
+      await deleteNisaSetting(user.uid, id);
       await fetchSettings();
     }
   };
@@ -123,6 +125,16 @@ export default function NisaPage() {
       }
     };
   }, [settings, calculatedAssets]);
+
+  // シミュレーション用の初期値計算
+  const simulationDefaults = useMemo(() => {
+    const activeSettings = settings.filter(s => s.status === "active");
+    const totalMonthly = activeSettings.reduce((acc, s) => acc + s.amount, 0);
+    return {
+      monthly: totalMonthly,
+      initial: progress.totalAccumulated
+    };
+  }, [settings, progress.totalAccumulated]);
 
   return (
     <AuthGuard>
@@ -166,6 +178,18 @@ export default function NisaPage() {
               <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">非課税枠の充足状況</h2>
             </div>
             <NisaStatusCard progress={progress} />
+          </section>
+
+          {/* Simulation Section */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-2 px-1">
+              <TrendingUp size={18} className="text-indigo-500" />
+              <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">将来シミュレーション & 節税効果</h2>
+            </div>
+            <NisaSimulation 
+              initialCapital={simulationDefaults.initial} 
+              monthlyContribution={simulationDefaults.monthly} 
+            />
           </section>
 
           {/* Settings List */}
