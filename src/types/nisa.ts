@@ -9,6 +9,7 @@ export interface NisaAccumulationSetting {
   amount: number; // 毎月の積立額 (円)
   dayOfMonth: number; // 積立日 (1-28)
   status: "active" | "paused";
+  assetId?: string; // 修正：紐づけ対象の資産ID
   lastProcessedMonth?: string; // "YYYY-MM"
   createdAt: string;
   updatedAt: string;

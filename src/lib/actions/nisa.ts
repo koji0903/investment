@@ -6,6 +6,7 @@ import {
   query, 
   where, 
   getDocs, 
+  getDoc,
   doc, 
   setDoc, 
   deleteDoc,
@@ -95,23 +96,44 @@ export async function syncNisaAccumulations(userId: string) {
         const assetsCol = collection(db, "users", userId, "portfolios", portfolioId, "assets");
         const transCol = collection(db, "users", userId, "portfolios", portfolioId, "transactions");
         
-        // シンボルまたは名前でアセットを検索
-        const q = query(assetsCol, where("name", "==", setting.name));
-        const assetSnap = await getDocs(q);
+        // IDまたは名前でアセットを決定
+        let assetDocData: any = null;
+        let assetId = setting.assetId || "";
         
-        let assetId = "";
+        if (assetId) {
+          const assetDoc = await getDoc(doc(assetsCol, assetId));
+          if (assetDoc.exists()) {
+            assetDocData = assetDoc.data();
+          } else {
+            // ID指定があるが見つからない場合は名前でフォールバック
+            const q = query(assetsCol, where("name", "==", setting.name));
+            const assetSnap = await getDocs(q);
+            if (!assetSnap.empty) {
+              const foundDoc = assetSnap.docs[0];
+              assetId = foundDoc.id;
+              assetDocData = foundDoc.data();
+            }
+          }
+        } else {
+          // 名前でアセットを検索（後方互換性）
+          const q = query(assetsCol, where("name", "==", setting.name));
+          const assetSnap = await getDocs(q);
+          if (!assetSnap.empty) {
+            const foundDoc = assetSnap.docs[0];
+            assetId = foundDoc.id;
+            assetDocData = foundDoc.data();
+          }
+        }
+        
         let currentQty = 0;
         let currentAvgCost = 0;
 
-        if (!assetSnap.empty) {
-          const assetDoc = assetSnap.docs[0];
-          assetId = assetDoc.id;
-          const data = assetDoc.data();
-          currentQty = data.quantity || 0;
-          currentAvgCost = data.averageCost || 0;
+        if (assetDocData) {
+          currentQty = assetDocData.quantity || 0;
+          currentAvgCost = assetDocData.averageCost || 0;
         } else {
           // 新規アセット作成
-          const newAssetRef = doc(assetsCol);
+          const newAssetRef = assetId ? doc(assetsCol, assetId) : doc(assetsCol);
           assetId = newAssetRef.id;
           await setDoc(newAssetRef, {
             name: setting.name,
