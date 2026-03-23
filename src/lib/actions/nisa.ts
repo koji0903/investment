@@ -17,27 +17,44 @@ import { NisaAccumulationSetting } from "@/types/nisa";
 
 const COLLECTION_NAME = "nisa_settings";
 
-/**
- * NISA積立設定を保存または更新
- */
 export async function saveNisaSetting(setting: Omit<NisaAccumulationSetting, "createdAt" | "updatedAt">) {
+  console.log("Saving NISA setting - Data:", JSON.stringify(setting));
+  
+  if (!setting.userId) {
+    console.error("Missing userId in setting");
+    return { success: false, error: "ユーザーIDが不足しています。" };
+  }
+
   try {
     const docRef = doc(db, COLLECTION_NAME, setting.id);
+    const docSnap = await getDoc(docRef);
     const now = new Date().toISOString();
-    const currentMonth = now.substring(0, 7); // "YYYY-MM"
     
-    await setDoc(docRef, {
-      ...setting,
-      updatedAt: now,
-      // 新規作成時は、積立開始前として前月を最終処理月とする（当月の積立日がまだなら今月も処理対象にするため）
-      lastProcessedMonth: setting.lastProcessedMonth || "", 
-      createdAt: now 
-    }, { merge: true });
+    // クリーンなデータオブジェクトを作成（undefinedを除外）
+    const data: any = {
+      accountType: setting.accountType,
+      name: setting.name,
+      symbol: setting.symbol || "",
+      amount: setting.amount,
+      dayOfMonth: setting.dayOfMonth,
+      status: setting.status || "active",
+      assetId: setting.assetId || "",
+      lastProcessedMonth: setting.lastProcessedMonth || "",
+      userId: setting.userId,
+      updatedAt: now
+    };
+
+    if (!docSnap.exists()) {
+      data.createdAt = now;
+    }
+
+    await setDoc(docRef, data, { merge: true });
     
+    console.log("Successfully saved NISA setting:", setting.id);
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error saving NISA setting:", error);
-    throw new Error("NISA設定の保存に失敗しました。");
+    return { success: false, error: error.message || "データベースへの保存に失敗しました。" };
   }
 }
 

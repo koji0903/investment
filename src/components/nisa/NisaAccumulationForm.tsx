@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePortfolio } from "@/context/PortfolioContext";
 
 interface NisaAccumulationFormProps {
-  onSave: (setting: Omit<NisaAccumulationSetting, "createdAt" | "updatedAt">) => Promise<void>;
+  onSave: (setting: Omit<NisaAccumulationSetting, "createdAt" | "updatedAt">) => Promise<{ success: boolean; error?: string }>;
   onCancel: () => void;
   initialData?: NisaAccumulationSetting;
 }
@@ -69,15 +69,19 @@ export const NisaAccumulationForm = ({ onSave, onCancel, initialData }: NisaAccu
     console.log("Submitting NISA Setting:", formData);
     
     try {
-      await onSave({
+      const result = await onSave({
         id: initialData?.id || generateId(),
         userId: initialData?.userId || "",
         ...formData,
         amount: amountNum
       });
-    } catch (error) {
+      
+      if (!result.success) {
+        alert(`保存に失敗しました: ${result.error || "詳細不明なエラー"}`);
+      }
+    } catch (error: any) {
       console.error("Submit error:", error);
-      alert("保存中にエラーが発生しました。");
+      alert(`通信エラーが発生しました: ${error.message || "サーバーとの通信に失敗しました"}`);
     } finally {
       setLoading(false);
     }

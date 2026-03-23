@@ -68,11 +68,15 @@ export default function NisaPage() {
 
   const handleSave = async (setting: Omit<NisaAccumulationSetting, "createdAt" | "updatedAt">) => {
     if (user?.uid) {
-      await saveNisaSetting({ ...setting, userId: user.uid });
-      await fetchSettings();
-      setShowForm(false);
-      setEditingSetting(null);
+      const result = await saveNisaSetting({ ...setting, userId: user.uid });
+      if (result.success) {
+        await fetchSettings();
+        setShowForm(false);
+        setEditingSetting(null);
+      }
+      return result;
     }
+    return { success: false, error: "ユーザーが見つかりません。再ログインしてください。" };
   };
 
   const handleDelete = async (id: string) => {
