@@ -185,6 +185,7 @@ export async function syncFXRealData() {
         suitability: "様子見推奨",
         energyAnalysis: energy,
         certainty: 10,
+        safetyScore: 0,
         updatedAt: new Date().toISOString()
       };
 

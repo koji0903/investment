@@ -93,9 +93,15 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                       )}>
                         {item.positionSizing.suggestedLot}
                       </span>
-                      <span className="text-[9px] font-bold text-slate-400">
-                        損失想定: {new Intl.NumberFormat('ja-JP', { notation: "compact" }).format(item.positionSizing.estimatedLossAmount)}円
-                      </span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] font-bold text-slate-400">
+                          損失想定: {new Intl.NumberFormat('ja-JP', { notation: "compact" }).format(item.positionSizing.estimatedLossAmount)}円
+                        </span>
+                        <div className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-[9px] font-black text-blue-600 dark:text-blue-400 flex items-center gap-1 shadow-sm">
+                          <ShieldCheck size={10} className="text-blue-500" />
+                          <span>安全 {item.safetyScore}%</span>
+                        </div>
+                      </div>
                     </div>
                   ) : "-"}
                 </td>
@@ -189,8 +195,14 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                 <div className="text-[10px] font-black text-amber-500">{item.energyAnalysis?.energyScore || 0} pts</div>
               </div>
               <div className="space-y-1">
-                <p className="text-[9px] font-black text-slate-400 uppercase">売買適正</p>
-                <div className="text-[10px] font-black text-slate-600 dark:text-slate-300 leading-tight">{item.suitability}</div>
+                <p className="text-[9px] font-black text-slate-400 uppercase">売買適正 / 安全性</p>
+                <div className="flex flex-col gap-1">
+                  <div className="text-[10px] font-black text-slate-600 dark:text-slate-300 leading-tight">{item.suitability}</div>
+                  <div className="flex items-center gap-1 text-[9px] font-black text-emerald-500">
+                    <ShieldCheck size={8} />
+                    <span>安全 {item.safetyScore}%</span>
+                  </div>
+                </div>
               </div>
               <div className="space-y-1 text-right">
                 <p className="text-[9px] font-black text-slate-400 uppercase text-right">信頼度・精度</p>

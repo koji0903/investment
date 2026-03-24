@@ -109,6 +109,30 @@ export const calculatePositionSizing = (
 
   const estimatedLossAmount = capped * riskPerLot;
 
+  // 5. セーフティ・スコア (Safety Score / Loss Minimization Indicator) の算出
+  // ユーザー要望「損失額をとにかく小さくする」を数値化
+  let safetyScore = 0;
+  
+  // A. ストップのタイトさ (40%): ATRに対して損切幅がどれだけ狭いか
+  const stopDiff = Math.max(0.0001, Math.abs(entry - stop));
+  const atr = energyAnalysis.dataProgress >= 100 ? (entry * 0.01) : (entry * 0.005); // 簡易ATR想定 (実勢値があればそれを使う)
+  const tightness = Math.max(0, Math.min(1, 1 - (stopDiff / (atr * 2)))); 
+  safetyScore += tightness * 40;
+
+  // B. RR比の安定性 (30%): リスクに対してリターンがどれだけ大きいか
+  const rrScore = Math.max(0, Math.min(1, rrRatio / 3));
+  safetyScore += rrScore * 30;
+
+  // C. 出来高・だましリスク (20%): だまし確率が低いほど安全
+  const reliabilityScore = Math.max(0, Math.min(1, 1 - (fakeBreakProbability / 100)));
+  safetyScore += reliabilityScore * 20;
+
+  // D. 構造的優位性 (10%): ブレイク直後などは安全性が高い
+  const structureScore = ["breakout_initial", "pullback_waiting"].includes(structurePhase) ? 10 : 5;
+  safetyScore += structureScore;
+
+  safetyScore = Math.min(100, Math.round(safetyScore));
+
   return {
     accountBalance,
     riskPercent,
@@ -126,6 +150,7 @@ export const calculatePositionSizing = (
     cappedPositionSize: Number(capped.toFixed(2)),
     suggestedLot: capped === 0 ? "見送り" : `${capped.toFixed(1)} ロット`,
     estimatedLossAmount: Math.round(estimatedLossAmount),
+    safetyScore,
     sizingComment,
     riskWarningMessages
   };

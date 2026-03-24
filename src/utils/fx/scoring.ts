@@ -122,6 +122,7 @@ export function calculateTotalJudgment(
     mediumTermSignal,
     suitability,
     certainty: 100,
+    safetyScore: 0,
     updatedAt: new Date().toISOString(),
     indicators: technical.indicators
   };
@@ -228,6 +229,7 @@ export function consolidateJudgments(
     summaryComment: finalComment,
     confidence: finalConfidence,
     certainty,
+    safetyScore: initial.positionSizing?.safetyScore ?? 0,
     updatedAt: new Date().toISOString()
   };
 }

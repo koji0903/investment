@@ -10,7 +10,7 @@ import {
 import { FXEnergyBento } from "./FXEnergyBento";
 import { FXEntryTimingBento } from "./FXEntryTimingBento";
 import { FXPositionSizingBento } from "./FXPositionSizingBento";
-import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle, Crosshair, Calculator, ShieldCheck } from "lucide-react";
+import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle, Crosshair, Calculator, ShieldCheck, ShieldAlert } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -131,17 +131,27 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
             )}
 
             {/* Position Sizing Analysis (Bento) */}
-            {judgment.positionSizing && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-blue-500 rounded-lg text-white">
-                    <Calculator size={14} fill="currentColor" />
-                  </div>
-                  <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">ポジションサイズ自動調整</h3>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-500 rounded-lg text-white">
+                  <Calculator size={14} fill="currentColor" />
                 </div>
-                <FXPositionSizingBento sizing={judgment.positionSizing} />
+                <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">ポジションサイズ自動調整 / リスク管理</h3>
               </div>
-            )}
+              {judgment.positionSizing ? (
+                <FXPositionSizingBento sizing={judgment.positionSizing} />
+              ) : (
+                <div className="p-8 bg-slate-50 dark:bg-slate-800/50 rounded-[32px] border border-slate-100 dark:border-slate-800 border-dashed flex flex-col items-center justify-center text-center space-y-3">
+                  <div className="p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-sm text-slate-400">
+                    <ShieldAlert size={24} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-black text-slate-600 dark:text-slate-300">リスク分析シミュレーション中</p>
+                    <p className="text-[10px] font-bold text-slate-400">ヒストリカルデータの収集を待っています...</p>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Analysis Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

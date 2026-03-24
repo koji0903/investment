@@ -12,7 +12,8 @@ import {
   Activity,
   Zap,
   LayoutTemplate,
-  Target
+  Target,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -75,6 +76,18 @@ export const FXPositionSizingBento: React.FC<FXPositionSizingBentoProps> = ({ si
               {sizing.suggestedLot.replace(" ロット", "")}
             </h3>
             {sizing.finalPositionSize > 0 && <span className="text-sm font-bold text-white/60 mb-1.5 tracking-wider">Lots</span>}
+          </div>
+
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black text-white/50 uppercase tracking-wider mb-1">Safety / Loss Control</span>
+              <div className="flex items-center gap-2">
+                <div className="px-2 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                  <span className="text-sm font-black text-emerald-400">{sizing.safetyScore}%</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm mt-auto">

@@ -68,7 +68,8 @@ export const FXJudgmentDashboard = () => {
     const buyRanking = [...allJudgments].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
     const sellRanking = [...allJudgments].sort((a, b) => a.totalScore - b.totalScore).slice(0, 3);
     const swapRanking = [...allJudgments].sort((a, b) => b.swapScore - a.swapScore).slice(0, 3);
-    return { buyRanking, sellRanking, swapRanking };
+    const safetyRanking = [...allJudgments].sort((a, b) => b.safetyScore - a.safetyScore).slice(0, 3);
+    return { buyRanking, sellRanking, swapRanking, safetyRanking };
   }, [allJudgments]);
 
   const filteredAndSortedJudgments = useMemo(() => {
@@ -188,25 +189,30 @@ export const FXJudgmentDashboard = () => {
         </div>
       )}
 
-      {/* Rankings Section */}
       {!loading && allJudgments.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <RankingCard 
-            title="買い優勢ランキング" 
+            title="買い優勢" 
             items={rankings.buyRanking} 
             icon={<TrendingUp size={18} className="text-emerald-500" />}
             onSelect={setSelectedJudgment}
           />
           <RankingCard 
-            title="売り優勢ランキング" 
+            title="売り優勢" 
             items={rankings.sellRanking} 
             icon={<TrendingDown size={18} className="text-rose-500" />}
             onSelect={setSelectedJudgment}
           />
           <RankingCard 
-            title="スワップ妙味ランキング" 
+            title="スワップ妙味" 
             items={rankings.swapRanking} 
             icon={<Coins size={18} className="text-amber-500" />}
+            onSelect={setSelectedJudgment}
+          />
+          <RankingCard 
+            title="安全性重視 (Loss Control)" 
+            items={rankings.safetyRanking} 
+            icon={<ShieldCheck size={18} className="text-blue-500" />}
             onSelect={setSelectedJudgment}
           />
         </div>
@@ -298,6 +304,10 @@ export const FXJudgmentDashboard = () => {
             <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
               <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mb-2">③ ボラティリティ適合 (環境分析)</p>
               <p className="text-[10px] font-bold text-slate-500 leading-relaxed">現在の価格がボリンジャーバンド内に収まっているか、ATRが極端に拡大していないかをチェック。異常値検出時は精度を自動調整します。</p>
+            </div>
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mb-2">④ セーフティ・スコア (損失最小化)</p>
+              <p className="text-[10px] font-bold text-slate-500 leading-relaxed">損切幅のタイトさ、ボラティリティの安定性、リスクリワード比から「低リスクな運用が可能か」を評価。損失額の抑制を最優先する指標です。</p>
             </div>
           </div>
         </div>

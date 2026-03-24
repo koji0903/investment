@@ -159,6 +159,7 @@ export interface PositionSizingAnalysis {
   cappedPositionSize: number;
   suggestedLot: string;         // "1.2 ロット" のような表示用文字列
   estimatedLossAmount: number;
+  safetyScore: number;                // 0-100: 損失最小化・リスク管理の適切さ
   sizingComment: string;
   riskWarningMessages: string[];
 }
@@ -209,6 +210,7 @@ export interface FXJudgment {
   positionSizing?: PositionSizingAnalysis;
 
   certainty: number;           // 0-100 (%) 統合判断の確からしさ
+  safetyScore: number;         // 0-100: 損失最小化のしやすさ・安全性反映
   updatedAt: string;
   
   // 詳細データ (UI表示用)
