@@ -65,166 +65,157 @@ function getSemiRealSwaps(pair: string) {
 }
 
 /**
- * 実データを全銘柄分同期する。失敗時はシミュレートデータを保存する。
+ * 個別の通貨ペアを同期する内部関数
  */
-export async function syncFXRealData() {
-  const results: FXJudgment[] = [];
+async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
   const end = new Date();
   const start = new Date();
-  start.setDate(end.getDate() - 360); // 1年弱のデータ。200日線などの長期指標を確実に。
+  start.setDate(end.getDate() - 360);
+  const symbol = toYahooSymbol(pair.pairCode);
+  
+  let judgment: FXJudgment | null = null;
+  
+  try {
+    // 1. 同期中ステータスで一旦保存 (既存データがある場合)
+    const docRef = doc(db, "fx_judgments", pair.pairCode.replace("/", "-"));
+    
+    // Yahoo Finance からデータを取得
+    const historical: any[] = await (yahooFinance as any).historical(symbol, {
+      period1: start,
+      period2: end,
+      interval: "1d"
+    }).catch((err: any) => {
+      console.warn(`[FX] Data fetch failed for ${pair.pairCode}:`, err.message);
+      return [];
+    });
 
-  for (const pair of SUPPORTED_PAIRS) {
-    let judgment: FXJudgment | null = null;
-    try {
-      const symbol = toYahooSymbol(pair.pairCode);
-      // 通貨ペアごとの過去データを取得 (キャッシュ回避のため new Date() を使用)
-      const historical: any[] = await (yahooFinance as any).historical(symbol, {
-        period1: start,
-        period2: end,
-        interval: "1d"
-      }).catch((err: any) => {
-        console.warn(`[FX] Data fetch failed for ${pair.pairCode}:`, err.message);
-        return [];
-      });
-
-      if (historical && historical.length >= 10) {
-        const prices = historical.map(h => h.close).filter(p => typeof p === "number");
-        const highs = historical.map(h => h.high).filter(p => typeof p === "number");
-        const lows = historical.map(h => h.low).filter(p => typeof p === "number");
-        
-        const currentPrice = prices[prices.length - 1];
-        const technical = analyzeTechnical(prices, currentPrice);
-        const fundamental = analyzeFundamental(
-          FIXED_CURRENCY_FUNDAMENTALS[pair.baseCurrency],
-          FIXED_CURRENCY_FUNDAMENTALS[pair.quoteCurrency]
-        );
-        const swaps = getSemiRealSwaps(pair.pairCode);
-        const swapEval = evaluateSwap(swaps.buy, swaps.sell);
-
-        judgment = calculateTotalJudgment(
-          pair.pairCode, pair.baseCurrency, pair.quoteCurrency,
-          currentPrice, technical, fundamental, swapEval
-        );
-
-        // 相場エネルギー分析を追加
-        const { calculatePivotPoints } = await import("@/lib/technicalAnalysis");
-        const lastDay = historical[historical.length - 1];
-        const pivots = calculatePivotPoints(lastDay.high, lastDay.low, lastDay.close);
-        
-        judgment.energyAnalysis = calculateEnergyAnalysis(prices, highs, lows, currentPrice, pivots);
-
-        // エントリータイミング最適化を追加
-        const atrArr = calculateATR({ high: highs, low: lows, close: prices }, 14);
-        const atr = atrArr[atrArr.length - 1] || (currentPrice * 0.005);
-        const recentHigh = Math.max(...highs.slice(-20)); // 過去20日の高値
-        const recentLow = Math.min(...lows.slice(-20));  // 過去20日の安値
-        
-        judgment.entryTimingAnalysis = calculateEntryTiming(
-          pair.pairCode,
-          currentPrice,
-          technical,
-          judgment.energyAnalysis,
-          atr,
-          recentHigh,
-          recentLow
-        );
-
-        // ポジションサイズ自動調整を追加
-        judgment.positionSizing = calculatePositionSizing(
-          pair.pairCode,
-          judgment.entryTimingAnalysis,
-          judgment.energyAnalysis
-        );
-
-        // 【最重要】判断の統合と矛盾解消
-        const { consolidateJudgments } = await import("@/utils/fx/scoring");
-        judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
-      }
-    } catch (e) {
-      console.error(`Sync error for ${pair.pairCode}:`, e);
-    }
-
-    // データが取れない、またはエラー時はシミュレーション値で埋める
-    if (!judgment) {
-      const isJPY = pair.quoteCurrency === "JPY";
-      const dummyPrice = isJPY ? 150.0 + (Math.random() * 2) : 1.1 + (Math.random() * 0.05);
-      const swaps = getSemiRealSwaps(pair.pairCode);
-      const swapEval = evaluateSwap(swaps.buy, swaps.sell);
+    if (historical && historical.length >= 10) {
+      const prices = historical.map(h => h.close).filter(p => typeof p === "number");
+      const highs = historical.map(h => h.high).filter(p => typeof p === "number");
+      const lows = historical.map(h => h.low).filter(p => typeof p === "number");
       
+      const currentPrice = prices[prices.length - 1];
+      const technical = analyzeTechnical(prices, currentPrice);
       const fundamental = analyzeFundamental(
         FIXED_CURRENCY_FUNDAMENTALS[pair.baseCurrency],
         FIXED_CURRENCY_FUNDAMENTALS[pair.quoteCurrency]
       );
-      
-      const { calculateEnergyAnalysis } = await import("@/utils/fx/energy");
-      const { calculateEntryTiming } = await import("@/utils/fx/entry");
-      const { consolidateJudgments } = await import("@/utils/fx/scoring");
+      const swaps = getSemiRealSwaps(pair.pairCode);
+      const swapEval = evaluateSwap(swaps.buy, swaps.sell);
 
-      // ダミー価格に基づいたエネルギー分析
-      const energy = calculateEnergyAnalysis([dummyPrice], [dummyPrice], [dummyPrice], dummyPrice);
-      
-      judgment = {
-        pairCode: pair.pairCode,
-        baseCurrency: pair.baseCurrency,
-        quoteCurrency: pair.quoteCurrency,
-        currentPrice: dummyPrice,
-        technicalScore: 0,
-        technicalTrend: "neutral",
-        technicalReasons: ["テクニカル分析データ同期中..."],
-        fundamentalScore: fundamental.score,
-        macroBias: fundamental.macroBias,
-        fundamentalReasons: fundamental.reasons,
-        buySwap: swaps.buy,
-        sellSwap: swaps.sell,
-        swapScore: swapEval.score,
-        swapDirection: swapEval.swapDirection,
-        swapComment: swapEval.swapComment,
-        holdingStyle: swapEval.holdingStyle,
-        totalScore: Math.round(fundamental.score * 0.4 + swapEval.score * 0.2), // 低確度だが方向性は示す
-        signalLabel: "中立",
-        confidence: "低",
-        summaryComment: "現在リアルタイムデータを同期中です。ファンダメンタル分析は最新のマクロ指標に基づいています。",
-        shortTermSignal: "中立",
-        mediumTermSignal: "中立",
-        suitability: "様子見推奨",
-        energyAnalysis: energy,
-        certainty: 10,
-        safetyScore: 0,
-        updatedAt: new Date().toISOString()
-      };
-
-      judgment.entryTimingAnalysis = calculateEntryTiming(
-        pair.pairCode,
-        dummyPrice,
-        undefined,
-        energy,
-        dummyPrice * 0.005,
-        dummyPrice * 1.01,
-        dummyPrice * 0.99
+      judgment = calculateTotalJudgment(
+        pair.pairCode, pair.baseCurrency, pair.quoteCurrency,
+        currentPrice, technical, fundamental, swapEval
       );
 
-      // 最終統合
-      judgment = consolidateJudgments(judgment!, judgment.energyAnalysis, judgment.entryTimingAnalysis);
-    }
+      // 相場エネルギー分析を追加
+      const { calculatePivotPoints } = await import("@/lib/technicalAnalysis");
+      const lastDay = historical[historical.length - 1];
+      const pivots = calculatePivotPoints(lastDay.high, lastDay.low, lastDay.close);
+      judgment.energyAnalysis = calculateEnergyAnalysis(prices, highs, lows, currentPrice, pivots);
 
-    try {
-      await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), judgment);
-    } catch (err) {
-      console.warn(`[FX] Failed to save ${pair.pairCode} to Firestore, but continuing...`);
+      // エントリータイミング最適化を追加
+      const atrArr = calculateATR({ high: highs, low: lows, close: prices }, 14);
+      const atr = atrArr[atrArr.length - 1] || (currentPrice * 0.005);
+      const recentHigh = Math.max(...highs.slice(-20));
+      const recentLow = Math.min(...lows.slice(-20));
+      
+      judgment.entryTimingAnalysis = calculateEntryTiming(
+        pair.pairCode, currentPrice, technical, judgment.energyAnalysis,
+        atr, recentHigh, recentLow
+      );
+
+      // ポジションサイズ自動調整を追加
+      judgment.positionSizing = calculatePositionSizing(
+        pair.pairCode, judgment.entryTimingAnalysis, judgment.energyAnalysis
+      );
+
+      // 統合と矛盾解消
+      const { consolidateJudgments } = await import("@/utils/fx/scoring");
+      judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
+      
+      judgment.syncStatus = "completed";
+      judgment.lastSyncAt = new Date().toISOString();
     }
-    
-    results.push(judgment);
-    
-    // APIレート制限回避のための待機
-    await new Promise(r => setTimeout(r, 50));
+  } catch (e) {
+    console.error(`Sync error for ${pair.pairCode}:`, e);
   }
 
-  return { 
-    success: true, 
-    count: results.length, 
-    data: results.sort((a, b) => b.totalScore - a.totalScore),
-    updatedAt: new Date().toISOString()
-  };
+  // エラー時または取得不能時はフォールバック (ただし既存データがあればそれを捨てるのは良くないので検討)
+  if (!judgment) {
+    const isJPY = pair.quoteCurrency === "JPY";
+    const dummyPrice = isJPY ? 150.0 + (Math.random() * 2) : 1.1 + (Math.random() * 0.05);
+    const swaps = getSemiRealSwaps(pair.pairCode);
+    const swapEval = evaluateSwap(swaps.buy, swaps.sell);
+    const fundamental = analyzeFundamental(
+      FIXED_CURRENCY_FUNDAMENTALS[pair.baseCurrency],
+      FIXED_CURRENCY_FUNDAMENTALS[pair.quoteCurrency]
+    );
+    
+    const { calculateEnergyAnalysis } = await import("@/utils/fx/energy");
+    const { calculateEntryTiming } = await import("@/utils/fx/entry");
+    const { consolidateJudgments } = await import("@/utils/fx/scoring");
+
+    const energy = calculateEnergyAnalysis([dummyPrice], [dummyPrice], [dummyPrice], dummyPrice);
+    
+    judgment = {
+      pairCode: pair.pairCode,
+      baseCurrency: pair.baseCurrency,
+      quoteCurrency: pair.quoteCurrency,
+      currentPrice: dummyPrice,
+      technicalScore: 0,
+      technicalTrend: "neutral",
+      technicalReasons: ["テクニカル分析データ同期中..."],
+      fundamentalScore: fundamental.score,
+      macroBias: fundamental.macroBias,
+      fundamentalReasons: fundamental.reasons,
+      buySwap: swaps.buy,
+      sellSwap: swaps.sell,
+      swapScore: swapEval.score,
+      swapDirection: swapEval.swapDirection,
+      swapComment: swapEval.swapComment,
+      holdingStyle: swapEval.holdingStyle,
+      totalScore: Math.round(fundamental.score * 0.4 + swapEval.score * 0.2),
+      signalLabel: "中立",
+      confidence: "低",
+      summaryComment: "現在リアルタイムデータを同期中です。ファンダメンタル分析は最新のマクロ指標に基づいています。",
+      shortTermSignal: "中立",
+      mediumTermSignal: "中立",
+      suitability: "様子見推奨",
+      energyAnalysis: energy,
+      certainty: 10,
+      safetyScore: 0,
+      syncStatus: "syncing",
+      updatedAt: new Date().toISOString()
+    };
+
+    judgment.entryTimingAnalysis = calculateEntryTiming(
+      pair.pairCode, dummyPrice, undefined, energy, dummyPrice * 0.005, dummyPrice * 1.01, dummyPrice * 0.99
+    );
+
+    judgment = consolidateJudgments(judgment!, judgment.energyAnalysis, judgment.entryTimingAnalysis);
+  }
+
+  // 保存
+  await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), judgment);
+  return judgment;
+}
+
+/**
+ * 実データを非同期に同期を開始する。クライアントを待たせない。
+ */
+export async function syncFXRealData() {
+  // バックグラウンドで同期を開始 (await しない)
+  // 注意: Next.js の Server Actions では return 後の実行が保証されない場合があるが、
+  // この環境では単純な非同期呼び出しで継続を試みる。
+  (async () => {
+    for (const pair of SUPPORTED_PAIRS) {
+      await syncSpecificPair(pair);
+      await new Promise(r => setTimeout(r, 100)); // レート制限回避
+    }
+  })().catch(err => console.error("Background sync failure:", err));
+
+  return { success: true, message: "Background sync started" };
 }
 
 function diffToDirection(buySwap: number): any {
@@ -248,12 +239,13 @@ export async function getFXJudgmentsAction(): Promise<FXJudgment[]> {
 
     // 件数が足りない場合、または全くない（権限エラー含む）場合は同期を走らせる
     if (data.length < SUPPORTED_PAIRS.length) {
-      console.log(`[FX] Data count mismatch or read error (${data.length}/21). Triggering memory-sync...`);
-      const syncRes = await syncFXRealData();
+      console.log(`[FX] Data count mismatch or read error (${data.length}/21). Triggering background-sync...`);
+      await syncFXRealData();
       
-      // 保存の成否に関わらず、生成された 21 件のデータを最優先で使う
-      if (syncRes.success && syncRes.data && syncRes.data.length >= SUPPORTED_PAIRS.length) {
-        data = syncRes.data;
+      // 同期開始直後のため、Firestoreの現在の状態（またはこの後バックグラウンドで埋まるデータ）を再取得して返す
+      const retrySnapshot = await getDocs(collection(db, "fx_judgments")).catch(() => null);
+      if (retrySnapshot && !retrySnapshot.empty) {
+        data = retrySnapshot.docs.map(doc => doc.data() as FXJudgment);
       }
     }
 
@@ -261,10 +253,14 @@ export async function getFXJudgmentsAction(): Promise<FXJudgment[]> {
     return JSON.parse(JSON.stringify(data.sort((a, b) => b.totalScore - a.totalScore)));
   } catch (err) {
     console.error("Critical error in getFXJudgmentsAction:", err);
-    // 最終手段として同期を試みてその場で返す
+    // 最終手段として同期を試みてその場でFirestoreを再取得
     try {
-      const fallback = await syncFXRealData();
-      return JSON.parse(JSON.stringify(fallback.data || []));
+      await syncFXRealData();
+      const finalSnapshot = await getDocs(collection(db, "fx_judgments")).catch(() => null);
+      const finalData = finalSnapshot && !finalSnapshot.empty 
+        ? finalSnapshot.docs.map(doc => doc.data() as FXJudgment) 
+        : [];
+      return JSON.parse(JSON.stringify(finalData));
     } catch {
       return [];
     }

@@ -23,36 +23,36 @@ export const FXJudgmentDashboard = () => {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   const fetchData = async (forceRefresh = false) => {
-    if (!forceRefresh) setLoading(true);
-    setError(null);
-    try {
-      const data = forceRefresh 
-        ? await FXService.syncRealData()
-        : await FXService.getPairs();
-      
+    if (forceRefresh) {
+      setError(null);
+      await FXService.syncRealData().catch(err => {
+        console.error(err);
+        setError("データの同期に失敗しました。時間をおいて再度お試しください。");
+      });
+    }
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    // リアルタイム購読の開始
+    const unsubscribe = FXService.subscribePairs((data) => {
       setAllJudgments(data);
       if (data.length > 0) {
+        setLoading(false);
         // 最も新しい更新日時を取得
         const latest = [...data].sort((a, b) => 
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         )[0]?.updatedAt;
         setLastUpdated(latest);
       }
+    });
 
-      // 初回表示かつ最新化していない場合は、バックグラウンドで最新化を実行
-      if (!forceRefresh) {
-        fetchData(true);
-      }
-    } catch (err) {
-      console.error(err);
-      if (!forceRefresh) setError("データ取得に失敗しました。もう一度お試しください。");
-    } finally {
-      if (!forceRefresh) setLoading(false);
-    }
-  };
+    // 初回の同期トリガー (バックグラウンド)
+    FXService.syncRealData().catch(console.error);
 
-  useEffect(() => {
-    fetchData();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // エネルギーハイライトの作成

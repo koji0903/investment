@@ -7,7 +7,8 @@ import {
   query, 
   orderBy, 
   Timestamp,
-  getDoc
+  getDoc,
+  onSnapshot
 } from "firebase/firestore";
 import { 
   FXPairMaster, 
@@ -60,6 +61,17 @@ export const FXService = {
       console.error("Error fetching FX judgments:", error);
       return [];
     }
+  },
+
+  /**
+   * 通貨ペア判定をリアルタイム購読
+   */
+  subscribePairs: (callback: (data: FXJudgment[]) => void) => {
+    const q = query(collection(db, "fx_judgments"));
+    return onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => doc.data() as FXJudgment);
+      callback(data.sort((a, b) => b.totalScore - a.totalScore));
+    });
   },
 
   /**

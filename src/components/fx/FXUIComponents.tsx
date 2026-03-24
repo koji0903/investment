@@ -7,7 +7,8 @@ import {
   Minus, 
   AlertCircle, 
   CheckCircle2,
-  Info
+  Info,
+  RefreshCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SignalLabel, ConfidenceLevel, HoldingStyle, TradingSuitability } from "@/types/fx";
@@ -103,6 +104,27 @@ export const TradingSuitabilityBadge = ({ suitability }: { suitability: TradingS
   return (
     <div className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black", styles[suitability])}>
       {suitability}
+    </div>
+  );
+};
+/**
+ * 同期ステータスバッジ
+ */
+export const SyncStatusBadge = ({ status }: { status?: "pending" | "syncing" | "completed" | "failed" }) => {
+  if (!status || status === "completed") return null;
+
+  const config = {
+    pending: { label: "待機中", color: "text-slate-400 bg-slate-100 dark:bg-slate-800" },
+    syncing: { label: "同期中...", color: "text-amber-500 bg-amber-50 dark:bg-amber-500/10 animate-pulse" },
+    failed: { label: "失敗", color: "text-rose-500 bg-rose-50 dark:bg-rose-500/10" },
+  };
+
+  const { label, color } = config[status] || config.pending;
+
+  return (
+    <div className={cn("px-2 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 border border-current opacity-80", color)}>
+      <RefreshCw size={10} className={status === "syncing" ? "animate-spin" : ""} />
+      <span>{label}</span>
     </div>
   );
 };

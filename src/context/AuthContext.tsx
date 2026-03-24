@@ -51,7 +51,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setIsDemo(false);
     });
 
-    return () => unsubscribe();
+    // 5秒以内に認証が終わらない場合は一旦ロード解除（オフライン/エラー対応）
+    const timer = setTimeout(() => {
+      setLoading(prev => {
+        if (prev) {
+          console.warn("[Auth] Auth check timed out. Proceeding...");
+          return false;
+        }
+        return prev;
+      });
+    }, 5000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timer);
+    };
   }, []);
 
   const logout = async () => {

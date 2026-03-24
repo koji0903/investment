@@ -6,7 +6,8 @@ import {
   SignalBadge, 
   ConfidenceIndicator, 
   HoldingStyleBadge,
-  TradingSuitabilityBadge
+  TradingSuitabilityBadge,
+  SyncStatusBadge
 } from "./FXUIComponents";
 import { ChevronRight, Zap, Target, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
@@ -48,7 +49,10 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                       {item.pairCode.split("/")[0]}
                     </div>
                     <div>
-                      <div className="text-sm font-black text-slate-800 dark:text-white">{item.pairCode}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-black text-slate-800 dark:text-white">{item.pairCode}</div>
+                        <SyncStatusBadge status={item.syncStatus} />
+                      </div>
                       <div className="text-[10px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toFixed(pairToDecimals(item.pairCode))}</div>
                     </div>
                   </div>
@@ -159,7 +163,10 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                   {item.pairCode.split("/")[0]}
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-800 dark:text-white leading-none">{item.pairCode}</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-black text-slate-800 dark:text-white leading-none">{item.pairCode}</h3>
+                    <SyncStatusBadge status={item.syncStatus} />
+                  </div>
                   <p className="text-[11px] font-bold text-slate-400 mt-1 tabular-nums">
                     {item.currentPrice.toFixed(pairToDecimals(item.pairCode))}
                   </p>

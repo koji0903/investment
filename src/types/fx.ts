@@ -211,6 +211,8 @@ export interface FXJudgment {
 
   certainty: number;           // 0-100 (%) 統合判断の確からしさ
   safetyScore: number;         // 0-100: 損失最小化のしやすさ・安全性反映
+  syncStatus?: "pending" | "syncing" | "completed" | "failed"; // 同期ステータス
+  lastSyncAt?: string;         // 最終同期時刻
   updatedAt: string;
   
   // 詳細データ (UI表示用)
