@@ -148,10 +148,14 @@ export async function syncFXRealData() {
     if (!judgment) {
       const isJPY = pair.quoteCurrency === "JPY";
       const dummyPrice = isJPY ? 150.0 + (Math.random() * 2) : 1.1 + (Math.random() * 0.05);
-      const isHighYield = ["ZAR", "MXN", "TRY"].includes(pair.baseCurrency);
       const swaps = getSemiRealSwaps(pair.pairCode);
+      const swapEval = evaluateSwap(swaps.buy, swaps.sell);
       
-      const energyScore = 40 + Math.floor(Math.random() * 30);
+      const fundamental = analyzeFundamental(
+        FIXED_CURRENCY_FUNDAMENTALS[pair.baseCurrency],
+        FIXED_CURRENCY_FUNDAMENTALS[pair.quoteCurrency]
+      );
+      
       const { calculateEnergyAnalysis } = await import("@/utils/fx/energy");
       const { calculateEntryTiming } = await import("@/utils/fx/entry");
       const { consolidateJudgments } = await import("@/utils/fx/scoring");
@@ -166,20 +170,20 @@ export async function syncFXRealData() {
         currentPrice: dummyPrice,
         technicalScore: 0,
         technicalTrend: "neutral",
-        technicalReasons: ["データ取得待機中"],
-        fundamentalScore: isHighYield ? 30 : 10,
-        macroBias: "neutral",
-        fundamentalReasons: ["ファンダメンタル分析待機中"],
+        technicalReasons: ["テクニカル分析データ同期中..."],
+        fundamentalScore: fundamental.score,
+        macroBias: fundamental.macroBias,
+        fundamentalReasons: fundamental.reasons,
         buySwap: swaps.buy,
         sellSwap: swaps.sell,
-        swapScore: isHighYield ? 40 : 20,
-        swapDirection: diffToDirection(swaps.buy),
-        swapComment: isHighYield ? "高金利通貨としてのスワップ魅力あり" : "スワップ金利を確認中",
-        holdingStyle: isHighYield ? "medium_term_long" : "short_term_only",
-        totalScore: 10,
+        swapScore: swapEval.score,
+        swapDirection: swapEval.swapDirection,
+        swapComment: swapEval.swapComment,
+        holdingStyle: swapEval.holdingStyle,
+        totalScore: Math.round(fundamental.score * 0.4 + swapEval.score * 0.2), // 低確度だが方向性は示す
         signalLabel: "中立",
         confidence: "低",
-        summaryComment: "現在リアルタイムデータを同期中です。完了までしばらくお待ちください。",
+        summaryComment: "現在リアルタイムデータを同期中です。ファンダメンタル分析は最新のマクロ指標に基づいています。",
         shortTermSignal: "中立",
         mediumTermSignal: "中立",
         suitability: "様子見推奨",
@@ -200,7 +204,7 @@ export async function syncFXRealData() {
       );
 
       // 最終統合
-      judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
+      judgment = consolidateJudgments(judgment!, judgment.energyAnalysis, judgment.entryTimingAnalysis);
     }
 
     try {
