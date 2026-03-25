@@ -118,6 +118,20 @@ export const FXService = {
   },
 
   /**
+   * 同期中ステータスを即座に反映
+   */
+  setSyncing: async (pairCode: string): Promise<boolean> => {
+    try {
+      const { setSyncingStatusAction } = await import("@/lib/actions/fx");
+      const result = await setSyncingStatusAction(pairCode);
+      return result.success;
+    } catch (error) {
+      console.error(`Error setting syncing status for ${pairCode}:`, error);
+      return false;
+    }
+  },
+
+  /**
    * ダミーデータを生成して Firestore に保存 (初期化/テスト用)
    */
   generateAndSaveDummyData: async (): Promise<FXJudgment[]> => {

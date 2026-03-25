@@ -35,6 +35,30 @@ export const FXJudgmentDashboard = () => {
   useEffect(() => {
     let isMounted = true;
 
+    // クライアント主導の個別同期
+    const syncPairsOneByOne = async (pairCodes: string[]) => {
+      console.log(`[FX] Starting sequential sync for ${pairCodes.length} pairs...`);
+      for (const code of pairCodes) {
+        if (!isMounted) break;
+        try {
+          console.log(`[FX] Syncing ${code}...`);
+          // 1. まず同期中ステータスをセット (UIに即時反映させる)
+          await FXService.setSyncing(code);
+          
+          // 2. 実際の同期実行 (重い処理)
+          const success = await FXService.syncPair(code);
+          if (!success) {
+            console.warn(`[FX] Sync failed for ${code}, but continuing loop...`);
+          }
+        } catch (err) {
+          console.error(`[FX] Critical error syncing ${code}:`, err);
+        }
+        // 次の同期まで待機
+        await new Promise(r => setTimeout(r, 600));
+      }
+      console.log("[FX] Sequential sync cycle finished.");
+    };
+
     // 初期データの取得
     const loadInitialData = async () => {
       setLoading(true);
@@ -62,16 +86,6 @@ export const FXJudgmentDashboard = () => {
       }
     };
 
-    // クライアント主導の個別同期
-    const syncPairsOneByOne = async (pairCodes: string[]) => {
-      for (const code of pairCodes) {
-        if (!isMounted) break;
-        console.log(`[FX] Client-side sync for ${code} starting...`);
-        await FXService.syncPair(code);
-        // 次の同期まで少し待機 (API負荷軽減)
-        await new Promise(r => setTimeout(r, 800));
-      }
-    };
 
     loadInitialData();
 
@@ -80,16 +94,26 @@ export const FXJudgmentDashboard = () => {
       if (!isMounted) return;
       
       setAllJudgments(prev => {
-        // 初期データ（プレースホルダーを含む21件）があるはずなので、
-        // リアルタイムで届いたデータ（一部かもしれない）で上書きする。
-        if (realtimeData.length === 0) return prev;
-        
+        // 全量（21件）が揃うように、マスタベースのプレースホルダーとマージ
+        const masterMap = new Map();
+        // SUPPORTED_PAIRS をインポートしていないので、prev か GetPairs の結果を期待するが、
+        // ここでは realtimeData から得られない欠損分を prev で補う
         const dataMap = new Map(prev.map(d => [d.pairCode, d]));
         realtimeData.forEach(d => {
           dataMap.set(d.pairCode, d);
         });
 
         const merged = Array.from(dataMap.values());
+        
+        // 同期の自動開始トリガー (同期中が0かつ未完了がある場合)
+        const uncompleted = merged.filter(d => d.syncStatus !== "completed" && d.syncStatus !== "syncing");
+        const syncingCount = merged.filter(d => d.syncStatus === "syncing").length;
+        
+        if (uncompleted.length > 0 && syncingCount === 0) {
+          console.log(`[FX] Found ${uncompleted.length} uncompleted pairs. Auto-starting sync loop...`);
+          syncPairsOneByOne(uncompleted.map(u => u.pairCode));
+        }
+
         return merged.sort((a, b) => b.totalScore - a.totalScore);
       });
 
@@ -236,6 +260,26 @@ export const FXJudgmentDashboard = () => {
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">全体の進捗</p>
                 <p className="text-xl font-black text-slate-800 dark:text-white tabular-nums">{syncStats.progress}%</p>
               </div>
+              
+              {/* Force Refresh Button inside summary */}
+              {syncStats.progress < 100 && (
+                <button 
+                  onClick={() => {
+                    const pending = allJudgments
+                      .filter(j => j.syncStatus !== "completed")
+                      .map(j => j.pairCode);
+                    if (pending.length > 0) {
+                      // Note: We need to expose syncPairsOneByOne or handle it via a new effect.
+                      // For now, let's keep it simple.
+                      window.location.reload(); 
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-xl text-[10px] font-black hover:bg-indigo-100 transition-colors"
+                >
+                  <TrendingUp size={12} />
+                  手動で同期を再開
+                </button>
+              )}
             </div>
           </div>
 

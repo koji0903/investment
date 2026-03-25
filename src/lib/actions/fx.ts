@@ -11,7 +11,7 @@ import { calculateEntryTiming } from "@/utils/fx/entry";
 import { calculatePositionSizing } from "@/utils/fx/position";
 import { calculateATR, calculatePivotPoints } from "@/lib/technicalAnalysis";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, getDocs, collection, query, orderBy } from "firebase/firestore";
+import { doc, setDoc, getDocs, getDoc, collection, query, orderBy } from "firebase/firestore";
 import { consolidateJudgments } from "@/utils/fx/scoring";
 
 // 対象とする通貨ペア
@@ -195,6 +195,38 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
     await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), judgment);
   }
   return judgment!;
+}
+
+/**
+ * 同期開始フラグを立てる Server Action
+ */
+export async function setSyncingStatusAction(pairCode: string) {
+  try {
+    const docRef = doc(db, "fx_judgments", pairCode.replace("/", "-"));
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      await setDoc(docRef, { 
+        ...docSnap.data(), 
+        syncStatus: "syncing",
+        updatedAt: new Date().toISOString()
+      });
+    } else {
+      // 存在しない場合は最小限のプレースホルダー
+      const [base, quote] = pairCode.split("/");
+      await setDoc(docRef, {
+        pairCode,
+        baseCurrency: base,
+        quoteCurrency: quote,
+        currentPrice: 0,
+        syncStatus: "syncing",
+        updatedAt: new Date().toISOString()
+      });
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false };
+  }
 }
 
 /**
