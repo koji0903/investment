@@ -130,31 +130,35 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
     const start = new Date();
     start.setDate(end.getDate() - 365);
 
-    const chartRes = await yf.chart(sym, {
-      period1: start,
-      period2: end,
-      interval: "1d"
-    }).catch(() => null);
+    // 株価データと財務サマリーを並列で取得
+    const [chartRes, summary] = await Promise.all([
+      yf.chart(sym, {
+        period1: start,
+        period2: end,
+        interval: "1d"
+      }).catch(err => {
+        console.warn(`[Sync] Chart fetch fail for ${ticker}:`, err.message);
+        return null;
+      }),
+      yf.quoteSummary(sym, {
+        modules: ["defaultKeyStatistics", "financialData", "summaryDetail"]
+      }).catch(err => {
+        console.warn(`[Sync] Summary fetch fail for ${ticker}:`, err.message);
+        return null;
+      })
+    ]);
 
     if (!chartRes || !chartRes.quotes || chartRes.quotes.length < 30) {
-      return { success: false, message: "株価データの取得に失敗しました" };
+      return { success: false, message: "株価データまたは財務情報の取得に失敗しました" };
     }
 
     const quotes = chartRes.quotes.filter(q => q.close !== null && q.close !== undefined);
     const prices = quotes.map(q => q.close as number);
     const currentPrice = prices[prices.length - 1];
 
-    // 財務サマリーの取得
-    const m1 = "defaultKeyStatistics";
-    const m2 = "financialData";
-    const m3 = "summaryDetail";
-    const summary = await yf.quoteSummary(sym, {
-      modules: [m1, m2, m3]
-    }).catch(() => null);
-
-    const s = (summary?.[m1] || {}) as any;
-    const f = (summary?.[m2] || {}) as any;
-    const d = (summary?.[m3] || {}) as any;
+    const s = (summary?.defaultKeyStatistics || {}) as any;
+    const f = (summary?.financialData || {}) as any;
+    const d = (summary?.summaryDetail || {}) as any;
 
     const fundamentalData: StockFundamental = {
       ticker: stk.ticker,
