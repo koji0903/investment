@@ -69,24 +69,31 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
       }
     }
 
-    // 1. 株価チャートと財務サマリーを並列取得
+    // 1. 株価チャートと財務サマリーを並列取得 (サーバ側でもタイムアウトを設定)
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - 365);
     
-    let chartRes: any;
-    let summary: any;
+    let chartRes: any = null;
+    let summary: any = null;
     let syncError: string | undefined = undefined;
 
     try {
-      const [cResult, sResult] = await Promise.all([
-        yf.chart(sym, { period1: start, period2: end, interval: "1d" }).catch(e => { throw e; }),
+      // サーバー機能全体のタイムアウト対策として Promise.race をサーバー側でも実行
+      const fetchPromise = Promise.all([
+        yf.chart(sym, { period1: start, period2: end, interval: "1d" }).catch(e => { throw new Error(`Chart: ${e.message}`); }),
         yf.quoteSummary(sym, { modules: ["defaultKeyStatistics", "financialData", "summaryDetail"] }).catch(e => {
           console.warn(`[Sync] Summary fetch soft failure for ${ticker}:`, e.message);
           syncError = `財務情報の取得に失敗しました(${e.message})。テクニカル判定のみ実行します。`;
           return null;
         })
       ]);
+
+      const serverTimeout = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error("Yahoo Finance API response timeout")), 45000)
+      );
+
+      const [cResult, sResult] = await Promise.race([fetchPromise, serverTimeout]) as any[];
       chartRes = cResult;
       summary = sResult;
     } catch (err: any) {
@@ -94,13 +101,19 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
       return { success: false, message: `データ取得に失敗しました: ${err.message}` };
     }
 
-    if (!chartRes || !chartRes.quotes || chartRes.quotes.length < 10) {
+    if (!chartRes || !chartRes.quotes || chartRes.quotes.length < 5) {
       return { success: false, message: "有効な株価データがありませんでした" };
     }
 
-    const quotes = chartRes.quotes.filter((q: any) => q.close !== null && q.close !== undefined);
+    const quotes = chartRes.quotes.filter((q: any) => q && q.close !== null && q.close !== undefined && q.date);
+    if (quotes.length === 0) return { success: false, message: "有効な価格履歴がありません" };
+    
     const prices = quotes.map((q: any) => q.close as number);
     const currentPrice = prices[prices.length - 1];
+
+    if (!currentPrice || isNaN(currentPrice)) {
+        return { success: false, message: "現在の株価が取得できませんでした" };
+    }
 
     const s = (summary?.defaultKeyStatistics || {}) as any;
     const f = (summary?.financialData || {}) as any;

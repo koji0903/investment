@@ -57,6 +57,9 @@ export const StockJudgmentDashboard = () => {
     failedStocks: [] as { ticker: string, name: string, error?: string }[]
   });
   const isMountedRef = useRef(true);
+  const priorityQueueRef = useRef<Set<string>>(new Set());
+  const backgroundQueueRef = useRef<string[]>([]);
+  const workerRunningRef = useRef(false);
 
   // マーケット統計 (Market Pulse)
   const marketPulse = useMemo(() => {
@@ -129,28 +132,64 @@ export const StockJudgmentDashboard = () => {
     }
   };
 
-  const processSyncQueue = async (tickers: string[]) => {
-    if (syncInProgressRef.current || tickers.length === 0) return;
-    syncInProgressRef.current = true;
-
+  const startSyncWorker = async () => {
+    if (workerRunningRef.current) return;
+    workerRunningRef.current = true;
+    
+    console.log("[Sync] Worker started");
+    
     try {
-      const queue = [...tickers];
-      while (queue.length > 0 && isMountedRef.current) {
-        const chunk = queue.splice(0, SYNC_CONCURRENCY);
-        await Promise.all(chunk.map(ticker => syncWithRetry(ticker)));
+      while (isMountedRef.current) {
+        // 1. 優先キューをチェック
+        let targetTicker: string | null = null;
         
-        if (queue.length > 0) {
-          // チャンク間に少し長めの待機時間を設けてAPIを労わる
-          const jitter = 2000 + Math.random() * 3000;
-          await new Promise(r => setTimeout(r, jitter));
+        if (priorityQueueRef.current.size > 0) {
+          const first = Array.from(priorityQueueRef.current)[0];
+          priorityQueueRef.current.delete(first);
+          targetTicker = first;
+        } else if (backgroundQueueRef.current.length > 0) {
+          targetTicker = backgroundQueueRef.current.shift() || null;
+        }
+
+        if (targetTicker) {
+          // 指定銘柄の同期を実行 (同期済みなら飛ばす)
+          const stock = allJudgments.find(j => j.ticker === targetTicker);
+          const isStale = stock ? (Date.now() - new Date(stock.updatedAt).getTime()) > 12 * 60 * 60 * 1000 : true;
+          
+          if (!stock || stock.syncStatus !== "completed" || isStale) {
+            await syncWithRetry(targetTicker);
+            // 連続リクエストを避けるための短いインターバル
+            await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000));
+          }
+        } else {
+          // キューが空なら少し待機
+          await new Promise(r => setTimeout(r, 3000));
+          // バックグラウンドキューも空でしばらく経つならリバウンドなし
+          if (priorityQueueRef.current.size === 0 && backgroundQueueRef.current.length === 0) {
+             // 待機継続、または明示的に終了せずスクロールに備える
+          }
         }
       }
     } catch (err) {
-      console.error("Sync loop error:", err);
+      console.error("[Sync] Worker critical error:", err);
     } finally {
-      syncInProgressRef.current = false;
-      if (isMountedRef.current) setSyncStats(prev => ({ ...prev, currentNames: [] }));
+      workerRunningRef.current = false;
+      console.log("[Sync] Worker stopped");
     }
+  };
+
+  const addToPriorityQueue = (ticker: string) => {
+    priorityQueueRef.current.add(ticker);
+    startSyncWorker();
+  };
+
+  const processSyncQueue = (tickers: string[]) => {
+    tickers.forEach(t => {
+      if (!backgroundQueueRef.current.includes(t)) {
+        backgroundQueueRef.current.push(t);
+      }
+    });
+    startSyncWorker();
   };
 
   const fetchData = async () => {
@@ -175,9 +214,10 @@ export const StockJudgmentDashboard = () => {
           return d.syncStatus !== "completed" || isStale;
         });
 
-        // 大量銘柄の場合、まずは表示されているもの周辺から優先的に同期すべきだが、
-        // 今回はシンプルに先頭からバックグラウンドで開始
-        if (staleOrUncompleted.length > 0) processSyncQueue(staleOrUncompleted.map(d => d.ticker).slice(0, 100));
+        // 低負荷化のため、初期表示（上位20銘柄程度）のみ自動同期を開始
+        if (staleOrUncompleted.length > 0) {
+          processSyncQueue(staleOrUncompleted.map(d => d.ticker).slice(0, 20));
+        }
 
         setLoading(false);
       }
@@ -439,7 +479,7 @@ export const StockJudgmentDashboard = () => {
         ) : (
           <div className="space-y-12">
             <div className="relative">
-              <StockList items={displayedItems} onSelect={setSelectedStock} />
+              <StockList items={displayedItems} onSelect={setSelectedStock} onVisible={addToPriorityQueue} />
             </div>
             
             <div ref={loadMoreRef} className="h-20 w-full flex items-center justify-center pt-8">

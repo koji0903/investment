@@ -12,13 +12,15 @@ import { ChevronRight, BarChart2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
+import { useInView } from "react-intersection-observer";
 
 interface StockListProps {
   items: StockJudgment[];
   onSelect: (item: StockJudgment) => void;
+  onVisible?: (ticker: string) => void;
 }
 
-export const StockList: React.FC<StockListProps> = ({ items, onSelect }) => {
+export const StockList: React.FC<StockListProps> = ({ items, onSelect, onVisible }) => {
   return (
     <div className="w-full">
       {/* Desktop View */}
@@ -37,7 +39,7 @@ export const StockList: React.FC<StockListProps> = ({ items, onSelect }) => {
           </thead>
           <tbody>
             {items.map((item) => (
-              <StockRow key={item.ticker} item={item} onSelect={onSelect} />
+              <StockRow key={item.ticker} item={item} onSelect={onSelect} onVisible={onVisible} />
             ))}
           </tbody>
         </table>
@@ -46,7 +48,7 @@ export const StockList: React.FC<StockListProps> = ({ items, onSelect }) => {
       {/* Mobile/Tablet View */}
       <div className="lg:hidden space-y-4">
         {items.map((item) => (
-          <StockCard key={item.ticker} item={item} onSelect={onSelect} />
+          <StockCard key={item.ticker} item={item} onSelect={onSelect} onVisible={onVisible} />
         ))}
       </div>
     </div>
@@ -54,103 +56,125 @@ export const StockList: React.FC<StockListProps> = ({ items, onSelect }) => {
 };
 
 // Optimized Row Component
-const StockRow = React.memo(({ item, onSelect }: { item: StockJudgment, onSelect: (i: StockJudgment) => void }) => (
-  <tr 
-    onClick={() => onSelect(item)}
-    className="group border-b border-slate-50 dark:border-slate-800/20 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer transition-all"
-  >
-    <td className="px-8 py-6">
-      <div className="flex items-center gap-4">
-        <div className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-xs border border-slate-800 shadow-sm group-hover:scale-110 transition-transform">
-          {item.ticker}
-        </div>
-        <div className="space-y-1">
-          <div className="text-sm font-black text-slate-800 dark:text-white leading-tight">{item.companyName}</div>
-          <div className="flex items-center gap-3">
-             <span className="text-[11px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toLocaleString()}円</span>
-             <SyncStatusIndicator status={item.syncStatus} />
+const StockRow = React.memo(({ item, onSelect, onVisible }: { item: StockJudgment, onSelect: (i: StockJudgment) => void, onVisible?: (t: string) => void }) => {
+  const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
+
+  React.useEffect(() => {
+    if (inView && onVisible && (item.syncStatus === "pending" || item.syncStatus === "failed")) {
+      onVisible(item.ticker);
+    }
+  }, [inView, item.ticker, item.syncStatus, onVisible]);
+
+  return (
+    <tr 
+      ref={ref}
+      onClick={() => onSelect(item)}
+      className="group border-b border-slate-50 dark:border-slate-800/20 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer transition-all"
+    >
+      <td className="px-8 py-6">
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-xs border border-slate-800 shadow-sm group-hover:scale-110 transition-transform">
+            {item.ticker}
+          </div>
+          <div className="space-y-1">
+            <div className="text-sm font-black text-slate-800 dark:text-white leading-tight">{item.companyName}</div>
+            <div className="flex items-center gap-3">
+               <span className="text-[11px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toLocaleString()}円</span>
+               <SyncStatusIndicator status={item.syncStatus} />
+            </div>
           </div>
         </div>
-      </div>
-    </td>
-    <td className="px-6 py-6 w-32">
-       <div className="h-10 w-24">
-         <MiniChart data={item.chartData} trend={item.technicalTrend} />
-       </div>
-    </td>
-    <td className="px-6 py-6">
-      <div className="flex items-center justify-center gap-2">
-        <ScoreBadge score={item.technicalScore} label="T" />
-        <ScoreBadge score={item.fundamentalScore} label="F" />
-      </div>
-    </td>
-    <td className="px-6 py-6">
-      <div className="flex items-center justify-center gap-2">
-        <ScoreBadge score={item.valuationScore} label="V" />
-        <ScoreBadge score={item.shareholderReturnScore} label="D" />
-      </div>
-    </td>
-    <td className="px-6 py-6">
-      <StockSignalBadge label={item.signalLabel} />
-    </td>
-    <td className="px-6 py-6 space-y-3">
-      <StockCertaintyIndicator certainty={item.certainty} />
-      <StockSuitabilityBadge suitability={item.holdSuitability} />
-    </td>
-    <td className="px-8 py-6 text-right">
-      <div className="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors">
-        <ChevronRight size={18} className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
-      </div>
-    </td>
-  </tr>
-));
+      </td>
+      <td className="px-6 py-6 w-32">
+         <div className="h-10 w-24">
+           <MiniChart data={item.chartData} trend={item.technicalTrend} />
+         </div>
+      </td>
+      <td className="px-6 py-6">
+        <div className="flex items-center justify-center gap-2">
+          <ScoreBadge score={item.technicalScore} label="T" />
+          <ScoreBadge score={item.fundamentalScore} label="F" />
+        </div>
+      </td>
+      <td className="px-6 py-6">
+        <div className="flex items-center justify-center gap-2">
+          <ScoreBadge score={item.valuationScore} label="V" />
+          <ScoreBadge score={item.shareholderReturnScore} label="D" />
+        </div>
+      </td>
+      <td className="px-6 py-6">
+        <StockSignalBadge label={item.signalLabel} />
+      </td>
+      <td className="px-6 py-6 space-y-3">
+        <StockCertaintyIndicator certainty={item.certainty} />
+        <StockSuitabilityBadge suitability={item.holdSuitability} />
+      </td>
+      <td className="px-8 py-6 text-right">
+        <div className="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors">
+          <ChevronRight size={18} className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+        </div>
+      </td>
+    </tr>
+  );
+});
 
 // Optimized Card Component
-const StockCard = React.memo(({ item, onSelect }: { item: StockJudgment, onSelect: (i: StockJudgment) => void }) => (
-  <motion.div 
-    whileTap={{ scale: 0.98 }}
-    onClick={() => onSelect(item)}
-    className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] shadow-sm space-y-5"
-  >
-    <div className="flex items-start justify-between">
-      <div className="flex items-center gap-4">
-        <div className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-xs">
-          {item.ticker}
-        </div>
-        <div>
-          <h3 className="text-sm font-black text-slate-800 dark:text-white leading-tight">{item.companyName}</h3>
-          <div className="flex items-center gap-2 mt-1">
-            <p className="text-[11px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toLocaleString()}円</p>
-            <SyncStatusIndicator status={item.syncStatus} />
+const StockCard = React.memo(({ item, onSelect, onVisible }: { item: StockJudgment, onSelect: (i: StockJudgment) => void, onVisible?: (t: string) => void }) => {
+  const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
+
+  React.useEffect(() => {
+    if (inView && onVisible && (item.syncStatus === "pending" || item.syncStatus === "failed")) {
+      onVisible(item.ticker);
+    }
+  }, [inView, item.ticker, item.syncStatus, onVisible]);
+
+  return (
+    <motion.div 
+      ref={ref}
+      whileTap={{ scale: 0.98 }}
+      onClick={() => onSelect(item)}
+      className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] shadow-sm space-y-5"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-xs">
+            {item.ticker}
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-slate-800 dark:text-white leading-tight">{item.companyName}</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-[11px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toLocaleString()}円</p>
+              <SyncStatusIndicator status={item.syncStatus} />
+            </div>
           </div>
         </div>
+        <StockSignalBadge label={item.signalLabel} />
       </div>
-      <StockSignalBadge label={item.signalLabel} />
-    </div>
 
-    <div className="flex items-center justify-between py-4 border-y border-slate-50 dark:border-slate-800/50">
-       <div className="h-10 w-28">
-         <MiniChart data={item.chartData} trend={item.technicalTrend} />
-       </div>
-       <div className="flex flex-col items-end gap-2">
-         <StockCertaintyIndicator certainty={item.certainty} />
-         <StockSuitabilityBadge suitability={item.holdSuitability} />
-       </div>
-    </div>
-    
-    <div className="flex items-center justify-between pt-1">
-      <div className="flex gap-1.5">
-        <ScoreBadge score={item.technicalScore} label="T" />
-        <ScoreBadge score={item.fundamentalScore} label="F" />
-        <ScoreBadge score={item.valuationScore} label="V" />
-        <ScoreBadge score={item.shareholderReturnScore} label="D" />
+      <div className="flex items-center justify-between py-4 border-y border-slate-50 dark:border-slate-800/50">
+         <div className="h-10 w-28">
+           <MiniChart data={item.chartData} trend={item.technicalTrend} />
+         </div>
+         <div className="flex flex-col items-end gap-2">
+           <StockCertaintyIndicator certainty={item.certainty} />
+           <StockSuitabilityBadge suitability={item.holdSuitability} />
+         </div>
       </div>
-      <div className="flex items-center gap-1 text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1.5 rounded-xl">
-         詳細分析を見る <ChevronRight size={12} />
+      
+      <div className="flex items-center justify-between pt-1">
+        <div className="flex gap-1.5">
+          <ScoreBadge score={item.technicalScore} label="T" />
+          <ScoreBadge score={item.fundamentalScore} label="F" />
+          <ScoreBadge score={item.valuationScore} label="V" />
+          <ScoreBadge score={item.shareholderReturnScore} label="D" />
+        </div>
+        <div className="flex items-center gap-1 text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1.5 rounded-xl">
+           詳細分析を見る <ChevronRight size={12} />
+        </div>
       </div>
-    </div>
-  </motion.div>
-));
+    </motion.div>
+  );
+});
 
 StockRow.displayName = "StockRow";
 StockCard.displayName = "StockCard";
