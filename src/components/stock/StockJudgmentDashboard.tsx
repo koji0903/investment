@@ -37,6 +37,42 @@ export const StockJudgmentDashboard = () => {
   const [syncStats, setSyncStats] = useState({ total: 0, completed: 0, syncing: 0, pending: 0, progress: 0 });
   const isMountedRef = useRef(true);
 
+  // 同期用のプレースホルダー生成
+  const createEmptyJudgment = (ticker: string, name: string): StockJudgment => ({
+    ticker,
+    companyName: name,
+    sector: "読み込み中...",
+    currentPrice: 0,
+    technicalScore: 0,
+    technicalTrend: "neutral",
+    technicalReasons: [],
+    fundamentalScore: 0,
+    growthProfile: "stable",
+    financialHealth: "medium",
+    fundamentalReasons: [],
+    valuationScore: 0,
+    valuationLabel: "fair",
+    valuationReasons: [],
+    shareholderReturnScore: 0,
+    dividendProfile: "stable_dividend",
+    holdSuitability: "neutral",
+    shareholderReasons: [],
+    totalScore: 0,
+    signalLabel: "中立",
+    certainty: 0,
+    summaryComment: "現在データを同期しています...",
+    updatedAt: new Date().toISOString(),
+    syncStatus: "pending",
+    chartData: [],
+    valuationMetrics: {
+      per: 0,
+      pbr: 0,
+      dividendYield: 0,
+      roe: 0,
+      equityRatio: 0
+    }
+  });
+
   // 1銘柄ずつの順次同期ループ
   const syncStocksOneByOne = async (tickers: string[]) => {
     if (syncInProgressRef.current) return;
@@ -82,10 +118,8 @@ export const StockJudgmentDashboard = () => {
     try {
       const data = await StockService.getJudgments();
       if (isMountedRef.current) {
-        setAllJudgments(data || []);
-        setLoading(false);
-        
         if (data && data.length > 0) {
+          setAllJudgments(data as StockJudgment[]);
           const latest = [...data].sort((a, b) => 
             new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
           )[0]?.updatedAt;
@@ -100,9 +134,12 @@ export const StockJudgmentDashboard = () => {
             syncStocksOneByOne(staleOrUncompleted.map(d => d.ticker));
           }
         } else {
-          // 初期同期
+          // 初期同期用のプレースホルダーを即座に表示
+          const placeholders = MONITORING_STOCKS.map(s => createEmptyJudgment(s.ticker, s.name));
+          setAllJudgments(placeholders);
           syncStocksOneByOne(MONITORING_STOCKS.map(s => s.ticker));
         }
+        setLoading(false);
       }
     } catch (err) {
       if (isMountedRef.current) {
