@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
+const yf = new YahooFinance();
 import { getTechnicalStatus } from "@/lib/technicalAnalysis";
 
 // 銘柄コードの正規化ロジック
@@ -53,8 +54,8 @@ async function getMarketData(requestedSymbols: string[] = []) {
     const quoteResults: { symbol: string; price: number | null; currency: string | null; changePercent: number }[] = [];
     for (const chunk of chunks) {
       try {
-        // yahooFinance.quote は配列を受け取りバルク取得が可能
-        const results: any = await yahooFinance.quote(chunk);
+        // yf.quote は配列を受け取りバルク取得が可能
+        const results: any = await yf.quote(chunk);
         
         // 単体と配列の両方のレスポンス形式に対応
         const resultsArray = Array.isArray(results) ? results : [results];
@@ -117,7 +118,7 @@ async function getMarketData(requestedSymbols: string[] = []) {
           const startDate = new Date();
           startDate.setDate(startDate.getDate() - 40);
 
-          const historical = await yahooFinance.historical(pair, {
+          const historical = await yf.historical(pair, {
             period1: startDate,
             period2: endDate,
             interval: "1d"

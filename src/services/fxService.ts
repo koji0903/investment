@@ -104,6 +104,20 @@ export const FXService = {
   },
 
   /**
+   * 特定の通貨ペアのみを同期
+   */
+  syncPair: async (pairCode: string): Promise<boolean> => {
+    try {
+      const { syncSpecificPairAction } = await import("@/lib/actions/fx");
+      const result = await syncSpecificPairAction(pairCode);
+      return result.success;
+    } catch (error) {
+      console.error(`Error syncing pair ${pairCode}:`, error);
+      return false;
+    }
+  },
+
+  /**
    * ダミーデータを生成して Firestore に保存 (初期化/テスト用)
    */
   generateAndSaveDummyData: async (): Promise<FXJudgment[]> => {

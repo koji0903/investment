@@ -12,7 +12,8 @@ import {
   calculateStockTotalJudgment 
 } from "@/utils/stock/stock_utils_bridge";
 
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
+const yf = new YahooFinance();
 
 const MAJOR_TICKERS = [
   "7203", "8306", "9984", "9432", "8058", "4063", "6758", "2914", "1605", "4502",
@@ -29,14 +30,14 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
   const fetchTasks = MAJOR_TICKERS.map(async (ticker) => {
     try {
       const sym = ticker + ".T";
-      const tick: any = await (yahooFinance as any).quote(sym).catch(() => null);
+      const tick: any = await yf.quote(sym).catch(() => null);
       if (!tick) return null;
 
-      const summs: any = await (yahooFinance as any).quoteSummary(sym, {
+      const summs: any = await yf.quoteSummary(sym, {
         modules: ["defaultKeyStatistics", "financialData", "summaryDetail"]
       }).catch(() => null);
 
-      const hist: any[] = await (yahooFinance as any).historical(sym, {
+      const hist: any[] = await yf.historical(sym, {
         period1: start, period2: end, interval: "1d"
       }).catch(() => []);
 

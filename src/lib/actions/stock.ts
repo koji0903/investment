@@ -1,6 +1,7 @@
 "use server";
 
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
+const yf = new YahooFinance();
 import { StockJudgment, StockFundamental, StockPairMaster } from "@/types/stock";
 import { analyzeStockTechnical } from "@/utils/stock/technical";
 import { analyzeStockFundamental } from "@/utils/stock/fundamental";
@@ -35,7 +36,7 @@ export async function syncStockRealData() {
         
         let hist: any[] | null = null;
         try {
-          const r = await (yahooFinance as any)["histo" + "rical"](sym, {
+          const r = await yf.historical(sym, {
             period1: start,
             period2: end,
             interval: "1d"
@@ -45,13 +46,13 @@ export async function syncStockRealData() {
           return null;
         }
 
-        const tick: any = await (yahooFinance as any)["quo" + "te"](sym).catch(() => null);
+        const tick: any = await yf.quote(sym).catch(() => null);
         
-        const m1 = "defaultKey" + "Statistics";
-        const m2 = "fin" + "ancial" + "Data";
-        const m3 = "summary" + "Detail";
+        const m1 = "defaultKeyStatistics";
+        const m2 = "financialData";
+        const m3 = "summaryDetail";
         
-        const summs: any = await (yahooFinance as any)["quo" + "teSummary"](sym, {
+        const summs: any = await yf.quoteSummary(sym, {
           modules: [m1, m2, m3]
         }).catch(() => null);
 

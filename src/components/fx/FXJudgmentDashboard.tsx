@@ -48,11 +48,28 @@ export const FXJudgmentDashboard = () => {
               new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
             )[0]?.updatedAt;
             setLastUpdated(latest);
+
+            // 取得したデータのうち、未完了(pending/syncing)のものをクライアント側から順次同期
+            const uncompleted = initialData.filter(d => d.syncStatus !== "completed");
+            if (uncompleted.length > 0) {
+              syncPairsOneByOne(uncompleted.map(d => d.pairCode));
+            }
           }
         }
       } catch (err) {
         console.error("Initial data load failed:", err);
         if (isMounted) setLoading(false);
+      }
+    };
+
+    // クライアント主導の個別同期
+    const syncPairsOneByOne = async (pairCodes: string[]) => {
+      for (const code of pairCodes) {
+        if (!isMounted) break;
+        console.log(`[FX] Client-side sync for ${code} starting...`);
+        await FXService.syncPair(code);
+        // 次の同期まで少し待機 (API負荷軽減)
+        await new Promise(r => setTimeout(r, 800));
       }
     };
 

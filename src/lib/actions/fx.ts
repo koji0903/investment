@@ -1,6 +1,7 @@
 "use server";
 
-import yahooFinance from "yahoo-finance2";
+import YahooFinance from "yahoo-finance2";
+const yf = new YahooFinance();
 import { FXJudgment, FXPairMaster, CurrencyFundamental } from "@/types/fx";
 import { analyzeTechnical } from "@/utils/fx/technical";
 import { analyzeFundamental } from "@/utils/fx/fundamental";
@@ -8,9 +9,10 @@ import { evaluateSwap, calculateTotalJudgment } from "@/utils/fx/scoring";
 import { calculateEnergyAnalysis } from "@/utils/fx/energy";
 import { calculateEntryTiming } from "@/utils/fx/entry";
 import { calculatePositionSizing } from "@/utils/fx/position";
-import { calculateATR } from "@/lib/technicalAnalysis";
+import { calculateATR, calculatePivotPoints } from "@/lib/technicalAnalysis";
 import { db } from "@/lib/firebase";
-import { doc, setDoc, getDocs, collection, query } from "firebase/firestore";
+import { doc, setDoc, getDocs, collection, query, orderBy } from "firebase/firestore";
+import { consolidateJudgments } from "@/utils/fx/scoring";
 
 // 対象とする通貨ペア
 const SUPPORTED_PAIRS: FXPairMaster[] = [
@@ -76,11 +78,8 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
   let judgment: FXJudgment | null = null;
   
   try {
-    // 1. 同期中ステータスで一旦保存 (既存データがある場合)
-    const docRef = doc(db, "fx_judgments", pair.pairCode.replace("/", "-"));
-    
-    // Yahoo Finance からデータを取得
-    const historical: any[] = await (yahooFinance as any).historical(symbol, {
+    // 1. Yahoo Finance からデータを取得
+    const historical = await yf.historical(symbol, {
       period1: start,
       period2: end,
       interval: "1d"
@@ -109,7 +108,6 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
       );
 
       // 相場エネルギー分析を追加
-      const { calculatePivotPoints } = await import("@/lib/technicalAnalysis");
       const lastDay = historical[historical.length - 1];
       const pivots = calculatePivotPoints(lastDay.high, lastDay.low, lastDay.close);
       judgment.energyAnalysis = calculateEnergyAnalysis(prices, highs, lows, currentPrice, pivots);
@@ -131,18 +129,18 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
       );
 
       // 統合と矛盾解消
-      const { consolidateJudgments } = await import("@/utils/fx/scoring");
       judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
       
       judgment.syncStatus = "completed";
       judgment.lastSyncAt = new Date().toISOString();
+    } else {
+      throw new Error(`Insufficient historical data for ${pair.pairCode} (found ${historical?.length || 0} days)`);
     }
-  } catch (e) {
-    console.error(`Sync error for ${pair.pairCode}:`, e);
-  }
-
-  // エラー時または取得不能時はフォールバック (ただし既存データがあればそれを捨てるのは良くないので検討)
-  if (!judgment) {
+  } catch (e: any) {
+    console.error(`[FX] Sync error for ${pair.pairCode}:`, e.message);
+    const errorMessage = e.message || "同期エラー";
+    
+    // エラー時はフォールバックを作成
     const isJPY = pair.quoteCurrency === "JPY";
     const dummyPrice = isJPY ? 150.0 + (Math.random() * 2) : 1.1 + (Math.random() * 0.05);
     const swaps = getSemiRealSwaps(pair.pairCode);
@@ -152,10 +150,6 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
       FIXED_CURRENCY_FUNDAMENTALS[pair.quoteCurrency]
     );
     
-    const { calculateEnergyAnalysis } = await import("@/utils/fx/energy");
-    const { calculateEntryTiming } = await import("@/utils/fx/entry");
-    const { consolidateJudgments } = await import("@/utils/fx/scoring");
-
     const energy = calculateEnergyAnalysis([dummyPrice], [dummyPrice], [dummyPrice], dummyPrice);
     
     judgment = {
@@ -178,14 +172,14 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
       totalScore: Math.round(fundamental.score * 0.4 + swapEval.score * 0.2),
       signalLabel: "中立",
       confidence: "低",
-      summaryComment: "現在リアルタイムデータを同期中です。ファンダメンタル分析は最新のマクロ指標に基づいています。",
+      summaryComment: `同期エラー: ${errorMessage}。現在再試行の待機中です。`,
       shortTermSignal: "中立",
       mediumTermSignal: "中立",
       suitability: "様子見推奨",
       energyAnalysis: energy,
       certainty: 10,
       safetyScore: 0,
-      syncStatus: "syncing",
+      syncStatus: "failed",
       updatedAt: new Date().toISOString()
     };
 
@@ -197,29 +191,44 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
   }
 
   // 保存
-  await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), judgment);
-  return judgment;
+  if (judgment) {
+    await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), judgment);
+  }
+  return judgment!;
 }
 
 /**
- * 実データを非同期に同期を開始する。クライアントを待たせない。
+ * 特定の通貨ペアのみを同期する Server Action
+ */
+export async function syncSpecificPairAction(pairCode: string) {
+  const pair = SUPPORTED_PAIRS.find(p => p.pairCode === pairCode);
+  if (!pair) return { success: false, message: "Unsupported pair" };
+  
+  try {
+    const result = await syncSpecificPair(pair);
+    return { success: true, data: JSON.parse(JSON.stringify(result)) };
+  } catch (err: any) {
+    console.error(`Sync specific pair failed for ${pairCode}:`, err);
+    return { success: false, message: err.message };
+  }
+}
+
+/**
+ * 実データを非同期に同期を開始する
  */
 export async function syncFXRealData() {
-  // バックグラウンドで同期を開始 (await しない)
-  // 注意: Next.js の Server Actions では return 後の実行が保証されない場合があるが、
-  // この環境では単純な非同期呼び出しで継続を試みる。
   (async () => {
-    for (const pair of SUPPORTED_PAIRS) {
-      await syncSpecificPair(pair);
-      await new Promise(r => setTimeout(r, 100)); // レート制限回避
+    try {
+      for (const pair of SUPPORTED_PAIRS) {
+        await syncSpecificPair(pair);
+        await new Promise(r => setTimeout(r, 200)); 
+      }
+    } catch (err) {
+      console.error("Background sync fatal error:", err);
     }
   })().catch(err => console.error("Background sync failure:", err));
 
   return { success: true, message: "Background sync started" };
-}
-
-function diffToDirection(buySwap: number): any {
-  return buySwap > 0 ? "long_positive" : buySwap < 0 ? "short_positive" : "neutral";
 }
 
 /**
@@ -286,24 +295,13 @@ export async function getFXJudgmentsAction(): Promise<FXJudgment[]> {
     // 件数が足りない場合、または全くない（権限エラー含む）場合は同期を走らせる
     if (data.length < SUPPORTED_PAIRS.length) {
       console.log(`[FX] Data count incomplete (${data.length}/21). Triggering background-sync...`);
-      syncFXRealData(); // 非同期で実行
+      syncFXRealData(); 
     }
 
-    // クライアントに渡す前にシリアライズ可能にする
     return JSON.parse(JSON.stringify(mergedData.sort((a, b) => b.totalScore - a.totalScore)));
   } catch (err) {
     console.error("Critical error in getFXJudgmentsAction:", err);
-    // 最終手段として同期を試みてその場でFirestoreを再取得
-    try {
-      await syncFXRealData();
-      const finalSnapshot = await getDocs(collection(db, "fx_judgments")).catch(() => null);
-      const finalData = finalSnapshot && !finalSnapshot.empty 
-        ? finalSnapshot.docs.map(doc => doc.data() as FXJudgment) 
-        : [];
-      return JSON.parse(JSON.stringify(finalData));
-    } catch {
-      return [];
-    }
+    return [];
   }
 }
 
