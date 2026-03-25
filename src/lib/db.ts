@@ -499,6 +499,30 @@ export const generateDemoData = async (uid: string, portfolioId: string = "defau
     });
   });
 
+  // 追加: デモ用の成長指標を生成
+  const growthRef = doc(db, "users", uid, "portfolios", portfolioId, "analysis", "growth");
+  batch.set(growthRef, {
+    cagr: 12.5,
+    returnRate: 15.8,
+    sharpeRatio: 1.45,
+    maxDrawdown: 6.2,
+    lastCalculated: new Date().toISOString(),
+    updatedAt: serverTimestamp()
+  });
+
+  // 追加: デモ用のポートフォリオメトリクス（履歴）を生成
+  const metricsCol = collection(db, "users", uid, "portfolios", portfolioId, "portfolio_metrics");
+  const metricsRef = doc(metricsCol);
+  batch.set(metricsRef, {
+    total: 82,
+    diversification: 85,
+    risk: 78,
+    efficiency: 91,
+    growth: 80,
+    consistency: 75,
+    updatedAt: serverTimestamp()
+  });
+
   return batch.commit();
 };
 

@@ -23,7 +23,7 @@ export const FXJudgmentLinkCard = () => {
               <Zap size={12} className="text-white" fill="currentColor" />
               Analyze Now
             </div>
-            <h2 className="text-2xl md:text-3xl font-black tracking-tighter">FX 投資判断エンジン</h2>
+            <h2 className="text-2xl md:text-3xl font-black tracking-tighter whitespace-nowrap">FX 投資判断エンジン</h2>
             <p className="text-sm font-bold text-orange-50/80 max-w-sm leading-relaxed">
               テクニカル・ファンダメンタル・スワップを統合分析。短期売買と中長期保有の優位性をAIが即座に判定。
             </p>

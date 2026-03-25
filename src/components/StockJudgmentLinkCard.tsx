@@ -32,8 +32,8 @@ export const StockJudgmentLinkCard = () => {
           <div className="space-y-4">
             <div className="space-y-1">
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400 dark:text-indigo-500">Analysis Engine</span>
-              <h2 className="text-2xl md:text-3xl font-black tracking-tight leading-tight">
-                日本株投資<br />判断エンジン
+              <h2 className="text-2xl md:text-3xl font-black tracking-tight leading-tight whitespace-nowrap">
+                日本株投資判断エンジン
               </h2>
             </div>
             

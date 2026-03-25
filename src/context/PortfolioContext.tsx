@@ -22,7 +22,7 @@ import {
   saveAsset, 
   generateDemoData 
 } from "@/lib/db";
-import { updateDoc, doc } from "firebase/firestore";
+import { setDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 interface AnalysisSummary {
@@ -198,10 +198,10 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         // 価格に一定以上の変化があった場合のみ保存 (0.1%以上の変化)
         if (freshPrice && Math.abs(freshPrice - asset.currentPrice) / (asset.currentPrice || 1) > 0.001) {
           const assetRef = doc(db, "users", uid, "portfolios", portfolioId, "assets", asset.id);
-          await updateDoc(assetRef, {
+          await setDoc(assetRef, {
             currentPrice: freshPrice,
             updatedAt: new Date().toISOString()
-          });
+          }, { merge: true });
         }
       }
     } catch (e) {
@@ -293,11 +293,11 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         newQuantity = Math.max(0, targetAsset.quantity - newTx.quantity);
       }
 
-      await updateDoc(doc(db, "users", user.uid, "portfolios", portfolioId, "assets", targetAsset.id), {
+      await setDoc(doc(db, "users", user.uid, "portfolios", portfolioId, "assets", targetAsset.id), {
         quantity: newQuantity,
         averageCost: newAverageCost,
         currentPrice: prices[targetAsset.symbol] || targetAsset.currentPrice
-      });
+      }, { merge: true });
     } else if (newTx.type === "buy") {
       let category: any = "株";
       const sym = newTx.assetId.toUpperCase();
@@ -388,10 +388,10 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       return;
     }
     if (!user) return;
-    await updateDoc(doc(db, "users", user.uid, "portfolios", portfolioId, "assets", assetId), {
+    await setDoc(doc(db, "users", user.uid, "portfolios", portfolioId, "assets", assetId), {
       ...update,
       updatedAt: new Date().toISOString()
-    });
+    }, { merge: true });
   };
 
   const deleteAsset = async (assetId: string) => {
