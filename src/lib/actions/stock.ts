@@ -19,7 +19,7 @@ import {
   orderBy 
 } from "firebase/firestore";
 
-// 主要銘柄リストの拡張 (日経225/TOPIX30級)
+// 主要銘柄リストの拡張
 const STKS: StockPairMaster[] = [
   { ticker: "7203", name: "トヨタ", sector: "輸送用機器" },
   { ticker: "8306", name: "三菱UFJ", sector: "銀行業" },
@@ -68,43 +68,25 @@ const STKS: StockPairMaster[] = [
   { ticker: "6098", name: "リクルート", sector: "サービス業" },
 ];
 
-/**
- * 銘柄の基本情報を取得する (オンデマンド用)
- */
 export async function getStockBasicInfoAction(ticker: string): Promise<{ success: boolean; data?: StockPairMaster; message?: string }> {
   try {
     const sym = ticker.endsWith(".T") ? ticker : ticker + ".T";
     const plainTicker = ticker.replace(".T", "");
-    
-    // 既存リストにあればそれを返す
     const existing = STKS.find(s => s.ticker === plainTicker);
     if (existing) return { success: true, data: existing };
-
     const info = await yf.quote(sym).catch(() => null);
     if (!info) return { success: false, message: "銘柄が見つかりませんでした" };
-    
-    return {
-      success: true,
-      data: {
-        ticker: plainTicker,
-        name: info.longName || info.shortName || plainTicker,
-        sector: (info as any).sector || "その他"
-      }
-    };
-  } catch (err: any) {
-    return { success: false, message: err.message };
-  }
+    return { success: true, data: { ticker: plainTicker, name: info.longName || info.shortName || plainTicker, sector: (info as any).sector || "その他" } };
+  } catch (err: any) { return { success: false, message: err.message }; }
 }
 
 /**
- * 特定の銘柄を同期・分析する (Server Action)
+ * 特定の銘柄を同期・分析する (Server Action) - Robust Version
  */
 export async function syncSpecificStockAction(ticker: string): Promise<{ success: boolean; data?: StockJudgment; message?: string }> {
   try {
     const sym = ticker.endsWith(".T") ? ticker : ticker + ".T";
     const plainTicker = ticker.replace(".T", "");
-
-    // 銘柄基本情報の確定
     let stk = STKS.find(s => s.ticker === plainTicker);
     if (!stk) {
       const basic = await getStockBasicInfoAction(plainTicker);
@@ -115,62 +97,62 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
     const docRef = doc(db, "japanese_stocks", plainTicker);
     const docSnap = await getDoc(docRef);
 
-    // 6時間キャッシュチェック
+    // 1時間以内のキャッシュは即時返す
     if (docSnap.exists()) {
       const existing = docSnap.data() as StockJudgment;
       const lastUpdated = new Date(existing.updatedAt).getTime();
-      const sixHours = 6 * 60 * 60 * 1000;
-      if (Date.now() - lastUpdated < sixHours && existing.syncStatus === 'completed') {
+      const oneHour = 1 * 60 * 60 * 1000;
+      if (Date.now() - lastUpdated < oneHour && existing.syncStatus === 'completed') {
         return { success: true, data: JSON.parse(JSON.stringify(existing)) };
       }
     }
 
-    // 1年間のチャートデータ取得 (テクニカル分析用)
+    // 1. 株価チャート取得 (必須)
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - 365);
+    
+    let chartRes;
+    try {
+      chartRes = await yf.chart(sym, { period1: start, period2: end, interval: "1d" });
+    } catch (err: any) {
+      console.error(`[Sync] Chart fetch error for ${ticker}:`, err.message);
+      return { success: false, message: `株価情報の取得に失敗しました: ${err.message}` };
+    }
 
-    // 株価データと財務サマリーを並列で取得
-    const [chartRes, summary] = await Promise.all([
-      yf.chart(sym, {
-        period1: start,
-        period2: end,
-        interval: "1d"
-      }).catch(err => {
-        console.warn(`[Sync] Chart fetch fail for ${ticker}:`, err.message);
-        return null;
-      }),
-      yf.quoteSummary(sym, {
-        modules: ["defaultKeyStatistics", "financialData", "summaryDetail"]
-      }).catch(err => {
-        console.warn(`[Sync] Summary fetch fail for ${ticker}:`, err.message);
-        return null;
-      })
-    ]);
-
-    if (!chartRes || !chartRes.quotes || chartRes.quotes.length < 30) {
-      return { success: false, message: "株価データまたは財務情報の取得に失敗しました" };
+    if (!chartRes || !chartRes.quotes || chartRes.quotes.length < 10) {
+      return { success: false, message: "有効な株価データがありませんでした" };
     }
 
     const quotes = chartRes.quotes.filter(q => q.close !== null && q.close !== undefined);
     const prices = quotes.map(q => q.close as number);
     const currentPrice = prices[prices.length - 1];
 
+    // 2. 財務サマリー取得 (Soft Fail 許容)
+    let summary: any = null;
+    let syncError: string | undefined = undefined;
+    try {
+      summary = await yf.quoteSummary(sym, {
+        modules: ["defaultKeyStatistics", "financialData", "summaryDetail"]
+      });
+    } catch (err: any) {
+      console.warn(`[Sync] Summary fetch soft failure for ${ticker}:`, err.message);
+      syncError = `財務情報の取得に失敗しました(${err.message})。テクニカル分析を中心に判定しています。`;
+    }
+
     const s = (summary?.defaultKeyStatistics || {}) as any;
     const f = (summary?.financialData || {}) as any;
     const d = (summary?.summaryDetail || {}) as any;
 
     const fundamentalData: StockFundamental = {
-      ticker: stk.ticker,
-      companyName: stk.name,
-      sector: stk.sector,
+      ticker: stk.ticker, companyName: stk.name, sector: stk.sector,
       revenueGrowth: (f.revenueGrowth?.raw || 0) * 100,
       operatingProfitGrowth: (f.ebitdaMargins?.raw || 0.1) * 100,
       epsGrowth: (s.forwardEps?.raw / (s.trailingEps?.raw || 1) - 1) * 100 || 5,
       roe: (f.returnOnEquity?.raw || 0) * 100,
       roa: (f.returnOnAssets?.raw || 0) * 100,
       operatingMargin: (f.operatingMargins?.raw || 0) * 100,
-      equityRatio: f.totalCash?.raw / (f.totalDebt?.raw || 1) * 100 || 50, // 簡易
+      equityRatio: (f.totalCash?.raw / (f.totalDebt?.raw || 1) * 100) || 50,
       interestBearingDebt: f.totalDebt?.raw || 0,
       operatingCashflow: f.operatingCashflow?.raw || 0,
       freeCashflow: f.freeCashflow?.raw || 0,
@@ -194,28 +176,19 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
       analyzeStockShareholderReturn(fundamentalData)
     );
 
-    // チャートデータ (UI用: 180日分)
-    jud.chartData = quotes.slice(-180).map(q => ({
-      date: q.date.toISOString().split('T')[0],
-      value: q.close as number
-    }));
-
-    // バリュエーションメトリクス (UI表示用)
-    jud.valuationMetrics = {
-      per: fundamentalData.per,
-      pbr: fundamentalData.pbr,
-      dividendYield: fundamentalData.dividendYield,
-      roe: fundamentalData.roe,
-      equityRatio: fundamentalData.equityRatio
-    };
+    jud.chartData = quotes.slice(-180).map(q => ({ date: q.date.toISOString().split('T')[0], value: q.close as number }));
+    jud.valuationMetrics = { per: fundamentalData.per, pbr: fundamentalData.pbr, dividendYield: fundamentalData.dividendYield, roe: fundamentalData.roe, equityRatio: fundamentalData.equityRatio };
+    jud.syncStatus = "completed";
+    jud.syncError = syncError;
+    jud.updatedAt = new Date().toISOString();
 
     await setDoc(docRef, jud);
     await setDoc(doc(db, "japanese_stock_fundamentals", stk.ticker), fundamentalData);
 
     return { success: true, data: JSON.parse(JSON.stringify(jud)) };
   } catch (err: any) {
-    console.error(`[Stock] Sync error for ${ticker}:`, err);
-    return { success: false, message: err.message };
+    console.error(`[Stock] Critical sync error for ${ticker}:`, err);
+    return { success: false, message: `致命的なエラー: ${err.message}` };
   }
 }
 
@@ -234,21 +207,17 @@ export async function getStockJudgmentsAction() {
 export async function setStockSyncingAction(ticker: string) {
   try {
     const docRef = doc(db, "japanese_stocks", ticker);
-    await setDoc(docRef, { syncStatus: "syncing", updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(docRef, { syncStatus: "syncing", syncError: null, updatedAt: new Date().toISOString() }, { merge: true });
     return { success: true };
-  } catch (err) {
-    return { success: false };
-  }
+  } catch (err) { return { success: false }; }
 }
 
 export async function syncStockRealData(): Promise<{ success: boolean; count: number; data: StockJudgment[] }> {
+  // 実運用リストの上位15銘柄を同期
   const results: StockJudgment[] = [];
-  // 初期同期は主要45銘柄のうち上位15銘柄に絞る（制限回避）
   for (const stk of STKS.slice(0, 15)) {
     const res = await syncSpecificStockAction(stk.ticker);
-    if (res.success && res.data) {
-      results.push(res.data);
-    }
+    if (res.success && res.data) results.push(res.data);
   }
   return { success: true, count: results.length, data: results };
 }
