@@ -234,10 +234,10 @@ export const StockJudgmentDashboard = () => {
               <BarChart size={32} />
             </div>
             <div>
-              <h1 className="text-4xl md:text-5xl font-black text-slate-800 dark:text-white tracking-tight italic">Alpha Discovery <span className="text-indigo-600 not-italic">PRO</span></h1>
+              <h1 className="text-3xl md:text-5xl font-black text-slate-800 dark:text-white tracking-tight">日本株投資判断エンジン</h1>
               <div className="flex items-center gap-2 mt-2">
-                <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[9px] font-black text-slate-400 uppercase tracking-widest">v2.1 Stable</span>
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.3em]">AI-Powered Stock Engine</span>
+                <span className="px-2 py-0.5 bg-indigo-600 rounded text-[9px] font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-600/20">Alpha V2 PRO</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Market Intelligence Engine</span>
               </div>
             </div>
           </div>

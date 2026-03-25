@@ -182,8 +182,16 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
     jud.syncError = syncError;
     jud.updatedAt = new Date().toISOString();
 
-    await setDoc(docRef, jud);
-    await setDoc(doc(db, "japanese_stock_fundamentals", stk.ticker), fundamentalData);
+    // 3. Firestoreへの保存 (Soft Fail: 権限エラー等で失敗しても解析結果は返す)
+    try {
+      if (db && typeof db.type === 'string') { // dbが初期化されているか簡易チェック
+        await setDoc(docRef, jud);
+        await setDoc(doc(db, "japanese_stock_fundamentals", stk.ticker), fundamentalData);
+      }
+    } catch (fsErr: any) {
+      console.warn(`[Stock] Firestore save skipped or failed for ${ticker} (likely permission):`, fsErr.message);
+      // 特権エラーがあっても、メモリ上の解析結果はUIへ戻す
+    }
 
     return { success: true, data: JSON.parse(JSON.stringify(jud)) };
   } catch (err: any) {
@@ -196,10 +204,15 @@ export async function getStockJudgmentsAction() {
   try {
     const colRef = collection(db, "japanese_stocks");
     const q = query(colRef, orderBy("totalScore", "desc"));
-    const snap = await getDocs(q);
+    const snap = await getDocs(q).catch(err => {
+      console.warn("[Stock] Firestore read failed (likely permission):", err.message);
+      return null;
+    });
+
+    if (!snap || snap.empty) return [];
     return snap.docs.map(d => d.data() as StockJudgment);
   } catch (err) {
-    console.error("[Stock] Fetch error:", err);
+    console.error("[Stock] getStockJudgmentsAction error:", err);
     return [];
   }
 }
@@ -207,7 +220,8 @@ export async function getStockJudgmentsAction() {
 export async function setStockSyncingAction(ticker: string) {
   try {
     const docRef = doc(db, "japanese_stocks", ticker);
-    await setDoc(docRef, { syncStatus: "syncing", syncError: null, updatedAt: new Date().toISOString() }, { merge: true });
+    await setDoc(docRef, { syncStatus: "syncing", syncError: null, updatedAt: new Date().toISOString() }, { merge: true })
+      .catch(err => console.warn(`[Stock] setStockSyncingAction failed for ${ticker}:`, err.message));
     return { success: true };
   } catch (err) { return { success: false }; }
 }
