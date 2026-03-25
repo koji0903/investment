@@ -45,3 +45,12 @@ body {
   backface-visibility: hidden;
   perspective: 1000px;
 }
+/* 同期進捗バーなどのアニメーション */
+@keyframes slide {
+  from { background-position: 0 0; }
+  to { background-position: 40px 0; }
+}
+
+.animate-slide {
+  animation: slide 1s linear infinite;
+}

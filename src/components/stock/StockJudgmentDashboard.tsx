@@ -34,7 +34,14 @@ export const StockJudgmentDashboard = () => {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   
   const syncInProgressRef = useRef(false);
-  const [syncStats, setSyncStats] = useState({ total: 0, completed: 0, syncing: 0, pending: 0, progress: 0 });
+  const [syncStats, setSyncStats] = useState({ 
+    total: 0, 
+    completed: 0, 
+    syncing: 0, 
+    pending: 0, 
+    progress: 0,
+    currentName: "" as string | null
+  });
   const isMountedRef = useRef(true);
 
   // 同期用のプレースホルダー生成
@@ -104,11 +111,14 @@ export const StockJudgmentDashboard = () => {
           }
         } catch (err) {
           console.error(`[Stock] Sync error for ${ticker}:`, err);
+        } finally {
+          // 終了時にクリア（必要に応じて）
         }
         await new Promise(r => setTimeout(r, 600));
       }
     } finally {
       syncInProgressRef.current = false;
+      setSyncStats(prev => ({ ...prev, currentName: null }));
     }
   };
 
@@ -161,8 +171,14 @@ export const StockJudgmentDashboard = () => {
     const completed = allJudgments.filter(j => j.syncStatus === "completed").length;
     const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
     const pending = allJudgments.filter(j => !j.syncStatus || j.syncStatus === "pending").length;
-    const progress = Math.round((completed / total) * 100);
-    setSyncStats({ total, completed, syncing, pending, progress });
+    let progress = Math.round((completed / total) * 100);
+    if (progress === 0 && syncing > 0) progress = 5; // 最初の一歩を可視化
+    
+    // 現在解析中の銘柄名を取得
+    const currentItem = allJudgments.find(j => j.syncStatus === "syncing");
+    const currentName = currentItem ? `${currentItem.companyName} (${currentItem.ticker})` : null;
+
+    setSyncStats({ total, completed, syncing, pending, progress, currentName });
   }, [allJudgments]);
 
   const rankings = useMemo(() => {
@@ -210,17 +226,33 @@ export const StockJudgmentDashboard = () => {
         </Link>
       </div>
 
-      {!loading && syncStats.total > 0 && (
-        <div className="p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] space-y-5">
-           <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                 <Zap className={cn("text-indigo-500", syncStats.progress < 100 && "animate-pulse")} size={20} />
-                 <span className="text-sm font-black text-slate-800 dark:text-white">市場データ同期中 ({syncStats.progress}%)</span>
+      {!loading && syncStats.total > 0 && syncStats.progress < 100 && (
+        <div className="p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] space-y-5 shadow-xl shadow-indigo-500/5">
+           <div className="flex justify-between items-end">
+              <div className="space-y-1">
+                 <div className="flex items-center gap-3">
+                    <Zap className="text-indigo-500 animate-pulse" size={20} />
+                    <span className="text-sm font-black text-slate-800 dark:text-white">市場データ同期中 ({syncStats.progress}%)</span>
+                 </div>
+                 {syncStats.currentName && (
+                   <p className="text-[11px] font-bold text-indigo-500 animate-pulse ml-8">
+                     分析中: <span className="font-black">{syncStats.currentName}</span> ...
+                   </p>
+                 )}
               </div>
-              <span className="text-xs font-bold text-slate-400">完了: {syncStats.completed} / {syncStats.total}</span>
+              <div className="flex flex-col items-end gap-1">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress</span>
+                <span className="text-xs font-black text-slate-800 dark:text-white">{syncStats.completed} / {syncStats.total} 完了</span>
+              </div>
            </div>
-           <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-              <motion.div animate={{ width: `${syncStats.progress}%` }} className="h-full bg-indigo-500" />
+           <div className="relative h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: `${syncStats.progress}%` }} 
+                transition={{ type: "spring", stiffness: 50 }}
+                className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 to-blue-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]" 
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.15)_50%,rgba(255,255,255,0.15)_75%,transparent_75%,transparent)] bg-[length:20px_20px] animate-[slide_1s_linear_infinite]" />
            </div>
         </div>
       )}
