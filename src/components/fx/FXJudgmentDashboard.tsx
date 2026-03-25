@@ -33,24 +33,60 @@ export const FXJudgmentDashboard = () => {
   };
 
   useEffect(() => {
-    setLoading(true);
+    let isMounted = true;
+
+    // 初期データの取得
+    const loadInitialData = async () => {
+      setLoading(true);
+      try {
+        const initialData = await FXService.getPairs();
+        if (isMounted) {
+          setAllJudgments(initialData);
+          setLoading(false);
+          if (initialData.length > 0) {
+            const latest = [...initialData].sort((a, b) => 
+              new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+            )[0]?.updatedAt;
+            setLastUpdated(latest);
+          }
+        }
+      } catch (err) {
+        console.error("Initial data load failed:", err);
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    loadInitialData();
+
     // リアルタイム購読の開始
-    const unsubscribe = FXService.subscribePairs((data) => {
-      setAllJudgments(data);
-      if (data.length > 0) {
+    const unsubscribe = FXService.subscribePairs((realtimeData) => {
+      if (!isMounted) return;
+      
+      setAllJudgments(prev => {
+        // 初期データ（プレースホルダーを含む21件）があるはずなので、
+        // リアルタイムで届いたデータ（一部かもしれない）で上書きする。
+        if (realtimeData.length === 0) return prev;
+        
+        const dataMap = new Map(prev.map(d => [d.pairCode, d]));
+        realtimeData.forEach(d => {
+          dataMap.set(d.pairCode, d);
+        });
+
+        const merged = Array.from(dataMap.values());
+        return merged.sort((a, b) => b.totalScore - a.totalScore);
+      });
+
+      if (realtimeData.length > 0) {
         setLoading(false);
-        // 最も新しい更新日時を取得
-        const latest = [...data].sort((a, b) => 
+        const latest = [...realtimeData].sort((a, b) => 
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         )[0]?.updatedAt;
         setLastUpdated(latest);
       }
     });
 
-    // 初回の同期トリガー (バックグラウンド)
-    FXService.syncRealData().catch(console.error);
-
     return () => {
+      isMounted = false;
       if (unsubscribe) unsubscribe();
     };
   }, []);

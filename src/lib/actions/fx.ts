@@ -237,20 +237,60 @@ export async function getFXJudgmentsAction(): Promise<FXJudgment[]> {
       data = snapshot.docs.map(doc => doc.data() as FXJudgment);
     }
 
+    // 全てのサポートされているペアに対してデータを網羅する (マージ)
+    const dataMap = new Map(data.map(d => [d.pairCode, d]));
+    const mergedData: FXJudgment[] = SUPPORTED_PAIRS.map(pair => {
+      const existing = dataMap.get(pair.pairCode);
+      if (existing) return existing;
+
+      // 存在しない場合は「同期中/保留中」のプレースホルダーを生成
+      const isJPY = pair.quoteCurrency === "JPY";
+      const dummyPrice = isJPY ? 150.0 : 1.1;
+      const swaps = getSemiRealSwaps(pair.pairCode);
+      const fundamental = analyzeFundamental(
+        FIXED_CURRENCY_FUNDAMENTALS[pair.baseCurrency],
+        FIXED_CURRENCY_FUNDAMENTALS[pair.quoteCurrency]
+      );
+
+      return {
+        pairCode: pair.pairCode,
+        baseCurrency: pair.baseCurrency,
+        quoteCurrency: pair.quoteCurrency,
+        currentPrice: dummyPrice,
+        technicalScore: 0,
+        technicalTrend: "neutral",
+        technicalReasons: ["テクニカル分析データ取得中..."],
+        fundamentalScore: fundamental.score,
+        macroBias: fundamental.macroBias,
+        fundamentalReasons: fundamental.reasons,
+        buySwap: swaps.buy,
+        sellSwap: swaps.sell,
+        swapScore: 0,
+        swapDirection: "neutral",
+        swapComment: "スワップ情報取得中...",
+        holdingStyle: "short_term_only",
+        totalScore: 0,
+        signalLabel: "中立",
+        confidence: "低",
+        summaryComment: "現在リアルタイムデータを同期中です。もうしばらくお待ちください。",
+        shortTermSignal: "中立",
+        mediumTermSignal: "中立",
+        suitability: "様子見推奨",
+        certainty: 0,
+        safetyScore: 0,
+        syncStatus: "pending",
+        updatedAt: new Date().toISOString()
+      } as FXJudgment;
+    });
+
     // 件数が足りない場合、または全くない（権限エラー含む）場合は同期を走らせる
     if (data.length < SUPPORTED_PAIRS.length) {
-      console.log(`[FX] Data count mismatch or read error (${data.length}/21). Triggering background-sync...`);
-      await syncFXRealData();
-      
-      // 同期開始直後のため、Firestoreの現在の状態（またはこの後バックグラウンドで埋まるデータ）を再取得して返す
-      const retrySnapshot = await getDocs(collection(db, "fx_judgments")).catch(() => null);
-      if (retrySnapshot && !retrySnapshot.empty) {
-        data = retrySnapshot.docs.map(doc => doc.data() as FXJudgment);
-      }
+      console.log(`[FX] Data count incomplete (${data.length}/21). Triggering background-sync...`);
+      syncFXRealData(); // 非同期で実行
     }
 
     // クライアントに渡す前にシリアライズ可能にする
-    return JSON.parse(JSON.stringify(data.sort((a, b) => b.totalScore - a.totalScore)));
+    return JSON.parse(JSON.stringify(mergedData.sort((a, b) => b.totalScore - a.totalScore)));
   } catch (err) {
     console.error("Critical error in getFXJudgmentsAction:", err);
     // 最終手段として同期を試みてその場でFirestoreを再取得
