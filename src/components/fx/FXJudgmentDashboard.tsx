@@ -52,11 +52,29 @@ export const FXJudgmentDashboard = () => {
             console.log(`[FX] Syncing ${code}...`);
             // 1. まず同期中ステータスをセット (UIに即時反映させる)
             await FXService.setSyncing(code);
+            setAllJudgments(prev => {
+              const dataMap = new Map(prev.map(d => [d.pairCode, d]));
+              const existing = dataMap.get(code);
+              if (existing) {
+                dataMap.set(code, { ...existing, syncStatus: "syncing" });
+              }
+              return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
+            });
             
             // 2. 実際の同期実行 (重い処理)
-            const success = await FXService.syncPair(code);
-            if (!success) {
-              console.warn(`[FX] Sync failed for ${code}, but continuing loop...`);
+            const result = await FXService.syncPair(code);
+            
+            // 3. 結果を即座にローカル状態に反映 (Firestoreの通知を待たない)
+            if (result.data) {
+              setAllJudgments(prev => {
+                const dataMap = new Map(prev.map(d => [d.pairCode, d]));
+                dataMap.set(code, result.data!);
+                return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
+              });
+            }
+            
+            if (!result.success) {
+              console.warn(`[FX] Sync failed for ${code}: ${result.message}`);
             }
           } catch (err) {
             console.error(`[FX] Error syncing ${code}:`, err);

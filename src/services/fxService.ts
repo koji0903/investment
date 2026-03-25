@@ -106,14 +106,14 @@ export const FXService = {
   /**
    * 特定の通貨ペアのみを同期
    */
-  syncPair: async (pairCode: string): Promise<boolean> => {
+  syncPair: async (pairCode: string): Promise<{ success: boolean; data?: FXJudgment; message?: string }> => {
     try {
       const { syncSpecificPairAction } = await import("@/lib/actions/fx");
       const result = await syncSpecificPairAction(pairCode);
-      return result.success;
-    } catch (error) {
+      return result;
+    } catch (error: any) {
       console.error(`Error syncing pair ${pairCode}:`, error);
-      return false;
+      return { success: false, message: error.message };
     }
   },
 
@@ -123,11 +123,11 @@ export const FXService = {
   setSyncing: async (pairCode: string): Promise<boolean> => {
     try {
       const { setSyncingStatusAction } = await import("@/lib/actions/fx");
-      const result = await setSyncingStatusAction(pairCode);
-      return result.success;
+      await setSyncingStatusAction(pairCode);
+      return true; // 失敗しても true を返し、ループを止めない
     } catch (error) {
       console.error(`Error setting syncing status for ${pairCode}:`, error);
-      return false;
+      return true; // 失敗しても続行
     }
   },
 

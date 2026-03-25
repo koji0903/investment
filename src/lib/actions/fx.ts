@@ -190,9 +190,14 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
     judgment = consolidateJudgments(judgment!, judgment.energyAnalysis, judgment.entryTimingAnalysis);
   }
 
-  // 保存
-  if (judgment) {
-    await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), judgment);
+  // 保存 (権限エラー等で失敗しても、計算済みのjudgmentは呼び出し元へ返す)
+  try {
+    if (judgment) {
+      await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), judgment);
+    }
+  } catch (err) {
+    console.warn(`[FX] Firestore save failed for ${pair.pairCode}:`, err);
+    // 保存に失敗しても judgment オブジェクト自体は返却し、UIでの表示を可能にする
   }
   return judgment!;
 }
@@ -231,17 +236,56 @@ export async function setSyncingStatusAction(pairCode: string) {
 
 /**
  * 特定の通貨ペアのみを同期する Server Action
+ * 注: Firestoreへの保存が失敗しても、計算した分析結果データ自体を返却する（オプティミスティック更新用）
  */
-export async function syncSpecificPairAction(pairCode: string) {
+export async function syncSpecificPairAction(pairCode: string): Promise<{ success: boolean; data: FXJudgment; message?: string }> {
   const pair = SUPPORTED_PAIRS.find(p => p.pairCode === pairCode);
-  if (!pair) return { success: false, message: "Unsupported pair" };
+  if (!pair) return { 
+    success: false, 
+    message: "Unsupported pair",
+    data: { pairCode, updatedAt: new Date().toISOString() } as unknown as FXJudgment
+  };
   
   try {
     const result = await syncSpecificPair(pair);
     return { success: true, data: JSON.parse(JSON.stringify(result)) };
   } catch (err: any) {
     console.error(`Sync specific pair failed for ${pairCode}:`, err);
-    return { success: false, message: err.message };
+    // エラーメッセージを含めた正常レスポンスを返し、UI側での表示を助ける
+    return { 
+      success: false, 
+      message: String(err.message || "Unknown error"),
+      // 失敗時もプレースホルダーデータを返すことでUIを壊さない
+      data: {
+        pairCode: pairCode,
+        baseCurrency: pair.baseCurrency,
+        quoteCurrency: pair.quoteCurrency,
+        currentPrice: 0,
+        technicalScore: 0,
+        technicalTrend: "neutral",
+        technicalReasons: [],
+        fundamentalScore: 0,
+        macroBias: "neutral",
+        fundamentalReasons: [],
+        buySwap: 0,
+        sellSwap: 0,
+        swapScore: 0,
+        swapDirection: "neutral",
+        swapComment: "",
+        holdingStyle: "short_term_only",
+        totalScore: 0,
+        signalLabel: "中立",
+        confidence: "低",
+        certainty: 0,
+        safetyScore: 0,
+        shortTermSignal: "neutral",
+        mediumTermSignal: "neutral",
+        suitability: 0,
+        syncStatus: "failed",
+        summaryComment: `同期エラー: ${err.message}`,
+        updatedAt: new Date().toISOString()
+      } as unknown as FXJudgment
+    };
   }
 }
 
