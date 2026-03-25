@@ -87,8 +87,8 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                     </div>
                     <div className="ml-auto pr-4 hidden lg:block">
                       <MiniChart 
-                        data={item.chartData || []} 
-                        color={(item.chartData && item.chartData.length > 1 && item.chartData[item.chartData.length - 1].value >= item.chartData[0].value) ? "#10b981" : "#ef4444"} 
+                        data={(item.chartData || []).slice(-30)} 
+                        color={(item.chartData && item.chartData.length > 1 && item.chartData[item.chartData.length - 1].value >= item.chartData[Math.max(0, item.chartData.length - 30)].value) ? "#10b981" : "#ef4444"} 
                       />
                     </div>
                   </div>
@@ -215,15 +215,15 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
             {item.chartData && item.chartData.length > 0 && (
               <div className="w-full h-16 opacity-80 pt-1">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={item.chartData}>
+                  <AreaChart data={item.chartData.slice(-30)}>
                     <YAxis hide domain={['auto', 'auto']} />
                     <Area 
                       type="monotone" 
                       dataKey="value" 
-                      stroke={item.chartData[item.chartData.length-1].value >= item.chartData[0].value ? "#10b981" : "#ef4444"} 
+                      stroke={item.chartData[item.chartData.length-1].value >= item.chartData[Math.max(0, item.chartData.length-30)].value ? "#10b981" : "#ef4444"} 
                       strokeWidth={1.5}
                       fillOpacity={0.1}
-                      fill={item.chartData[item.chartData.length-1].value >= item.chartData[0].value ? "#10b981" : "#ef4444"}
+                      fill={item.chartData[item.chartData.length-1].value >= item.chartData[Math.max(0, item.chartData.length-30)].value ? "#10b981" : "#ef4444"}
                       isAnimationActive={false}
                     />
                   </AreaChart>

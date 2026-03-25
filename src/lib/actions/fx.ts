@@ -152,8 +152,8 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
         pair.pairCode, judgment.entryTimingAnalysis, judgment.energyAnalysis
       );
 
-      // チャート用データの追加 (直近30日分)
-      judgment.chartData = historical.slice(-30).map(h => ({
+      // チャート用データの追加 (直近180日分)
+      judgment.chartData = historical.slice(-180).map(h => ({
         date: new Date(h.date).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
         value: h.close
       }));
