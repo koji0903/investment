@@ -152,6 +152,12 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
         pair.pairCode, judgment.entryTimingAnalysis, judgment.energyAnalysis
       );
 
+      // チャート用データの追加 (直近30日分)
+      judgment.chartData = historical.slice(-30).map(h => ({
+        date: new Date(h.date).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
+        value: h.close
+      }));
+      
       // 統合と矛盾解消
       judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
       
@@ -204,6 +210,7 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
       certainty: 10,
       safetyScore: 0,
       syncStatus: "failed",
+      chartData: [],
       updatedAt: new Date().toISOString()
     };
 
@@ -307,6 +314,7 @@ export async function syncSpecificPairAction(pairCode: string): Promise<{ succes
         suitability: 0,
         syncStatus: "failed",
         summaryComment: `同期エラー: ${err.message}`,
+        chartData: [],
         updatedAt: new Date().toISOString()
       } as unknown as FXJudgment
     };
@@ -388,6 +396,7 @@ export async function getFXJudgmentsAction(): Promise<FXJudgment[]> {
         certainty: 0,
         safetyScore: 0,
         syncStatus: "pending",
+        chartData: [],
         updatedAt: new Date().toISOString()
       } as FXJudgment;
     });

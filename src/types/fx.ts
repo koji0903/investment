@@ -217,4 +217,5 @@ export interface FXJudgment {
   
   // 詳細データ (UI表示用)
   indicators?: TechnicalAnalysisResult["indicators"];
+  chartData?: { date: string; value: number }[];
 }

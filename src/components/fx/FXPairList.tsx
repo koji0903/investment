@@ -12,11 +12,41 @@ import {
 import { ChevronRight, Zap, Target, ShieldCheck } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { ResponsiveContainer, AreaChart, Area, YAxis } from "recharts";
 
 interface FXPairListProps {
   judgments: FXJudgment[];
   onSelect: (judgment: FXJudgment) => void;
 }
+
+const MiniChart = ({ data, color }: { data: any[], color: string }) => {
+  if (!data || data.length === 0) return <div className="h-8 w-24 bg-slate-50 dark:bg-slate-800/50 rounded animate-pulse" />;
+  
+  return (
+    <div className="h-10 w-24">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data}>
+          <defs>
+            <linearGradient id={`gradient-${color}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
+              <stop offset="95%" stopColor={color} stopOpacity={0}/>
+            </linearGradient>
+          </defs>
+          <YAxis hide domain={['auto', 'auto']} />
+          <Area 
+            type="monotone" 
+            dataKey="value" 
+            stroke={color} 
+            strokeWidth={1.5}
+            fillOpacity={1} 
+            fill={`url(#gradient-${color})`} 
+            isAnimationActive={false}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+};
 
 export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) => {
   return (
@@ -54,6 +84,12 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                         <SyncStatusBadge status={item.syncStatus} />
                       </div>
                       <div className="text-[10px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toFixed(pairToDecimals(item.pairCode))}</div>
+                    </div>
+                    <div className="ml-auto pr-4 hidden lg:block">
+                      <MiniChart 
+                        data={item.chartData || []} 
+                        color={(item.chartData && item.chartData.length > 1 && item.chartData[item.chartData.length - 1].value >= item.chartData[0].value) ? "#10b981" : "#ef4444"} 
+                      />
                     </div>
                   </div>
                 </td>
@@ -174,6 +210,26 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
               </div>
               <SignalBadge label={item.signalLabel} />
             </div>
+
+            {/* Mobile Mini Chart */}
+            {item.chartData && item.chartData.length > 0 && (
+              <div className="w-full h-16 opacity-80 pt-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={item.chartData}>
+                    <YAxis hide domain={['auto', 'auto']} />
+                    <Area 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke={item.chartData[item.chartData.length-1].value >= item.chartData[0].value ? "#10b981" : "#ef4444"} 
+                      strokeWidth={1.5}
+                      fillOpacity={0.1}
+                      fill={item.chartData[item.chartData.length-1].value >= item.chartData[0].value ? "#10b981" : "#ef4444"}
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
             {item.entryTimingAnalysis && (
               <div className="flex items-center justify-between py-2">

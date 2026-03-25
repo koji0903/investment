@@ -13,6 +13,7 @@ import { FXPositionSizingBento } from "./FXPositionSizingBento";
 import { X, Info, TrendingUp, TrendingDown, Target, Zap, Activity, Clock, AlertCircle, Crosshair, Calculator, ShieldCheck, ShieldAlert } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 interface FXPairDetailModalProps {
   judgment: FXJudgment | null;
@@ -103,6 +104,58 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
                   </div>
                 </div>
             </div>
+
+            {/* Price Detail Chart */}
+            {judgment.chartData && judgment.chartData.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-indigo-500 rounded-lg text-white">
+                    <TrendingUp size={14} />
+                  </div>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">直近30日の価格推移</h3>
+                </div>
+                <div className="h-[200px] w-full bg-slate-50 dark:bg-slate-800/50 rounded-[28px] p-4 border border-slate-100 dark:border-slate-800 overflow-hidden">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={judgment.chartData}>
+                      <defs>
+                        <linearGradient id="detailGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" opacity={0.5} />
+                      <XAxis 
+                        dataKey="date" 
+                        hide 
+                      />
+                      <YAxis 
+                        hide 
+                        domain={['auto', 'auto']} 
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(255, 255, 255, 0.9)', 
+                          borderRadius: '12px', 
+                          border: 'none', 
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                          fontSize: '12px',
+                          fontWeight: 'bold'
+                        }}
+                        itemStyle={{ color: '#6366f1' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="value" 
+                        stroke="#6366f1" 
+                        strokeWidth={2}
+                        fillOpacity={1} 
+                        fill="url(#detailGradient)" 
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
 
             {/* Market Energy Analysis (Bento) */}
             {judgment.energyAnalysis && (
