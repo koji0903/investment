@@ -5,7 +5,8 @@ import {
   getStockJudgmentsAction, 
   syncSpecificStockAction, 
   setStockSyncingAction,
-  syncStockRealData
+  syncStockRealData,
+  getStockBasicInfoAction
 } from "@/lib/actions/stock";
 
 export const MONITORING_STOCKS: StockPairMaster[] = [
@@ -19,22 +20,44 @@ export const MONITORING_STOCKS: StockPairMaster[] = [
   { ticker: "8766", name: "東京海上", sector: "保険業" },
   { ticker: "8316", name: "三井住友FG", sector: "銀行業" },
   { ticker: "6758", name: "ソニーG", sector: "電気機器" },
+  { ticker: "6861", name: "キーエンス", sector: "電気機器" },
+  { ticker: "8035", name: "東エレク", sector: "電気機器" },
+  { ticker: "9101", name: "日本郵船", sector: "海運業" },
+  { ticker: "9104", name: "商船三井", sector: "海運業" },
+  { ticker: "6501", name: "日立", sector: "電気機器" },
+  { ticker: "7974", name: "任天堂", sector: "その他製品" },
+  { ticker: "4063", name: "信越化", sector: "化学" },
+  { ticker: "4502", name: "武田薬", sector: "医薬品" },
+  { ticker: "2914", name: "JT", sector: "食料品" },
+  { ticker: "8411", name: "みずほ", sector: "銀行業" },
+  { ticker: "6981", name: "村田製", sector: "電気機器" },
+  { ticker: "4519", name: "中外薬", sector: "医薬品" },
+  { ticker: "3382", name: "セブン＆アイ", sector: "小売業" },
+  { ticker: "6954", name: "ファナック", sector: "電気機器" },
+  { ticker: "6273", name: "ＳＭＣ", sector: "機械" },
+  { ticker: "6367", name: "ダイキン", sector: "機械" },
+  { ticker: "7267", name: "ホンダ", sector: "輸送用機器" },
+  { ticker: "4901", name: "富士フイルム", sector: "化学" },
+  { ticker: "4568", name: "第一三共", sector: "医薬品" },
+  { ticker: "7741", name: "ＨＯＹＡ", sector: "精密機器" },
+  { ticker: "6146", name: "ディスコ", sector: "機械" },
+  { ticker: "6723", name: "ルネサス", sector: "電気機器" },
+  { ticker: "7011", name: "三菱重", sector: "機械" },
+  { ticker: "9020", name: "ＪＲ東日本", sector: "陸運業" },
+  { ticker: "9022", name: "ＪＲ東海", sector: "陸運業" },
+  { ticker: "9201", name: "日本航空", sector: "空運業" },
+  { ticker: "9202", name: "ＡＮＡ", sector: "空運業" },
+  { ticker: "2802", name: "味の素", sector: "食料品" },
+  { ticker: "1925", name: "大和ハウス", sector: "建設業" },
+  { ticker: "1928", name: "積水ハウス", sector: "建設業" },
+  { ticker: "1605", name: "ＩＮＰＥＸ", sector: "鉱業" },
+  { ticker: "9433", name: "ＫＤＤＩ", sector: "情報・通信業" },
+  { ticker: "3407", name: "旭化成", sector: "化学" },
+  { ticker: "6701", name: "日本電気", sector: "電気機器" },
+  { ticker: "6098", name: "リクルート", sector: "サービス業" },
 ];
 
 export const StockService = {
-  /**
-   * リアルタイム購読
-   */
-  subscribeJudgments: (callback: (judgments: StockJudgment[]) => void) => {
-    const q = query(collection(db, "japanese_stocks"), orderBy("totalScore", "desc"));
-    return onSnapshot(q, (snapshot) => {
-      const judgments = snapshot.docs.map(doc => ({
-        ...doc.data()
-      })) as StockJudgment[];
-      callback(judgments);
-    });
-  },
-
   /**
    * 日本株判定一覧を取得
    */
@@ -44,6 +67,18 @@ export const StockService = {
     } catch (error) {
       console.error("Error fetching stock judgments:", error);
       return [];
+    }
+  },
+
+  /**
+   * 銘柄の基本情報を取得（オンデマンド追加用）
+   */
+  getBasicInfo: async (ticker: string) => {
+    try {
+      return await getStockBasicInfoAction(ticker);
+    } catch (error) {
+      console.error(`Error fetching basic info for ${ticker}:`, error);
+      return { success: false, message: "情報取得エラー" };
     }
   },
 

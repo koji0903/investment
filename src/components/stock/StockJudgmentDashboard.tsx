@@ -18,9 +18,11 @@ import {
   ChevronRight, 
   BarChart, 
   ShieldCheck, 
-  Target 
+  Target,
+  Plus,
+  Search as SearchIcon
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export const StockJudgmentDashboard = () => {
@@ -29,10 +31,13 @@ export const StockJudgmentDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedStock, setSelectedStock] = useState<StockJudgment | null>(null);
   
-  const [filters, setFilters] = useState({ search: "", label: "all" });
+  const [filters, setFilters] = useState({ search: "", label: "all", sector: "all" });
   const [sort, setSort] = useState({ key: "totalScore", order: "desc" as "asc" | "desc" });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   
+  const [newTicker, setNewTicker] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+
   const syncInProgressRef = useRef(false);
   const [syncStats, setSyncStats] = useState({ 
     total: 0, 
@@ -45,10 +50,10 @@ export const StockJudgmentDashboard = () => {
   const isMountedRef = useRef(true);
 
   // 同期用のプレースホルダー生成
-  const createEmptyJudgment = (ticker: string, name: string): StockJudgment => ({
+  const createEmptyJudgment = (ticker: string, name: string, sector: string = "読み込み中"): StockJudgment => ({
     ticker,
     companyName: name,
-    sector: "読み込み中...",
+    sector,
     currentPrice: 0,
     technicalScore: 0,
     technicalTrend: "neutral",
@@ -111,14 +116,12 @@ export const StockJudgmentDashboard = () => {
           }
         } catch (err) {
           console.error(`[Stock] Sync error for ${ticker}:`, err);
-        } finally {
-          // 終了時にクリア（必要に応じて）
         }
         await new Promise(r => setTimeout(r, 600));
       }
     } finally {
       syncInProgressRef.current = false;
-      setSyncStats(prev => ({ ...prev, currentName: null }));
+      if (isMountedRef.current) setSyncStats(prev => ({ ...prev, currentName: null }));
     }
   };
 
@@ -144,8 +147,8 @@ export const StockJudgmentDashboard = () => {
             syncStocksOneByOne(staleOrUncompleted.map(d => d.ticker));
           }
         } else {
-          // 初期同期用のプレースホルダーを即座に表示
-          const placeholders = MONITORING_STOCKS.map(s => createEmptyJudgment(s.ticker, s.name));
+          // 初期同期用のプレースホルダーを即座に表示 (主要45銘柄)
+          const placeholders = MONITORING_STOCKS.map(s => createEmptyJudgment(s.ticker, s.name, s.sector));
           setAllJudgments(placeholders);
           syncStocksOneByOne(MONITORING_STOCKS.map(s => s.ticker));
         }
@@ -172,13 +175,46 @@ export const StockJudgmentDashboard = () => {
     const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
     const pending = allJudgments.filter(j => !j.syncStatus || j.syncStatus === "pending").length;
     let progress = Math.round((completed / total) * 100);
-    if (progress === 0 && syncing > 0) progress = 5; // 最初の一歩を可視化
+    if (progress === 0 && syncing > 0) progress = 5;
     
-    // 現在解析中の銘柄名を取得
     const currentItem = allJudgments.find(j => j.syncStatus === "syncing");
     const currentName = currentItem ? `${currentItem.companyName} (${currentItem.ticker})` : null;
 
     setSyncStats({ total, completed, syncing, pending, progress, currentName });
+  }, [allJudgments]);
+
+  const handleAddTicker = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTicker || newTicker.length < 4 || isAdding) return;
+    
+    setIsAdding(true);
+    try {
+      const res = await StockService.getBasicInfo(newTicker);
+      if (res.success && res.data) {
+        const { ticker, name, sector } = res.data;
+        const placeholder = createEmptyJudgment(ticker, name, sector);
+        
+        setAllJudgments(prev => {
+          if (prev.some(j => j.ticker === ticker)) return prev;
+          return [placeholder, ...prev];
+        });
+        
+        setNewTicker("");
+        // 即座に同期
+        syncStocksOneByOne([ticker]);
+      } else {
+        alert(res.message || "銘柄が見つかりませんでした。");
+      }
+    } catch (err) {
+      alert("エラーが発生しました。");
+    } finally {
+      setIsAdding(false);
+    }
+  };
+
+  const sectors = useMemo(() => {
+    const s = new Set(allJudgments.map(j => j.sector));
+    return ["all", ...Array.from(s)].sort();
   }, [allJudgments]);
 
   const rankings = useMemo(() => {
@@ -199,6 +235,9 @@ export const StockJudgmentDashboard = () => {
       else if (filters.label === "undervalued") result = result.filter(j => j.valuationLabel === "undervalued");
       else result = result.filter(j => j.signalLabel === filters.label);
     }
+    if (filters.sector !== "all") {
+      result = result.filter(j => j.sector === filters.sector);
+    }
     result.sort((a, b) => {
       const aVal = (a as any)[sort.key] || 0;
       const bVal = (b as any)[sort.key] || 0;
@@ -209,53 +248,81 @@ export const StockJudgmentDashboard = () => {
 
   return (
     <div className="space-y-12 pb-20 font-sans">
-      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-        <div className="space-y-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <div className="space-y-2">
           <div className="flex items-center gap-4">
             <div className="p-3.5 bg-slate-900 rounded-[20px] text-white">
               <BarChart size={28} />
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white">日本株投資判断エンジン</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Alpha Discovery V2</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Alpha Discovery V2 PRO</p>
             </div>
           </div>
         </div>
-        <Link href="/market-radar" className="px-8 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black shadow-xl shadow-indigo-600/20 transition-transform active:scale-95">
-          マーケットレーダーを表示
-        </Link>
+
+        <div className="flex flex-wrap items-center gap-4">
+          <form onSubmit={handleAddTicker} className="relative flex items-center">
+            <input 
+              type="text" 
+              placeholder="銘柄コード(4桁)" 
+              value={newTicker}
+              onChange={(e) => setNewTicker(e.target.value)}
+              className="pl-4 pr-12 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-black focus:ring-2 focus:ring-indigo-500/20 outline-none w-40"
+              maxLength={4}
+            />
+            <button 
+              type="submit"
+              disabled={isAdding || newTicker.length < 4}
+              className="absolute right-2 p-1.5 bg-slate-900 text-white rounded-xl disabled:opacity-50"
+            >
+              {isAdding ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Plus size={16} />}
+            </button>
+          </form>
+          
+          <Link href="/market-radar" className="px-8 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-black shadow-xl shadow-indigo-600/20 transition-transform active:scale-95">
+            マーケットレーダー
+          </Link>
+        </div>
       </div>
 
-      {!loading && syncStats.total > 0 && syncStats.progress < 100 && (
-        <div className="p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] space-y-5 shadow-xl shadow-indigo-500/5">
-           <div className="flex justify-between items-end">
-              <div className="space-y-1">
-                 <div className="flex items-center gap-3">
-                    <Zap className="text-indigo-500 animate-pulse" size={20} />
-                    <span className="text-sm font-black text-slate-800 dark:text-white">市場データ同期中 ({syncStats.progress}%)</span>
-                 </div>
-                 {syncStats.currentName && (
-                   <p className="text-[11px] font-bold text-indigo-500 animate-pulse ml-8">
-                     分析中: <span className="font-black">{syncStats.currentName}</span> ...
-                   </p>
-                 )}
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress</span>
-                <span className="text-xs font-black text-slate-800 dark:text-white">{syncStats.completed} / {syncStats.total} 完了</span>
-              </div>
-           </div>
-           <div className="relative h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${syncStats.progress}%` }} 
-                transition={{ type: "spring", stiffness: 50 }}
-                className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 to-blue-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]" 
-              />
-              <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.15)_50%,rgba(255,255,255,0.15)_75%,transparent_75%,transparent)] bg-[length:20px_20px] animate-[slide_1s_linear_infinite]" />
-           </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {!loading && syncStats.total > 0 && syncStats.progress < 100 && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] space-y-5 shadow-xl shadow-indigo-500/5"
+          >
+            <div className="flex justify-between items-end">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                      <Zap className="text-indigo-500 animate-pulse" size={20} />
+                      <span className="text-sm font-black text-slate-800 dark:text-white">市場データ同期中 ({syncStats.progress}%)</span>
+                  </div>
+                  {syncStats.currentName && (
+                    <p className="text-[11px] font-bold text-indigo-500 animate-pulse ml-8">
+                      分析中: <span className="font-black">{syncStats.currentName}</span> ...
+                    </p>
+                  )}
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress</span>
+                  <span className="text-xs font-black text-slate-800 dark:text-white">{syncStats.completed} / {syncStats.total} 完了</span>
+                </div>
+            </div>
+            <div className="relative h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${syncStats.progress}%` }} 
+                  transition={{ type: "spring", stiffness: 50 }}
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 to-blue-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]" 
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.15)_50%,rgba(255,255,255,0.15)_75%,transparent_75%,transparent)] bg-[length:20px_20px] animate-slide" />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <RankingCard title="総合スコア" items={rankings.buyRanking} icon={<Trophy className="text-amber-500" />} onSelect={setSelectedStock} />
@@ -264,11 +331,34 @@ export const StockJudgmentDashboard = () => {
       </div>
 
       <div className="space-y-8">
-        <StockFilterSort loading={loading} onFilterChange={setFilters} onSortChange={setSort} onRefresh={fetchData} />
+        <div className="flex flex-col gap-6">
+          <StockFilterSort loading={loading} onFilterChange={setFilters} onSortChange={setSort} onRefresh={fetchData} />
+          
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {sectors.map(s => (
+              <button
+                key={s}
+                onClick={() => setFilters(prev => ({ ...prev, sector: s }))}
+                className={cn(
+                  "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap border",
+                  filters.sector === s 
+                    ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-600/20" 
+                    : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-500"
+                )}
+              >
+                {s === "all" ? "全業種" : s}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {error ? (
           <div className="p-10 bg-rose-50 text-rose-500 rounded-3xl border border-rose-100 text-center font-black">{error}</div>
         ) : loading && allJudgments.length === 0 ? (
-          <div className="p-20 text-center text-slate-400 font-bold">データを読み込み中...</div>
+          <div className="p-20 text-center text-slate-400 font-bold flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+            市場データを取得中...
+          </div>
         ) : (
           <StockList items={filteredItems} onSelect={setSelectedStock} />
         )}
