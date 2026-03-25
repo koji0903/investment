@@ -163,10 +163,13 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
       );
 
       // チャート用データの追加 (直近180日分)
-      judgment.chartData = historical.slice(-180).map(h => ({
-        date: new Date(h.date).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
-        value: h.close
-      }));
+      judgment.chartData = historical.slice(-180).map(h => {
+        const d = new Date(h.date);
+        return {
+          date: isNaN(d.getTime()) ? "不明" : d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
+          value: typeof h.close === "number" && !isNaN(h.close) ? h.close : 0
+        };
+      });
       
       // 統合と矛盾解消
       judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
@@ -234,11 +237,26 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
   // 保存 (権限エラー等で失敗しても、計算済みのjudgmentは呼び出し元へ返す)
   try {
     if (judgment) {
-      await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), judgment);
+      // NaNが含まれているケースを徹底排除 (Firestoreエラー防止)
+      const sanitize = (obj: any): any => {
+        if (Array.isArray(obj)) return obj.map(sanitize);
+        if (obj !== null && typeof obj === 'object') {
+          const res: any = {};
+          for (const key in obj) {
+            res[key] = sanitize(obj[key]);
+          }
+          return res;
+        }
+        if (typeof obj === 'number' && isNaN(obj)) return 0;
+        return obj;
+      };
+
+      const sanitized = sanitize(judgment);
+      await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), sanitized);
+      return sanitized;
     }
   } catch (err) {
     console.warn(`[FX] Firestore save failed for ${pair.pairCode}:`, err);
-    // 保存に失敗しても judgment オブジェクト自体は返却し、UIでの表示を可能にする
   }
   return judgment!;
 }

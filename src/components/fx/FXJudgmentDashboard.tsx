@@ -22,6 +22,7 @@ export const FXJudgmentDashboard = () => {
   const [sort, setSort] = useState({ key: "totalScore", order: "desc" as "asc" | "desc" });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const syncInProgressRef = React.useRef(false);
+  const syncingPairsRef = React.useRef<Set<string>>(new Set());
 
   const fetchData = async (forceRefresh = false) => {
     if (forceRefresh) {
@@ -50,22 +51,40 @@ export const FXJudgmentDashboard = () => {
           const chunk = queue.splice(0, CONCURRENCY);
           await Promise.all(chunk.map(async (code) => {
             try {
-              // 1. 同期中ステータスをセット
-              await FXService.setSyncing(code);
+              // 1. 同期中ステータスを追跡
+              syncingPairsRef.current.add(code);
               
-              // 2. 実際の同期実行
+              setAllJudgments(prev => {
+                const dataMap = new Map(prev.map(d => [d.pairCode, d]));
+                const existing = dataMap.get(code);
+                if (existing) {
+                  dataMap.set(code, { ...existing, syncStatus: "syncing" });
+                }
+                return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
+              });
+
+              // 2. 外部サービス呼び出し (非同期)
+              await FXService.setSyncing(code);
               const result = await FXService.syncPair(code);
               
-              // 3. 結果を反映
-              if (result.data) {
-                setAllJudgments(prev => {
-                  const dataMap = new Map(prev.map(d => [d.pairCode, d]));
-                  dataMap.set(code, result.data!);
-                  return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
-                });
-              }
+              // 3. 結果をローカル状態に反映 (即時)
+              setAllJudgments(prev => {
+                const dataMap = new Map(prev.map(d => [d.pairCode, d]));
+                if (result.data) {
+                  dataMap.set(code, { ...result.data!, syncStatus: result.success ? "completed" : "failed" });
+                } else if (!result.success) {
+                  // 失敗時
+                  const existing = dataMap.get(code);
+                  if (existing) {
+                    dataMap.set(code, { ...existing, syncStatus: "failed", summaryComment: `同期エラー: ${result.message}` });
+                  }
+                }
+                return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
+              });
             } catch (err) {
               console.error(`[FX] Sync failed for ${code}:`, err);
+            } finally {
+              syncingPairsRef.current.delete(code);
             }
           }));
 
@@ -118,13 +137,12 @@ export const FXJudgmentDashboard = () => {
       if (!isMounted) return;
       
       setAllJudgments(prev => {
-        // 全量（21件）が揃うように、マスタベースのプレースホルダーとマージ
-        const masterMap = new Map();
-        // SUPPORTED_PAIRS をインポートしていないので、prev か GetPairs の結果を期待するが、
-        // ここでは realtimeData から得られない欠損分を prev で補う
         const dataMap = new Map(prev.map(d => [d.pairCode, d]));
         realtimeData.forEach(d => {
-          dataMap.set(d.pairCode, d);
+          // ローカルで同期中のものは、サーバーからの古い情報をマージしない
+          if (!syncingPairsRef.current.has(d.pairCode)) {
+            dataMap.set(d.pairCode, d);
+          }
         });
 
         const merged = Array.from(dataMap.values());
@@ -132,14 +150,12 @@ export const FXJudgmentDashboard = () => {
         // 同期の自動開始トリガー (同期中が0かつ未完了または鮮度が古いものがある場合)
         const uncompleted = merged.filter(d => {
           const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 6 * 60 * 60 * 1000;
-          const isNotSyncing = d.syncStatus !== "syncing" && d.syncStatus !== "failed";
+          const isNotSyncing = !syncingPairsRef.current.has(d.pairCode) && d.syncStatus !== "syncing" && d.syncStatus !== "failed";
           return isNotSyncing && (d.syncStatus !== "completed" || isStale);
         });
-        const syncingCount = merged.filter(d => d.syncStatus === "syncing").length;
         
-        if (uncompleted.length > 0 && syncingCount === 0 && !syncInProgressRef.current) {
+        if (uncompleted.length > 0 && syncingPairsRef.current.size === 0 && !syncInProgressRef.current) {
           console.log(`[FX] Found ${uncompleted.length} uncompleted or stale pairs. Auto-starting sync loop...`);
-          // setStateの外部で非同期に実行するためsetTimeoutを使用
           setTimeout(() => {
             if (isMounted) processSyncQueue(uncompleted.map(u => u.pairCode));
           }, 0);
@@ -212,10 +228,11 @@ export const FXJudgmentDashboard = () => {
     
     const completed = allJudgments.filter(j => j.syncStatus === "completed").length;
     const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
+    const failed = allJudgments.filter(j => j.syncStatus === "failed").length;
     const pending = allJudgments.filter(j => j.syncStatus === "pending" || !j.syncStatus).length;
     const progress = Math.round((completed / total) * 100);
     
-    return { total, completed, syncing, pending, progress };
+    return { total, completed, syncing, failed, pending, progress };
   }, [allJudgments]);
 
   return (
@@ -282,6 +299,10 @@ export const FXJudgmentDashboard = () => {
               <div className="flex flex-col">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">同期中</p>
                 <p className="text-lg font-black text-indigo-500 tabular-nums">{syncStats.syncing}</p>
+              </div>
+              <div className="flex flex-col">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">失敗数</p>
+                <p className="text-lg font-black text-rose-500 tabular-nums">{syncStats.failed}</p>
               </div>
               <div className="flex flex-col">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">待機中</p>
