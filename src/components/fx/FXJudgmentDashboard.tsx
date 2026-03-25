@@ -102,8 +102,11 @@ export const FXJudgmentDashboard = () => {
             )[0]?.updatedAt;
             setLastUpdated(latest);
 
-            // 取得したデータのうち、未完了(pending/syncing)のものをクライアント側から順次同期
-            const uncompleted = initialData.filter(d => d.syncStatus !== "completed");
+            // 取得したデータのうち、未完了または鮮度が古い(6時間以上)ものをクライアント側から順次同期
+            const uncompleted = initialData.filter(d => {
+              const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 6 * 60 * 60 * 1000;
+              return d.syncStatus !== "completed" || isStale;
+            });
             if (uncompleted.length > 0) {
               syncPairsOneByOne(uncompleted.map(d => d.pairCode));
             }
@@ -134,12 +137,16 @@ export const FXJudgmentDashboard = () => {
 
         const merged = Array.from(dataMap.values());
         
-        // 同期の自動開始トリガー (同期中が0かつ未完了がある場合)
-        const uncompleted = merged.filter(d => d.syncStatus !== "completed" && d.syncStatus !== "syncing" && d.syncStatus !== "failed");
+        // 同期の自動開始トリガー (同期中が0かつ未完了または鮮度が古いものがある場合)
+        const uncompleted = merged.filter(d => {
+          const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 6 * 60 * 60 * 1000;
+          const isNotSyncing = d.syncStatus !== "syncing" && d.syncStatus !== "failed";
+          return isNotSyncing && (d.syncStatus !== "completed" || isStale);
+        });
         const syncingCount = merged.filter(d => d.syncStatus === "syncing").length;
         
         if (uncompleted.length > 0 && syncingCount === 0 && !syncInProgressRef.current) {
-          console.log(`[FX] Found ${uncompleted.length} uncompleted pairs. Auto-starting sync loop...`);
+          console.log(`[FX] Found ${uncompleted.length} uncompleted or stale pairs. Auto-starting sync loop...`);
           // setStateの外部で非同期に実行するためsetTimeoutを使用
           setTimeout(() => {
             if (isMounted) syncPairsOneByOne(uncompleted.map(u => u.pairCode));

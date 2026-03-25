@@ -278,6 +278,23 @@ export async function syncSpecificPairAction(pairCode: string): Promise<{ succes
   };
   
   try {
+    // キャッシュチェック: 直近6時間以内に更新されている場合はAPI呼び出しをスキップ
+    const normalizedId = pairCode.replace("/", "-");
+    const docRef = doc(db, "fx_judgments", normalizedId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const existingData = docSnap.data() as FXJudgment;
+      const lastUpdated = new Date(existingData.updatedAt).getTime();
+      const now = Date.now();
+      const sixHoursInMs = 6 * 60 * 60 * 1000;
+      
+      if (now - lastUpdated < sixHoursInMs && existingData.syncStatus === 'completed' && (existingData.chartData?.length || 0) > 0) {
+        console.log(`[FX] Cache hit for ${pairCode}. Skipping API call.`);
+        return { success: true, data: JSON.parse(JSON.stringify(existingData)) };
+      }
+    }
+
     const result = await syncSpecificPair(pair);
     return { success: true, data: JSON.parse(JSON.stringify(result)) };
   } catch (err: any) {
