@@ -37,54 +37,46 @@ export const FXJudgmentDashboard = () => {
     let isMounted = true;
 
     // クライアント主導の個別同期
-    const syncPairsOneByOne = async (pairCodes: string[]) => {
-      if (syncInProgressRef.current) {
-        console.log("[FX] Sync already in progress, skipping loop start.");
-        return;
-      }
+    const processSyncQueue = async (pairCodes: string[]) => {
+      if (syncInProgressRef.current || pairCodes.length === 0) return;
       syncInProgressRef.current = true;
       
-      console.log(`[FX] Starting sequential sync for ${pairCodes.length} pairs...`);
+      console.log(`[FX] Starting parallel sync for ${pairCodes.length} pairs...`);
+      const queue = [...pairCodes];
+      const CONCURRENCY = 2;
+
       try {
-        for (const code of pairCodes) {
-          if (!isMounted) break;
-          try {
-            console.log(`[FX] Syncing ${code}...`);
-            // 1. まず同期中ステータスをセット (UIに即時反映させる)
-            await FXService.setSyncing(code);
-            setAllJudgments(prev => {
-              const dataMap = new Map(prev.map(d => [d.pairCode, d]));
-              const existing = dataMap.get(code);
-              if (existing) {
-                dataMap.set(code, { ...existing, syncStatus: "syncing" });
+        while (queue.length > 0 && isMounted) {
+          const chunk = queue.splice(0, CONCURRENCY);
+          await Promise.all(chunk.map(async (code) => {
+            try {
+              // 1. 同期中ステータスをセット
+              await FXService.setSyncing(code);
+              
+              // 2. 実際の同期実行
+              const result = await FXService.syncPair(code);
+              
+              // 3. 結果を反映
+              if (result.data) {
+                setAllJudgments(prev => {
+                  const dataMap = new Map(prev.map(d => [d.pairCode, d]));
+                  dataMap.set(code, result.data!);
+                  return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
+                });
               }
-              return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
-            });
-            
-            // 2. 実際の同期実行 (重い処理)
-            const result = await FXService.syncPair(code);
-            
-            // 3. 結果を即座にローカル状態に反映 (Firestoreの通知を待たない)
-            if (result.data) {
-              setAllJudgments(prev => {
-                const dataMap = new Map(prev.map(d => [d.pairCode, d]));
-                dataMap.set(code, result.data!);
-                return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
-              });
+            } catch (err) {
+              console.error(`[FX] Sync failed for ${code}:`, err);
             }
-            
-            if (!result.success) {
-              console.warn(`[FX] Sync failed for ${code}: ${result.message}`);
-            }
-          } catch (err) {
-            console.error(`[FX] Error syncing ${code}:`, err);
+          }));
+
+          if (queue.length > 0) {
+            // チャンク間にジッター付き待機
+            await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
           }
-          // 次の同期まで待機
-          await new Promise(r => setTimeout(r, 600));
         }
       } finally {
         syncInProgressRef.current = false;
-        console.log("[FX] Sequential sync cycle finished.");
+        console.log("[FX] Sync cycle finished.");
       }
     };
 
@@ -108,7 +100,7 @@ export const FXJudgmentDashboard = () => {
               return d.syncStatus !== "completed" || isStale;
             });
             if (uncompleted.length > 0) {
-              syncPairsOneByOne(uncompleted.map(d => d.pairCode));
+              processSyncQueue(uncompleted.map(d => d.pairCode));
             }
           }
         }
@@ -149,7 +141,7 @@ export const FXJudgmentDashboard = () => {
           console.log(`[FX] Found ${uncompleted.length} uncompleted or stale pairs. Auto-starting sync loop...`);
           // setStateの外部で非同期に実行するためsetTimeoutを使用
           setTimeout(() => {
-            if (isMounted) syncPairsOneByOne(uncompleted.map(u => u.pairCode));
+            if (isMounted) processSyncQueue(uncompleted.map(u => u.pairCode));
           }, 0);
         }
 

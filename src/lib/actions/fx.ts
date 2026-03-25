@@ -82,26 +82,36 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
     let historical: any[] = [];
     
     const fetchHistory = async (s: string) => {
-      // まず chart を試す (JSON API なので高速かつ安定)
-      try {
-        const chart = await yf.chart(s, {
+      const timeoutMillis = 30000;
+      
+      const timeoutPromise = new Promise<any[]>((_, reject) => 
+        setTimeout(() => reject(new Error(`Timeout fetching ${s}`)), timeoutMillis)
+      );
+
+      const fetchPromise = (async () => {
+        // まず chart を試す (JSON API なので高速かつ安定)
+        try {
+          const chart = await yf.chart(s, {
+            period1: start,
+            period2: end,
+            interval: "1d"
+          });
+          if (chart && chart.quotes && chart.quotes.length > 10) {
+            return chart.quotes.filter(q => q.close !== null && q.close !== undefined);
+          }
+        } catch (err) {
+          console.warn(`[FX] yf.chart failed for ${s}:`, (err as any).message);
+        }
+        
+        // 次に historical を試す
+        return await yf.historical(s, {
           period1: start,
           period2: end,
           interval: "1d"
-        });
-        if (chart && chart.quotes && chart.quotes.length > 0) {
-          return chart.quotes.filter(q => q.close !== null && q.close !== undefined);
-        }
-      } catch (err) {
-        console.warn(`[FX] yf.chart failed for ${s}:`, (err as any).message);
-      }
-      
-      // 次に historical を試す
-      return await yf.historical(s, {
-        period1: start,
-        period2: end,
-        interval: "1d"
-      }).catch(() => []);
+        }).catch(() => []);
+      })();
+
+      return await Promise.race([fetchPromise, timeoutPromise]);
     };
 
     historical = await fetchHistory(symbol);
@@ -344,9 +354,12 @@ export async function syncSpecificPairAction(pairCode: string): Promise<{ succes
 export async function syncFXRealData() {
   (async () => {
     try {
-      for (const pair of SUPPORTED_PAIRS) {
-        await syncSpecificPair(pair);
-        await new Promise(r => setTimeout(r, 200)); 
+      // 並列実行数を制限しながら同期 (バースト防止)
+      const CHUNK_SIZE = 3;
+      for (let i = 0; i < SUPPORTED_PAIRS.length; i += CHUNK_SIZE) {
+        const chunk = SUPPORTED_PAIRS.slice(i, i + CHUNK_SIZE);
+        await Promise.all(chunk.map(pair => syncSpecificPair(pair)));
+        await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000)); 
       }
     } catch (err) {
       console.error("Background sync fatal error:", err);
