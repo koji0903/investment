@@ -21,12 +21,22 @@ const MONITORING_STOCKS: StockPairMaster[] = [
 const STATIC_STOCK_DUMMY: StockJudgment[] = [
   {
     ticker: "7203", companyName: "トヨタ自動車", sector: "輸送用機器", currentPrice: 3500,
-    totalScore: 75, signalLabel: "買い優勢", confidence: "高",
+    totalScore: 75, signalLabel: "買い優勢", certainty: 90,
     technicalScore: 70, technicalTrend: "bullish", technicalReasons: ["上昇トレンド"],
     fundamentalScore: 80, growthProfile: "stable", financialHealth: "strong", fundamentalReasons: ["好決算"],
     valuationScore: 70, valuationLabel: "fair", valuationReasons: ["妥当"],
     shareholderReturnScore: 65, dividendProfile: "stable_dividend", holdSuitability: "good_for_long_term", shareholderReasons: ["還元姿勢"],
-    summaryComment: "日本を代表する優良企業です。安定感があります。", updatedAt: new Date().toISOString()
+    summaryComment: "日本を代表する優良企業です。安定感があります。", 
+    updatedAt: new Date().toISOString(),
+    syncStatus: "completed",
+    lastSyncAt: new Date().toISOString(),
+    valuationMetrics: {
+      per: 12.5,
+      pbr: 1.1,
+      dividendYield: 2.8,
+      roe: 10.5,
+      equityRatio: 40
+    }
   }
 ];
 
@@ -42,7 +52,7 @@ export async function getStockJudgmentsAction(): Promise<StockJudgment[]> {
       console.log("[Server] No stocks found, syncing...");
       try {
         const syncRes = await syncStockRealData();
-        if (syncRes && syncRes.count > 0) {
+        if (syncRes && syncRes.data && syncRes.data.length > 0) {
           const snapshot2 = await getDocs(q);
           if (!snapshot2.empty) {
             return JSON.parse(JSON.stringify(snapshot2.docs.map(doc => doc.data())));
@@ -73,6 +83,7 @@ export async function generateStockDummyDataAction(): Promise<StockJudgment[]> {
       currentPrice: 1000 + Math.random() * 5000,
       totalScore: score,
       signalLabel: score > 70 ? "買い優勢" : score > 55 ? "やや買い" : score > 35 ? "中立" : "やや売り",
+      certainty: 50,
       technicalScore: score * 0.8,
       technicalTrend: score > 60 ? "bullish" : score < 40 ? "bearish" : "neutral",
       technicalReasons: ["サーバー側で生成された安定データです。"],
@@ -87,9 +98,17 @@ export async function generateStockDummyDataAction(): Promise<StockJudgment[]> {
       dividendProfile: "stable_dividend",
       holdSuitability: "good_for_long_term",
       shareholderReasons: ["配当利回りが維持されています。"],
-      confidence: "中",
       summaryComment: "実データの取得に失敗したため、AI生成のバックアップデータを表示しています。",
       updatedAt: new Date().toISOString(),
+      syncStatus: "completed",
+      lastSyncAt: new Date().toISOString(),
+      valuationMetrics: {
+        per: 15,
+        pbr: 1.2,
+        dividendYield: 2.5,
+        roe: 10,
+        equityRatio: 50
+      }
     } as StockJudgment;
   });
 

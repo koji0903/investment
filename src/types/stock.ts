@@ -45,13 +45,23 @@ export interface StockJudgment {
   holdSuitability: TradingSuitability;
   shareholderReasons: string[];
   
-  // 総合判定
   totalScore: number;
   signalLabel: StockSignalLabel;
-  confidence: "高" | "中" | "低";
-  summaryComment: string;
-  
+  certainty: number;           // 0-100 (%) 統合判断の確からしさ
+  summaryComment: string;      // AIによる総合コメント
+  syncStatus?: "pending" | "syncing" | "completed" | "failed"; // 同期ステータス
+  lastSyncAt?: string;         // 最終同期時刻
   updatedAt: string;
+  
+  // 詳細データ (UI表示用)
+  chartData?: { date: string; value: number }[];
+  valuationMetrics?: {
+    per: number;
+    pbr: number;
+    dividendYield: number;
+    roe: number;
+    equityRatio: number;
+  };
 }
 
 export interface StockFundamental {

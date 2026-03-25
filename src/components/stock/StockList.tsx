@@ -4,13 +4,14 @@ import React from "react";
 import { StockJudgment } from "@/types/stock";
 import { 
   StockSignalBadge, 
-  StockConfidenceIndicator, 
+  StockCertaintyIndicator, 
   StockSuitabilityBadge,
-  FinancialHealthBadge
+  SyncStatusIndicator
 } from "./StockUIComponents";
-import { ChevronRight, Zap, Target, Coins, Scale } from "lucide-react";
+import { ChevronRight, BarChart2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { LineChart, Line, ResponsiveContainer, YAxis } from "recharts";
 
 interface StockListProps {
   items: StockJudgment[];
@@ -21,18 +22,17 @@ export const StockList: React.FC<StockListProps> = ({ items, onSelect }) => {
   return (
     <div className="w-full">
       {/* Desktop View */}
-      <div className="hidden md:block overflow-hidden rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+      <div className="hidden lg:block overflow-hidden rounded-[32px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/50 text-xs font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 dark:border-slate-800">
-              <th className="px-6 py-4">銘柄 / 株価</th>
-              <th className="px-6 py-4 text-center">短期(Tech)</th>
-              <th className="px-6 py-4 text-center">基礎(Fund)</th>
-              <th className="px-6 py-4 text-center">割安(Val)</th>
-              <th className="px-6 py-4 text-center">還元(Div)</th>
-              <th className="px-6 py-4">総合判定</th>
-              <th className="px-6 py-4">適正/信頼度</th>
-              <th className="px-6 py-4 text-right"></th>
+            <tr className="bg-slate-50 dark:bg-slate-800/30 text-[10px] font-black text-slate-400 uppercase tracking-[0.15em] border-b border-slate-100 dark:border-slate-800">
+              <th className="px-8 py-5">銘柄 / ステータス</th>
+              <th className="px-6 py-5">トレンド (30D)</th>
+              <th className="px-6 py-5 text-center">Tech / Fund</th>
+              <th className="px-6 py-5 text-center">Val / Div</th>
+              <th className="px-6 py-5">総合判定</th>
+              <th className="px-6 py-5">確信度/適正</th>
+              <th className="px-8 py-5 text-right"></th>
             </tr>
           </thead>
           <tbody>
@@ -40,42 +40,50 @@ export const StockList: React.FC<StockListProps> = ({ items, onSelect }) => {
               <tr 
                 key={item.ticker}
                 onClick={() => onSelect(item)}
-                className="group border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/20 cursor-pointer transition-colors"
+                className="group border-b border-slate-50 dark:border-slate-800/20 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 cursor-pointer transition-all"
               >
-                <td className="px-6 py-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-xs border border-slate-800">
+                <td className="px-8 py-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-xs border border-slate-800 shadow-sm group-hover:scale-110 transition-transform">
                       {item.ticker}
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <div className="text-sm font-black text-slate-800 dark:text-white leading-tight">{item.companyName}</div>
-                      <div className="text-xs font-bold text-slate-400 mt-0.5 tabular-nums">
-                        {item.currentPrice.toLocaleString()}円
+                      <div className="flex items-center gap-3">
+                         <span className="text-[11px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toLocaleString()}円</span>
+                         <SyncStatusIndicator status={item.syncStatus} />
                       </div>
                     </div>
                   </div>
                 </td>
-                <td className="px-6 py-5 text-center">
-                  <ScoreBadge score={item.technicalScore} />
+                <td className="px-6 py-6 w-32">
+                   <div className="h-10 w-24">
+                     <MiniChart data={item.chartData} trend={item.technicalTrend} />
+                   </div>
                 </td>
-                <td className="px-6 py-5 text-center">
-                  <ScoreBadge score={item.fundamentalScore} />
+                <td className="px-6 py-6">
+                  <div className="flex items-center justify-center gap-2">
+                    <ScoreBadge score={item.technicalScore} label="T" />
+                    <ScoreBadge score={item.fundamentalScore} label="F" />
+                  </div>
                 </td>
-                <td className="px-6 py-5 text-center">
-                  <ScoreBadge score={item.valuationScore} />
+                <td className="px-6 py-6">
+                  <div className="flex items-center justify-center gap-2">
+                    <ScoreBadge score={item.valuationScore} label="V" />
+                    <ScoreBadge score={item.shareholderReturnScore} label="D" />
+                  </div>
                 </td>
-                <td className="px-6 py-5 text-center">
-                  <ScoreBadge score={item.shareholderReturnScore} />
-                </td>
-                <td className="px-6 py-5">
+                <td className="px-6 py-6">
                   <StockSignalBadge label={item.signalLabel} />
                 </td>
-                <td className="px-6 py-5 space-y-2">
+                <td className="px-6 py-6 space-y-3">
+                  <StockCertaintyIndicator certainty={item.certainty} />
                   <StockSuitabilityBadge suitability={item.holdSuitability} />
-                  <StockConfidenceIndicator level={item.confidence} />
                 </td>
-                <td className="px-6 py-5 text-right">
-                  <ChevronRight size={18} className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+                <td className="px-8 py-6 text-right">
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center group-hover:bg-indigo-50 dark:group-hover:bg-indigo-500/10 transition-colors">
+                    <ChevronRight size={18} className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+                  </div>
                 </td>
               </tr>
             ))}
@@ -83,45 +91,51 @@ export const StockList: React.FC<StockListProps> = ({ items, onSelect }) => {
         </table>
       </div>
 
-      {/* Mobile View */}
-      <div className="md:hidden space-y-4">
+      {/* Mobile/Tablet View */}
+      <div className="lg:hidden space-y-4">
         {items.map((item) => (
           <motion.div 
             key={item.ticker}
             whileTap={{ scale: 0.98 }}
             onClick={() => onSelect(item)}
-            className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] shadow-sm space-y-4"
+            className="p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] shadow-sm space-y-5"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-xs">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-xs">
                   {item.ticker}
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-800 dark:text-white leading-none">{item.companyName}</h3>
-                  <p className="text-[11px] font-bold text-slate-400 mt-1 tabular-nums">{item.currentPrice.toLocaleString()}円</p>
+                  <h3 className="text-sm font-black text-slate-800 dark:text-white leading-tight">{item.companyName}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-[11px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toLocaleString()}円</p>
+                    <SyncStatusIndicator status={item.syncStatus} />
+                  </div>
                 </div>
               </div>
               <StockSignalBadge label={item.signalLabel} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4 py-3 border-y border-slate-50 dark:border-slate-800/50">
-               <div className="flex flex-col gap-1">
-                 <span className="text-[8px] font-black text-slate-400 uppercase">総合スコア</span>
-                 <span className={cn("text-lg font-black", 
-                   item.totalScore > 0 ? "text-emerald-500" : item.totalScore < 0 ? "text-rose-500" : "text-slate-400"
-                 )}>
-                   {item.totalScore > 0 ? `+${item.totalScore}` : item.totalScore}
-                 </span>
+            <div className="flex items-center justify-between py-4 border-y border-slate-50 dark:border-slate-800/50">
+               <div className="h-10 w-28">
+                 <MiniChart data={item.chartData} trend={item.technicalTrend} />
                </div>
-               <div className="space-y-1 text-right">
+               <div className="flex flex-col items-end gap-2">
+                 <StockCertaintyIndicator certainty={item.certainty} />
                  <StockSuitabilityBadge suitability={item.holdSuitability} />
-                 <StockConfidenceIndicator level={item.confidence} />
                </div>
             </div>
             
-            <div className="text-xs font-bold text-slate-500 line-clamp-1">
-              {item.summaryComment}
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex gap-1.5">
+                <ScoreBadge score={item.technicalScore} label="T" />
+                <ScoreBadge score={item.fundamentalScore} label="F" />
+                <ScoreBadge score={item.valuationScore} label="V" />
+                <ScoreBadge score={item.shareholderReturnScore} label="D" />
+              </div>
+              <div className="flex items-center gap-1 text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1.5 rounded-xl">
+                 詳細分析を見る <ChevronRight size={12} />
+              </div>
             </div>
           </motion.div>
         ))}
@@ -130,16 +144,50 @@ export const StockList: React.FC<StockListProps> = ({ items, onSelect }) => {
   );
 };
 
-const ScoreBadge = ({ score }: { score: number }) => {
-  const color = score > 40 ? "text-emerald-500 bg-emerald-50 dark:bg-emerald-500/10" : 
-                score > 10 ? "text-emerald-400" :
-                score < -40 ? "text-rose-500 bg-rose-50 dark:bg-rose-500/10" :
-                score < -10 ? "text-rose-400" :
-                "text-slate-400";
+const MiniChart = ({ data, trend }: { data?: any[], trend: string }) => {
+  if (!data || data.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+        <BarChart2 size={14} className="text-slate-300 animate-pulse" />
+      </div>
+    );
+  }
+
+  // 直近30日間を抽出
+  const recentData = data.slice(-30);
+  const color = trend === "bullish" ? "#10b981" : trend === "bearish" ? "#f43f5e" : "#64748b";
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={recentData}>
+        <YAxis hide domain={['auto', 'auto']} />
+        <Line 
+          type="monotone" 
+          dataKey="value" 
+          stroke={color} 
+          strokeWidth={2.5} 
+          dot={false} 
+          animationDuration={1500}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+};
+
+const ScoreBadge = ({ score, label }: { score: number, label: string }) => {
+  const isPositive = score > 10;
+  const isNegative = score < -10;
+  
+  const color = isPositive ? "text-emerald-500 border-emerald-100 bg-emerald-50/50 dark:bg-emerald-500/10 dark:border-emerald-500/20" : 
+                isNegative ? "text-rose-500 border-rose-100 bg-rose-50/50 dark:bg-rose-500/10 dark:border-rose-500/20" :
+                "text-slate-400 border-slate-100 bg-slate-50 dark:bg-slate-800/50 dark:border-slate-800";
   
   return (
-    <div className={cn("inline-flex items-center justify-center w-10 h-10 rounded-xl font-black text-xs", color)}>
-      {score > 0 ? `+${score}` : score}
+    <div className={cn("inline-flex flex-col items-center justify-center w-8 h-8 rounded-lg border font-black text-[9px]", color)}>
+      <span className="opacity-40 leading-none mb-0.5">{label}</span>
+      <span className="leading-none">{score > 0 ? `+${score}` : score}</span>
     </div>
   );
 };
+
+export default StockList;

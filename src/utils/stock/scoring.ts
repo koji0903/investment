@@ -48,10 +48,6 @@ export function calculateStockTotalJudgment(
   const signs = [tech.score, fund.score, val.score, div.score].map(s => Math.sign(s));
   const sameSignCount = signs.filter(s => s === Math.sign(totalScore)).length;
   
-  let confidence: "高" | "中" | "低" = "低";
-  if (sameSignCount >= 4) confidence = "高";
-  else if (sameSignCount >= 3) confidence = "中";
-
   // AI総合コメント（簡易生成）
   const summaryComment = generateSummaryComment(ticker, signalLabel, tech, fund, val, div);
 
@@ -76,9 +72,12 @@ export function calculateStockTotalJudgment(
     shareholderReasons: div.reasons,
     totalScore,
     signalLabel,
-    confidence,
+    certainty: sameSignCount >= 4 ? 90 : sameSignCount >= 3 ? 60 : 30, // 0-100%
     summaryComment,
-    updatedAt: new Date().toISOString()
+    syncStatus: 'completed',
+    lastSyncAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    chartData: [] // To be filled by the caller based on historical data
   };
 }
 

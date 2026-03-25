@@ -37,23 +37,60 @@ export const StockSignalBadge = ({ label }: { label: StockSignalLabel }) => {
 };
 
 /**
- * 信頼度表示
+ * 確信度表示 (0-100%)
  */
-export const StockConfidenceIndicator = ({ level }: { level: "高" | "中" | "低" }) => {
-  const dots = level === "高" ? 3 : level === "中" ? 2 : 1;
-  const color = level === "高" ? "bg-emerald-500" : level === "中" ? "bg-amber-500" : "bg-slate-300";
+export const StockCertaintyIndicator = ({ certainty }: { certainty: number }) => {
+  const color = certainty >= 80 ? "text-emerald-500" : certainty >= 50 ? "text-amber-500" : "text-slate-400";
+  const bgColor = certainty >= 80 ? "bg-emerald-500" : certainty >= 50 ? "bg-amber-500" : "bg-slate-200 dark:bg-slate-700";
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex gap-0.5">
-        {[1, 2, 3].map(i => (
-          <div 
-            key={i} 
-            className={cn("w-2 h-1 rounded-full", i <= dots ? color : "bg-slate-100 dark:bg-slate-800")} 
-          />
-        ))}
+    <div className="flex flex-col gap-1 w-full max-w-[80px]">
+      <div className="flex justify-between items-end">
+        <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Certainty</span>
+        <span className={cn("text-[11px] font-black tabular-nums leading-none", color)}>{certainty}%</span>
       </div>
-      <span className="text-xs font-bold text-slate-400 leading-none">信頼度:{level}</span>
+      <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div className={cn("h-full rounded-full transition-all duration-1000", bgColor)} style={{ width: `${certainty}%` }} />
+      </div>
+    </div>
+  );
+};
+
+/**
+ * 同期ステータス表示
+ */
+export const SyncStatusIndicator = ({ status }: { status?: "pending" | "syncing" | "completed" | "failed" }) => {
+  if (status === "syncing") {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="relative">
+          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-ping absolute" />
+          <div className="w-2 h-2 bg-indigo-500 rounded-full relative" />
+        </div>
+        <span className="text-[10px] font-black text-indigo-500 animate-pulse tracking-tighter">分析中...</span>
+      </div>
+    );
+  }
+  if (status === "completed") {
+    return (
+      <div className="flex items-center gap-1.5 text-emerald-500 font-black">
+        <ShieldCheck size={12} />
+        <span className="text-[10px] tracking-tighter">分析完了</span>
+      </div>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <div className="flex items-center gap-1.5 text-rose-500 font-black">
+        <ShieldAlert size={12} />
+        <span className="text-[10px] tracking-tighter">エラー</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1.5 text-slate-300 font-black">
+      <div className="w-2 h-2 bg-slate-200 dark:bg-slate-800 rounded-full" />
+      <span className="text-[10px] tracking-tighter">待機中</span>
     </div>
   );
 };

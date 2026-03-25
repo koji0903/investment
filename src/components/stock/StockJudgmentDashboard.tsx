@@ -1,20 +1,30 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { StockJudgment } from "@/types/stock";
-import { StockService } from "@/services/stockService";
+import { StockService, MONITORING_STOCKS } from "@/services/stockService";
 import { StockList } from "./StockList";
 import { StockDetailModal } from "./StockDetailModal";
 import { StockFilterSort } from "./StockFilterSort";
 import { StockSignalBadge } from "./StockUIComponents";
-import { Zap, Info, ShieldAlert, Trophy, TrendingUp, TrendingDown, Coins, ChevronRight, BarChart } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Zap, 
+  Info, 
+  ShieldAlert, 
+  Trophy, 
+  TrendingUp, 
+  Coins, 
+  ChevronRight, 
+  BarChart, 
+  ShieldCheck, 
+  Target 
+} from "lucide-react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { RadarLinkCard } from "@/components/RadarLinkCard";
 
 export const StockJudgmentDashboard = () => {
-  const [allJudgments, setAllJudgments] = useState<StockJudgment[]>([]);
+  const [allJudgments, setAllJudgments] = useState<StockJudgment[]>([] as StockJudgment[]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedStock, setSelectedStock] = useState<StockJudgment | null>(null);
@@ -22,184 +32,190 @@ export const StockJudgmentDashboard = () => {
   const [filters, setFilters] = useState({ search: "", label: "all" });
   const [sort, setSort] = useState({ key: "totalScore", order: "desc" as "asc" | "desc" });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  
+  const syncInProgressRef = useRef(false);
+  const [syncStats, setSyncStats] = useState({ total: 0, completed: 0, syncing: 0, pending: 0, progress: 0 });
+  const isMountedRef = useRef(true);
 
-  const fetchData = async (forceRefresh = false) => {
-    if (!forceRefresh) setLoading(true);
+  // 1銘柄ずつの順次同期ループ
+  const syncStocksOneByOne = async (tickers: string[]) => {
+    if (syncInProgressRef.current) return;
+    syncInProgressRef.current = true;
+    
+    try {
+      for (const ticker of tickers) {
+        if (!isMountedRef.current) break;
+        try {
+          // 同期中ステータスをセット
+          await StockService.setSyncing(ticker);
+          setAllJudgments(prev => {
+            const map = new Map(prev.map(d => [d.ticker, d]));
+            const existing = map.get(ticker);
+            if (existing) map.set(ticker, { ...existing, syncStatus: "syncing" });
+            return Array.from(map.values()).sort((a, b) => b.totalScore - a.totalScore);
+          });
+          
+          // 実際の同期実行
+          const result = await StockService.syncStock(ticker);
+          
+          // 結果反映
+          if (result && result.success && result.data) {
+            setAllJudgments(prev => {
+              const map = new Map(prev.map(d => [d.ticker, d]));
+              map.set(ticker, result.data as StockJudgment);
+              return Array.from(map.values()).sort((a, b) => b.totalScore - a.totalScore);
+            });
+          }
+        } catch (err) {
+          console.error(`[Stock] Sync error for ${ticker}:`, err);
+        }
+        await new Promise(r => setTimeout(r, 600));
+      }
+    } finally {
+      syncInProgressRef.current = false;
+    }
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
     setError(null);
     try {
-      const data = forceRefresh 
-        ? await StockService.syncRealData()
-        : await StockService.getJudgments();
-      setAllJudgments(data);
-      
-      if (data.length > 0) {
-        const latest = [...data].sort((a, b) => 
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        )[0]?.updatedAt;
-        setLastUpdated(latest);
-      }
+      const data = await StockService.getJudgments();
+      if (isMountedRef.current) {
+        setAllJudgments(data || []);
+        setLoading(false);
+        
+        if (data && data.length > 0) {
+          const latest = [...data].sort((a, b) => 
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          )[0]?.updatedAt;
+          setLastUpdated(latest);
 
-      // 初回かつ最新化していない場合は、バックグラウンドで最新化を実行
-      if (!forceRefresh) {
-        fetchData(true);
+          const staleOrUncompleted = data.filter(d => {
+            const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 6 * 60 * 60 * 1000;
+            return d.syncStatus !== "completed" || isStale;
+          });
+          
+          if (staleOrUncompleted.length > 0) {
+            syncStocksOneByOne(staleOrUncompleted.map(d => d.ticker));
+          }
+        } else {
+          // 初期同期
+          syncStocksOneByOne(MONITORING_STOCKS.map(s => s.ticker));
+        }
       }
     } catch (err) {
-      console.error(err);
-      if (!forceRefresh) setError("日本株データの取得に失敗しました。もう一度お試しください。");
-    } finally {
-      if (!forceRefresh) setLoading(false);
+      if (isMountedRef.current) {
+        setError("データ取得に失敗しました。");
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
     fetchData();
+    return () => { isMountedRef.current = false; };
   }, []);
 
-  // ランキングデータの作成
-  const rankings = useMemo(() => {
-    const buyRanking = [...allJudgments].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
-    const dividendRanking = [...allJudgments].sort((a, b) => b.shareholderReturnScore - a.shareholderReturnScore).slice(0, 3);
-    const valuationRanking = [...allJudgments].sort((a, b) => b.valuationScore - a.valuationScore).slice(0, 3);
-    return { buyRanking, dividendRanking, valuationRanking };
+  useEffect(() => {
+    if (allJudgments.length === 0) return;
+    const total = allJudgments.length;
+    const completed = allJudgments.filter(j => j.syncStatus === "completed").length;
+    const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
+    const pending = allJudgments.filter(j => !j.syncStatus || j.syncStatus === "pending").length;
+    const progress = Math.round((completed / total) * 100);
+    setSyncStats({ total, completed, syncing, pending, progress });
   }, [allJudgments]);
 
-  const filteredAndSortedItems = useMemo(() => {
+  const rankings = useMemo(() => {
+    const buyRanking = [...allJudgments].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
+    const divRanking = [...allJudgments].sort((a, b) => b.shareholderReturnScore - a.shareholderReturnScore).slice(0, 3);
+    const valRanking = [...allJudgments].sort((a, b) => b.valuationScore - a.valuationScore).slice(0, 3);
+    return { buyRanking, divRanking, valRanking };
+  }, [allJudgments]);
+
+  const filteredItems = useMemo(() => {
     let result = [...allJudgments];
-    
-    // Search
     if (filters.search) {
       const s = filters.search.toLowerCase();
-      result = result.filter(j => j.companyName.includes(s) || j.ticker.includes(s) || j.sector.includes(s));
+      result = result.filter(j => j.companyName.includes(s) || j.ticker.includes(s));
     }
-    
-    // Category Filter
     if (filters.label !== "all") {
-      if (filters.label === "high_dividend") {
-        result = result.filter(j => j.dividendProfile === "high_dividend");
-      } else if (filters.label === "undervalued") {
-        result = result.filter(j => j.valuationLabel === "undervalued");
-      } else if (filters.label === "growth") {
-        result = result.filter(j => j.growthProfile === "growth");
-      } else {
-        result = result.filter(j => j.signalLabel === filters.label);
-      }
+      if (filters.label === "high_dividend") result = result.filter(j => j.dividendProfile === "high_dividend");
+      else if (filters.label === "undervalued") result = result.filter(j => j.valuationLabel === "undervalued");
+      else result = result.filter(j => j.signalLabel === filters.label);
     }
-
-    // Sort
-    result.sort((a: any, b: any) => {
-      const aVal = a[sort.key] || 0;
-      const bVal = b[sort.key] || 0;
+    result.sort((a, b) => {
+      const aVal = (a as any)[sort.key] || 0;
+      const bVal = (b as any)[sort.key] || 0;
       return sort.order === "desc" ? bVal - aVal : aVal - bVal;
     });
-
     return result;
   }, [allJudgments, filters, sort]);
 
   return (
-    <div className="space-y-12 pb-20">
-      {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-slate-900 rounded-2xl text-white shadow-xl shadow-slate-900/20 dark:bg-white dark:text-slate-900">
-              <BarChart size={24} />
+    <div className="space-y-12 pb-20 font-sans">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3.5 bg-slate-900 rounded-[20px] text-white">
+              <BarChart size={28} />
             </div>
             <div>
-              <h1 className="text-2xl md:text-4xl font-black text-slate-800 dark:text-white tracking-tight">日本株投資判断エンジン</h1>
-              <div className="flex items-center gap-3 mt-1">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Japanese Equities Judgment Matrix</p>
-                {lastUpdated && (
-                  <span className="text-[10px] font-bold text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-200/50">
-                    最終更新: {new Date(lastUpdated).toLocaleTimeString("ja-JP")}
-                  </span>
-                )}
-              </div>
+              <h1 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-white">日本株投資判断エンジン</h1>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Alpha Discovery V2</p>
             </div>
           </div>
-          <div className="flex-shrink-0">
-             <Link href="/market-radar" className="flex items-center gap-3 px-6 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black transition-all hover:bg-indigo-700 shadow-xl shadow-indigo-600/20">
-               <Zap size={18} />
-               マーケットレーダーで銘柄を探す
-               <ChevronRight size={16} />
-             </Link>
-          </div>
         </div>
+        <Link href="/market-radar" className="px-8 py-4 bg-indigo-600 text-white rounded-2xl text-sm font-black shadow-xl shadow-indigo-600/20 transition-transform active:scale-95">
+          マーケットレーダーを表示
+        </Link>
       </div>
 
-      {/* Rankings Section */}
-      {!loading && allJudgments.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <RankingCard 
-            title="総合スコア順" 
-            items={rankings.buyRanking} 
-            icon={<Trophy size={18} className="text-amber-500" />}
-            onSelect={setSelectedStock}
-          />
-          <RankingCard 
-            title="配当・還元妙味" 
-            items={rankings.dividendRanking} 
-            icon={<Coins size={18} className="text-rose-500" />}
-            onSelect={setSelectedStock}
-          />
-          <RankingCard 
-            title="割安度・修正期待" 
-            items={rankings.valuationRanking} 
-            icon={<TrendingUp size={18} className="text-indigo-500" />}
-            onSelect={setSelectedStock}
-          />
+      {!loading && syncStats.total > 0 && (
+        <div className="p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] space-y-5">
+           <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                 <Zap className={cn("text-indigo-500", syncStats.progress < 100 && "animate-pulse")} size={20} />
+                 <span className="text-sm font-black text-slate-800 dark:text-white">市場データ同期中 ({syncStats.progress}%)</span>
+              </div>
+              <span className="text-xs font-bold text-slate-400">完了: {syncStats.completed} / {syncStats.total}</span>
+           </div>
+           <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <motion.div animate={{ width: `${syncStats.progress}%` }} className="h-full bg-indigo-500" />
+           </div>
         </div>
       )}
 
-      {/* Main Dashboard Content */}
-      <div className="space-y-8">
-        <StockFilterSort 
-          loading={loading}
-          onFilterChange={setFilters}
-          onSortChange={setSort}
-          onRefresh={() => fetchData(true)}
-        />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <RankingCard title="総合スコア" items={rankings.buyRanking} icon={<Trophy className="text-amber-500" />} onSelect={setSelectedStock} />
+        <RankingCard title="配当妙味" items={rankings.divRanking} icon={<Coins className="text-rose-500" />} onSelect={setSelectedStock} />
+        <RankingCard title="割安期待" items={rankings.valRanking} icon={<TrendingUp className="text-indigo-500" />} onSelect={setSelectedStock} />
+      </div>
 
+      <div className="space-y-8">
+        <StockFilterSort loading={loading} onFilterChange={setFilters} onSortChange={setSort} onRefresh={fetchData} />
         {error ? (
-          <div className="p-12 text-center bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-[32px] space-y-4">
-            <ShieldAlert size={48} className="mx-auto text-rose-500" />
-            <p className="text-lg font-black text-rose-600 dark:text-rose-400">{error}</p>
-          </div>
+          <div className="p-10 bg-rose-50 text-rose-500 rounded-3xl border border-rose-100 text-center font-black">{error}</div>
         ) : loading && allJudgments.length === 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array(6).fill(0).map((_, i) => (
-              <div key={i} className="h-48 bg-slate-100 dark:bg-slate-800 rounded-[32px] animate-pulse" />
-            ))}
-          </div>
-        ) : filteredAndSortedItems.length === 0 ? (
-          <div className="py-24 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[40px] space-y-4">
-             <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-300">
-               <Zap size={32} />
-            </div>
-            <div>
-              <p className="text-lg font-black text-slate-800 dark:text-white">表示できる銘柄がありません</p>
-              <p className="text-xs font-bold text-slate-400">検索条件を変更するか、最新データに同期してください。</p>
-            </div>
-          </div>
+          <div className="p-20 text-center text-slate-400 font-bold">データを読み込み中...</div>
         ) : (
-          <StockList items={filteredAndSortedItems} onSelect={setSelectedStock} />
+          <StockList items={filteredItems} onSelect={setSelectedStock} />
         )}
       </div>
 
-      {/* Analysis Logic Info Section */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-8 md:p-10 space-y-8">
-        <div className="flex items-center gap-4">
-          <div className="p-2 bg-slate-900 rounded-xl text-white dark:bg-white dark:text-slate-900">
-            <Info size={20} />
-          </div>
-          <h2 className="text-xl font-black text-slate-800 dark:text-white">分析判定ロジックの詳細</h2>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-           <LogicCard title="テクニカル" color="border-indigo-500" reasons={["移動平均乖離率","RSI過熱感","ボリンジャーバンド"]} />
-           <LogicCard title="ファンダ" color="border-emerald-500" reasons={["EPS成長率","ROEの推移","自己資本比率"]} />
-           <LogicCard title="バリュエーション" color="border-amber-500" reasons={["過去5年平均PER","PBR 1倍割れ","業界平均比較"]} />
-           <LogicCard title="配当・還元" color="border-rose-500" reasons={["配当利回り水準","配当性向の健全性","自社株買い方針"]} />
-        </div>
+      <div className="p-10 bg-slate-50 dark:bg-slate-900/50 rounded-[40px] border border-slate-100 dark:border-slate-800">
+         <h3 className="text-lg font-black text-slate-800 dark:text-white mb-6 flex items-center gap-3">
+           <Info size={20} className="text-indigo-500" />
+           分析アルゴリズム指標
+         </h3>
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <LogicBox title="テクニカル" weight="25%" reasons={["RSI(14)","SMA25/75/200","ボラティリティ"]} />
+            <LogicBox title="財務成長" weight="35%" reasons={["売上高成長率","ROE 8.0%以上","営業利益率"]} />
+            <LogicBox title="割安度" weight="25%" reasons={["予想PER推移","PBR 1.0倍割れ","EV/EBITDA"]} />
+            <LogicBox title="株主還元" weight="15%" reasons={["配当利回り推移","配当性向の安定性","自社株買い"]} />
+         </div>
       </div>
 
       <StockDetailModal judgment={selectedStock} onClose={() => setSelectedStock(null)} />
@@ -208,45 +224,39 @@ export const StockJudgmentDashboard = () => {
 };
 
 const RankingCard = ({ title, items, icon, onSelect }: { title: string, items: StockJudgment[], icon: React.ReactNode, onSelect: (j: StockJudgment) => void }) => (
-  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] p-6 shadow-sm overflow-hidden relative">
-    <div className="flex items-center gap-3 mb-5 relative z-10">
-      <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl">{icon}</div>
-      <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tighter">{title}</h3>
+  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-6 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center gap-3 mb-4">
+      {icon}
+      <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">{title}</h3>
     </div>
-    <div className="space-y-2 relative z-10">
+    <div className="space-y-1">
       {items.map((item, i) => (
-        <div 
-          key={item.ticker} 
-          onClick={() => onSelect(item)}
-          className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-all group"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-black text-slate-300 w-4">{i + 1}</span>
-            <div className="flex flex-col">
-              <span className="text-xs font-black text-slate-700 dark:text-slate-200 leading-tight">{item.companyName}</span>
-              <span className="text-xs font-bold text-slate-400">{item.ticker}</span>
-            </div>
+        <div key={item.ticker} onClick={() => onSelect(item)} className="flex items-center justify-between p-3 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-all group">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <span className="text-[10px] font-black text-slate-300 w-3 flex-shrink-0">{i+1}</span>
+            <span className="text-xs font-black text-slate-700 dark:text-slate-200 group-hover:text-indigo-500 truncate">{item.companyName}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <StockSignalBadge label={item.signalLabel} />
-            <ChevronRight size={14} className="text-slate-200 group-hover:text-indigo-400 group-hover:translate-x-1 transition-all" />
-          </div>
+          <StockSignalBadge label={item.signalLabel} />
         </div>
       ))}
     </div>
   </div>
 );
 
-const LogicCard = ({ title, color, reasons }: { title: string, color: string, reasons: string[] }) => (
-  <div className={cn("p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border-l-4", color)}>
-    <h4 className="text-xs font-black text-slate-700 dark:text-slate-200 mb-3">{title}</h4>
-    <ul className="space-y-1.5">
+const LogicBox = ({ title, weight, reasons }: { title: string, weight: string, reasons: string[] }) => (
+  <div className="p-6 bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800/50">
+    <div className="flex justify-between items-end mb-4">
+      <span className="text-xs font-black text-slate-800 dark:text-white uppercase">{title}</span>
+      <span className="text-[10px] font-black text-indigo-500">{weight}</span>
+    </div>
+    <ul className="space-y-2">
       {reasons.map((r, i) => (
-        <li key={i} className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
-          <div className="w-1 h-1 rounded-full bg-slate-300" />
-          {r}
+        <li key={i} className="text-[10px] font-bold text-slate-400 flex items-center gap-2">
+          <Target size={10} className="text-slate-200 flex-shrink-0" /> {r}
         </li>
       ))}
     </ul>
   </div>
 );
+
+export default StockJudgmentDashboard;
