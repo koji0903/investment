@@ -1,7 +1,7 @@
 import { StockPairMaster } from "@/types/stock";
 
 export const TSE_PRIME_MASTER: StockPairMaster[] = [
-  // 輸送用機器 (Automotive)
+  // 輸送用機器
   { ticker: "7203", name: "トヨタ自動車", sector: "輸送用機器" },
   { ticker: "7267", name: "本田技研工業", sector: "輸送用機器" },
   { ticker: "7201", name: "日産自動車", sector: "輸送用機器" },
@@ -13,8 +13,11 @@ export const TSE_PRIME_MASTER: StockPairMaster[] = [
   { ticker: "7269", name: "スズキ", sector: "輸送用機器" },
   { ticker: "6902", name: "デンソー", sector: "輸送用機器" },
   { ticker: "6995", name: "アイシン", sector: "輸送用機器" },
+  { ticker: "7202", name: "いすゞ自動車", sector: "輸送用機器" },
+  { ticker: "7259", name: "アイシン精機", sector: "輸送用機器" },
+  { ticker: "7282", name: "豊田合成", sector: "輸送用機器" },
 
-  // 電気機器 (Electric Appliances)
+  // 電気機器
   { ticker: "6758", name: "ソニーグループ", sector: "電気機器" },
   { ticker: "6501", name: "日立製作所", sector: "電気機器" },
   { ticker: "6701", name: "日本電気", sector: "電気機器" },
@@ -32,12 +35,22 @@ export const TSE_PRIME_MASTER: StockPairMaster[] = [
   { ticker: "6762", name: "TDK", sector: "電気機器" },
   { ticker: "6971", name: "京セラ", sector: "電気機器" },
   { ticker: "7752", name: "リコー", sector: "電気機器" },
-  { ticker: "7733", name: "オリンパス", sector: "電気機器" },
   { ticker: "6146", name: "ディスコ", sector: "電気機器" },
   { ticker: "6857", name: "アドバンテスト", sector: "電気機器" },
   { ticker: "6479", name: "ミネベアミツミ", sector: "電気機器" },
+  { ticker: "6448", name: "ブラザー工業", sector: "電気機器" },
+  { ticker: "6504", name: "富士電機", sector: "電気機器" },
+  { ticker: "6508", name: "明電舎", sector: "電気機器" },
+  { ticker: "6619", name: "ダブル・スコープ", sector: "電気機器" },
+  { ticker: "6674", name: "ＧＳユアサ", sector: "電気機器" },
+  { ticker: "6806", name: "ヒロセ電機", sector: "電気機器" },
+  { ticker: "6841", name: "横河電機", sector: "電気機器" },
+  { ticker: "6920", name: "レーザーテック", sector: "電気機器" },
+  { ticker: "6923", name: "スタンレー電気", sector: "電気機器" },
+  { ticker: "6963", name: "ローム", sector: "電気機器" },
+  { ticker: "6965", name: "浜松ホトニクス", sector: "電気機器" },
 
-  // 情報・通信業 (Info & Comm)
+  // 情報・通信業
   { ticker: "9984", name: "ソフトバンクグループ", sector: "情報・通信業" },
   { ticker: "9432", name: "日本電信電話", sector: "情報・通信業" },
   { ticker: "9433", name: "KDDI", sector: "情報・通信業" },
@@ -50,11 +63,14 @@ export const TSE_PRIME_MASTER: StockPairMaster[] = [
   { ticker: "4385", name: "メルカリ", sector: "情報・通信業" },
   { ticker: "9613", name: "NTTデータグループ", sector: "情報・通信業" },
   { ticker: "3769", name: "GMOパブリック", sector: "情報・通信業" },
-  { ticker: "3863", name: "日本製紙", sector: "情報・通信業" },
-  { ticker: "9735", name: "セコム", sector: "情報・通信業" },
-  { ticker: "2121", name: "ミクシィ", sector: "情報・通信業" },
+  { ticker: "4307", name: "野村総合研究所", sector: "情報・通信業" },
+  { ticker: "4716", name: "日本オラクル", sector: "情報・通信業" },
+  { ticker: "4732", name: "ユー・エス・エス", sector: "情報・通信業" },
+  { ticker: "4739", name: "伊藤忠テクノソリューションズ", sector: "情報・通信業" },
+  { ticker: "4768", name: "大塚商会", sector: "情報・通信業" },
+  { ticker: "9684", name: "スクウェア・エニックスHLD", sector: "情報・通信業" },
 
-  // 銀行業 (Banks)
+  // 銀行業
   { ticker: "8306", name: "三菱UFJフィナンシャル", sector: "銀行業" },
   { ticker: "8316", name: "三井住友フィナンシャル", sector: "銀行業" },
   { ticker: "8411", name: "みずほフィナンシャル", sector: "銀行業" },
@@ -62,11 +78,15 @@ export const TSE_PRIME_MASTER: StockPairMaster[] = [
   { ticker: "8309", name: "三井住友トラスト", sector: "銀行業" },
   { ticker: "7182", name: "ゆうちょ銀行", sector: "銀行業" },
   { ticker: "8331", name: "千葉銀行", sector: "銀行業" },
-  { ticker: "8354", name: "ふくおかフィナンシャル", sector: "銀行業" },
+  { ticker: "8332", name: "横浜銀行", sector: "銀行業" },
+  { ticker: "8354", name: "ふくおかフィナンシャルG", sector: "銀行業" },
   { ticker: "8355", name: "静岡銀行", sector: "銀行業" },
+  { ticker: "8377", name: "ほくほくフィナンシャルG", sector: "銀行業" },
+  { ticker: "8385", name: "伊予銀行", sector: "銀行業" },
+  { ticker: "8418", name: "山口フィナンシャルG", sector: "銀行業" },
   { ticker: "8410", name: "セブン銀行", sector: "銀行業" },
 
-  // 卸売業 (Wholesale)
+  // 卸売業
   { ticker: "8058", name: "三菱商事", sector: "卸売業" },
   { ticker: "8001", name: "伊藤忠商事", sector: "卸売業" },
   { ticker: "8031", name: "三井物産", sector: "卸売業" },
@@ -76,7 +96,7 @@ export const TSE_PRIME_MASTER: StockPairMaster[] = [
   { ticker: "8015", name: "豊田通商", sector: "卸売業" },
   { ticker: "8078", name: "阪和興業", sector: "卸売業" },
 
-  // 化学 (Chemicals)
+  // 化学
   { ticker: "4063", name: "信越化学工業", sector: "化学" },
   { ticker: "4188", name: "三菱ケミカルグループ", sector: "化学" },
   { ticker: "4005", name: "住友化学", sector: "化学" },
@@ -84,132 +104,6 @@ export const TSE_PRIME_MASTER: StockPairMaster[] = [
   { ticker: "4901", name: "富士フイルムHLD", sector: "化学" },
   { ticker: "4911", name: "資生堂", sector: "化学" },
   { ticker: "4452", name: "花王", sector: "化学" },
-  { ticker: "4661", name: "オリエンタルランド", sector: "化学" }, // 市場分類上はサービスだが、化学セクターに並ぶこともある
-
-  // 医薬品 (Pharmaceutical)
-  { ticker: "4502", name: "武田薬品工業", sector: "医薬品" },
-  { ticker: "4519", name: "中外製薬", sector: "医薬品" },
-  { ticker: "4568", name: "第一三共", sector: "医薬品" },
-  { ticker: "4503", name: "アステラス製薬", sector: "医薬品" },
-  { ticker: "4523", name: "エーザイ", sector: "医薬品" },
-  { ticker: "4507", name: "塩野義製薬", sector: "医薬品" },
-  { ticker: "4578", name: "大塚ホールディングス", sector: "医薬品" },
-
-  // 建設業 (Construction)
-  { ticker: "1801", name: "大成建設", sector: "建設業" },
-  { ticker: "1802", name: "大林組", sector: "建設業" },
-  { ticker: "1803", name: "清水建設", sector: "建設業" },
-  { ticker: "1812", name: "鹿島建設", sector: "建設業" },
-  { ticker: "1925", name: "大和ハウス工業", sector: "建設業" },
-  { ticker: "1928", name: "積水ハウス", sector: "建設業" },
-
-  // 小売業 (Retail)
-  { ticker: "3382", name: "セブン＆アイHLD", sector: "小売業" },
-  { ticker: "9983", name: "ファーストリテイリング", sector: "小売業" },
-  { ticker: "8267", name: "イオン", sector: "小売業" },
-  { ticker: "9843", name: "ニトリホールディングス", sector: "小売業" },
-  { ticker: "7532", name: "パンパシフィック", sector: "小売業" },
-  { ticker: "3088", name: "マツキヨココカラ", sector: "小売業" },
-
-  // 食品 (Foods)
-  { ticker: "2914", name: "日本たばこ産業", sector: "食料品" },
-  { ticker: "2802", name: "味の素", sector: "食料品" },
-  { ticker: "2502", name: "アサヒグループHLD", sector: "食料品" },
-  { ticker: "2503", name: "キリンホールディングス", sector: "食料品" },
-  { ticker: "2801", name: "キッコーマン", sector: "食料品" },
-  { ticker: "2267", name: "ヤクルト本社", sector: "食料品" },
-
-  // 機械 (Machinery)
-  { ticker: "6301", name: "小松製作所", sector: "機械" },
-  { ticker: "6367", name: "ダイキン工業", sector: "機械" },
-  { ticker: "6273", name: "SMC", sector: "機械" },
-  { ticker: "7011", name: "三菱重工業", sector: "機械" },
-  { ticker: "6326", name: "クボタ", sector: "機械" },
-
-  // 海運業 (Marine Transportation)
-  { ticker: "9101", name: "日本郵船", sector: "海運業" },
-  { ticker: "9104", name: "商船三井", sector: "海運業" },
-  { ticker: "9107", name: "川崎汽船", sector: "海運業" },
-
-  // 保険業 (Insurance)
-  { ticker: "8766", name: "東京海上ホールディングス", sector: "保険業" },
-  { ticker: "8630", name: "SOMPOホールディングス", sector: "保険業" },
-  { ticker: "8725", name: "MS&AD", sector: "保険業" },
-  { ticker: "7181", name: "かんぽ生命保険", sector: "保険業" },
-
-  // サービス業 (Services)
-  { ticker: "6098", name: "リクルートホールディングス", sector: "サービス業" },
-  { ticker: "4661", name: "オリエンタルランド", sector: "サービス業" },
-  { ticker: "2413", name: "エムスリー", sector: "サービス業" },
-  { ticker: "9735", name: "セコム", sector: "サービス業" },
-
-  // 証券、商品先物取引業 (Securities)
-  { ticker: "8604", name: "野村ホールディングス", sector: "証券、商品先物取引業" },
-  { ticker: "8601", name: "大和証券グループ本社", sector: "証券、商品先物取引業" },
-
-  // その他金融業 (Other Financing Business)
-  { ticker: "8591", name: "オリックス", sector: "その他金融業" },
-  { ticker: "8473", name: "SBIホールディングス", sector: "その他金融業" },
-
-  // 不動産業 (Real Estate)
-  { ticker: "8801", name: "三井不動産", sector: "不動産業" },
-  { ticker: "8802", name: "三菱地所", sector: "不動産業" },
-  { ticker: "8830", name: "住友不動産", sector: "不動産業" },
-
-  // 陸運業 (Land Transportation)
-  { ticker: "9020", name: "東日本旅客鉄道", sector: "陸運業" },
-  { ticker: "9022", name: "東海旅客鉄道", sector: "陸運業" },
-  { ticker: "9021", name: "西日本旅客鉄道", sector: "陸運業" },
-  { ticker: "9143", name: "SGホールディングス", sector: "陸運業" },
-  { ticker: "9064", name: "ヤマトホールディングス", sector: "陸運業" },
-
-  // 空運業 (Air Transportation)
-  { ticker: "9201", name: "日本航空", sector: "空運業" },
-  { ticker: "9202", name: "ANAホールディングス", sector: "空運業" },
-
-  // 倉庫・運輸関連業 (Warehousing & Harbor Transportation Service)
-  { ticker: "9301", name: "三菱倉庫", sector: "倉庫・運輸関連業" },
-
-  // 鉱業 (Mining)
-  { ticker: "1605", name: "INPEX", sector: "鉱業" },
-
-  // 石油・石炭製品 (Oil & Coal Products)
-  { ticker: "5020", name: "ENEOSホールディングス", sector: "石油・石炭製品" },
-  { ticker: "5019", name: "出光興産", sector: "石油・石炭製品" },
-
-  // ゴム製品 (Rubber Products)
-  { ticker: "5108", name: "ブリヂストン", sector: "ゴム製品" },
-
-  // ガラス・土石製品 (Glass & Ceramics Products)
-  { ticker: "5201", name: "AGC", sector: "ガラス・土石製品" },
-  { ticker: "5333", name: "日本ガイシ", sector: "ガラス・土石製品" },
-
-  // 鉄鋼 (Iron & Steel)
-  { ticker: "5401", name: "日本製鉄", sector: "鉄鋼" },
-  { ticker: "5406", name: "神戸製鋼所", sector: "鉄鋼" },
-  { ticker: "5411", name: "JFEホールディングス", sector: "鉄鋼" },
-
-  // 非鉄金属 (Nonferrous Metals)
-  { ticker: "5713", name: "住友金属鉱山", sector: "非鉄金属" },
-  { ticker: "5802", name: "住友電気工業", sector: "非鉄金属" },
-
-  // 金属製品 (Metal Products)
-  { ticker: "5947", name: "リンナイ", sector: "金属製品" },
-
-  // 精密機器 (Precision Instruments)
-  { ticker: "7741", name: "HOYA", sector: "精密機器" },
-  { ticker: "4543", name: "テルモ", sector: "精密機器" },
-  { ticker: "7731", name: "ニコン", sector: "精密機器" },
-
-  // その他製品 (Other Products)
-  { ticker: "7974", name: "任天堂", sector: "その他製品" },
-  { ticker: "7911", name: "凸版印刷", sector: "その他製品" },
-  { ticker: "7912", name: "大日本印刷", sector: "その他製品" },
-  { ticker: "7832", name: "バンダイナムコHLD", sector: "その他製品" },
-
-  // 電気・ガス業 (Electric Power & Gas)
-  // --- 追加分 ---
-  // 化学
   { ticker: "4004", name: "レゾナック・ホールディングス", sector: "化学" },
   { ticker: "4021", name: "日産化学", sector: "化学" },
   { ticker: "4042", name: "東ソー", sector: "化学" },
@@ -224,6 +118,13 @@ export const TSE_PRIME_MASTER: StockPairMaster[] = [
   { ticker: "4967", name: "小林製薬", sector: "化学" },
 
   // 医薬品
+  { ticker: "4502", name: "武田薬品工業", sector: "医薬品" },
+  { ticker: "4519", name: "中外製薬", sector: "医薬品" },
+  { ticker: "4568", name: "第一三共", sector: "医薬品" },
+  { ticker: "4503", name: "アステラス製薬", sector: "医薬品" },
+  { ticker: "4523", name: "エーザイ", sector: "医薬品" },
+  { ticker: "4507", name: "塩野義製薬", sector: "医薬品" },
+  { ticker: "4578", name: "大塚ホールディングス", sector: "医薬品" },
   { ticker: "4506", name: "住友ファーマ", sector: "医薬品" },
   { ticker: "4516", name: "日本新薬", sector: "医薬品" },
   { ticker: "4527", name: "ロート製薬", sector: "医薬品" },
@@ -232,107 +133,101 @@ export const TSE_PRIME_MASTER: StockPairMaster[] = [
   { ticker: "4552", name: "日本シイエムシイ", sector: "医薬品" },
   { ticker: "4587", name: "ペプチドリーム", sector: "医薬品" },
 
-  // 電気機器
-  { ticker: "6448", name: "ブラザー工業", sector: "電気機器" },
-  { ticker: "6504", name: "富士電機", sector: "電気機器" },
-  { ticker: "6508", name: "明電舎", sector: "電気機器" },
-  { ticker: "6619", name: "ダブル・スコープ", sector: "電気機器" },
-  { ticker: "6674", name: "ＧＳユアサ", sector: "電気機器" },
-  { ticker: "6762", name: "ＴＤＫ", sector: "電気機器" },
-  { ticker: "6806", name: "ヒロセ電機", sector: "電気機器" },
-  { ticker: "6841", name: "横河電機", sector: "電気機器" },
-  { ticker: "6920", name: "レーザーテック", sector: "電気機器" },
-  { ticker: "6923", name: "スタンレー電気", sector: "電気機器" },
-  { ticker: "6963", name: "ローム", sector: "電気機器" },
-  { ticker: "6965", name: "浜松ホトニクス", sector: "電気機器" },
+  // 建設業
+  { ticker: "1801", name: "大成建設", sector: "建設業" },
+  { ticker: "1802", name: "大林組", sector: "建設業" },
+  { ticker: "1803", name: "清水建設", sector: "建設業" },
+  { ticker: "1812", name: "鹿島建設", sector: "建設業" },
+  { ticker: "1925", name: "大和ハウス工業", sector: "建設業" },
+  { ticker: "1928", name: "積水ハウス", sector: "建設業" },
 
-  // 輸送用機器
-  { ticker: "7202", name: "いすゞ自動車", sector: "輸送用機器" },
-  { ticker: "7259", name: "アイシン", sector: "輸送用機器" },
-  { ticker: "7269", name: "スズキ", sector: "輸送用機器" },
-  { ticker: "7282", name: "豊田合成", sector: "輸送用機器" },
+  // 小売業
+  { ticker: "3382", name: "セブン＆アイHLD", sector: "小売業" },
+  { ticker: "9983", name: "ファーストリテイリング", sector: "小売業" },
+  { ticker: "8267", name: "イオン", sector: "小売業" },
+  { ticker: "9843", name: "ニトリホールディングス", sector: "小売業" },
+  { ticker: "7532", name: "パンパシフィック", sector: "小売業" },
+  { ticker: "3088", name: "マツキヨココカラ", sector: "小売業" },
+  { ticker: "3092", name: "ＺＯＺＯ", sector: "小売業" },
 
-  // 銀行
-  { ticker: "8331", name: "千葉銀行", sector: "銀行業" },
-  { ticker: "8332", name: "横浜銀行", sector: "銀行業" },
-  { ticker: "8354", name: "ふくおかフィナンシャルG", sector: "銀行業" },
-  { ticker: "8355", name: "静岡銀行", sector: "銀行業" },
-  { ticker: "8377", name: "ほくほくフィナンシャルG", sector: "銀行業" },
-  { ticker: "8385", name: "伊予銀行", sector: "銀行業" },
-  { ticker: "8418", name: "山口フィナンシャルG", sector: "銀行業" },
+  // 食品
+  { ticker: "2914", name: "日本たばこ産業", sector: "食料品" },
+  { ticker: "2802", name: "味の素", sector: "食料品" },
+  { ticker: "2502", name: "アサヒグループHLD", sector: "食料品" },
+  { ticker: "2503", name: "キリンホールディングス", sector: "食料品" },
+  { ticker: "2801", name: "キッコーマン", sector: "食料品" },
+  { ticker: "2267", name: "ヤクルト本社", sector: "食料品" },
 
-  // 不動産
-  { ticker: "8804", name: "東京建物", sector: "不動産業" },
-  { ticker: "3289", name: "東急不動産HLD", sector: "不動産業" },
-  { ticker: "3231", name: "野村不動産HLD", sector: "不動産業" },
+  // 機械
+  { ticker: "6301", name: "小松製作所", sector: "機械" },
+  { ticker: "6367", name: "ダイキン工業", sector: "機械" },
+  { ticker: "6273", name: "SMC", sector: "機械" },
+  { ticker: "7011", name: "三菱重工業", sector: "機械" },
+  { ticker: "6326", name: "クボタ", sector: "機械" },
+  { ticker: "6113", name: "アマダ", sector: "機械" },
+  { ticker: "7012", name: "川崎重工業", sector: "機械" },
+  { ticker: "7013", name: "ＩＨＩ", sector: "機械" },
 
-  // 情報・通信
-  { ticker: "3659", name: "ネクソン", sector: "情報・通信業" },
-  { ticker: "4307", name: "野村総合研究所", sector: "情報・通信業" },
-  { ticker: "4716", name: "日本オラクル", sector: "情報・通信業" },
-  { ticker: "4732", name: "ユー・エス・エス", sector: "情報・通信業" },
-  { ticker: "4739", name: "伊藤忠テクノソリューションズ", sector: "情報・通信業" },
-  { ticker: "4768", name: "大塚商会", sector: "情報・通信業" },
-  { ticker: "9613", name: "ＮＴＴデータG", sector: "情報・通信業" },
-  { ticker: "9684", name: "スクウェア・エニックスHLD", sector: "情報・通信業" },
-
-  // サービス
-  { ticker: "4324", name: "電通グループ", sector: "サービス業" },
-  { ticker: "4684", name: "オービック", sector: "サービス業" },
-  { ticker: "9719", name: "ＳＣＳＫ", sector: "サービス業" },
-  { ticker: "9735", name: "セコム", sector: "サービス業" },
-  { ticker: "9766", name: "コナミグループ", sector: "サービス業" },
-
-  // 陸運・海運
-  { ticker: "9020", name: "東日本旅客鉄道", sector: "陸運業" },
-  { ticker: "9021", name: "西日本旅客鉄道", sector: "陸運業" },
-  { ticker: "9022", name: "東海旅客鉄道", sector: "陸運業" },
+  // 海運業
   { ticker: "9101", name: "日本郵船", sector: "海運業" },
   { ticker: "9104", name: "商船三井", sector: "海運業" },
   { ticker: "9107", name: "川崎汽船", sector: "海運業" },
 
-  // 卸売・小売
-  { ticker: "2768", name: "双日", sector: "卸売業" },
-  { ticker: "8015", name: "豊田通商", sector: "卸売業" },
-  { ticker: "8053", name: "住友商事", sector: "卸売業" },
-  { ticker: "3088", name: "マツキヨココカラ＆カンパニー", sector: "小売業" },
-  { ticker: "3092", name: "ＺＯＺＯ", sector: "小売業" },
-  { ticker: "3382", name: "セブン＆アイHLD", sector: "小売業" },
-  { ticker: "7532", name: "パン・パシフィック・インターナショナル", sector: "小売業" },
-  { ticker: "8267", name: "イオン", sector: "小売業" },
-  { ticker: "9843", name: "ニトリHLD", sector: "小売業" },
-  { ticker: "9983", name: "ファーストリテイリング", sector: "小売業" },
+  // 保険業
+  { ticker: "8766", name: "東京海上ホールディングス", sector: "保険業" },
+  { ticker: "8630", name: "SOMPOホールディングス", sector: "保険業" },
+  { ticker: "8725", name: "MS&AD", sector: "保険業" },
+  { ticker: "7181", name: "かんぽ生命保険", sector: "保険業" },
 
-  // 精密
-  { ticker: "7731", name: "ニコン", sector: "精密機器" },
-  { ticker: "7733", name: "オリンパス", sector: "精密機器" },
-  { ticker: "7741", name: "ＨＯＹＡ", sector: "精密機器" },
-  { ticker: "4543", name: "テルモ", sector: "精密機器" },
+  // サービス業
+  { ticker: "6098", name: "リクルートホールディングス", sector: "サービス業" },
+  { ticker: "4661", name: "オリエンタルランド", sector: "サービス業" },
+  { ticker: "9735", name: "セコム", sector: "サービス業" },
+  { ticker: "4324", name: "電通グループ", sector: "サービス業" },
+  { ticker: "4684", name: "オービック", sector: "サービス業" },
+  { ticker: "9719", name: "ＳＣＳＫ", sector: "サービス業" },
+  { ticker: "9766", name: "コナミグループ", sector: "サービス業" },
 
-  // ガラス・鉄鋼・非鉄
-  { ticker: "5201", name: "ＡＧＣ", sector: "ガラス・土石製品" },
-  { ticker: "5332", name: "ＴＯＴＯ", sector: "ガラス・土石製品" },
-  { ticker: "5333", name: "日本ガイシ", sector: "ガラス・土石製品" },
+  // 不動産
+  { ticker: "8801", name: "三井不動産", sector: "不動産業" },
+  { ticker: "8802", name: "三菱地所", sector: "不動産業" },
+  { ticker: "8830", name: "住友不動産", sector: "不動産業" },
+  { ticker: "8804", name: "東京建物", sector: "不動産業" },
+  { ticker: "3289", name: "東急不動産HLD", sector: "不動産業" },
+  { ticker: "3231", name: "野村不動産HLD", sector: "不動産業" },
+
+  // 陸運・空運
+  { ticker: "9020", name: "東日本旅客鉄道", sector: "陸運業" },
+  { ticker: "9022", name: "東海旅客鉄道", sector: "陸運業" },
+  { ticker: "9021", name: "西日本旅客鉄道", sector: "陸運業" },
+  { ticker: "9143", name: "SGホールディングス", sector: "陸運業" },
+  { ticker: "9064", name: "ヤマトホールディングス", sector: "陸運業" },
+  { ticker: "9201", name: "日本航空", sector: "空運業" },
+  { ticker: "9202", name: "ANAホールディングス", sector: "空運業" },
+
+  // 鉄鋼・金属
   { ticker: "5401", name: "日本製鉄", sector: "鉄鋼" },
   { ticker: "5406", name: "神戸製鋼所", sector: "鉄鋼" },
-  { ticker: "5411", name: "ＪＦＥホールディングス", sector: "鉄鋼" },
+  { ticker: "5411", name: "JFEホールディングス", sector: "鉄鋼" },
   { ticker: "5713", name: "住友金属鉱山", sector: "非鉄金属" },
   { ticker: "5802", name: "住友電気工業", sector: "非鉄金属" },
+  { ticker: "5947", name: "リンナイ", sector: "金属製品" },
 
-  // 機械
-  { ticker: "6113", name: "アマダ", sector: "機械" },
-  { ticker: "6273", name: "ＳＭＣ", sector: "機械" },
-  { ticker: "6301", name: "小松製作所", sector: "機械" },
-  { ticker: "6326", name: "クボタ", sector: "機械" },
-  { ticker: "6367", name: "ダイキン工業", sector: "機械" },
-  { ticker: "7011", name: "三菱重工業", sector: "機械" },
-  { ticker: "7012", name: "川崎重工業", sector: "機械" },
-  { ticker: "7013", name: "ＩＨＩ", sector: "機械" },
-
-  // 精密機器 (追加)
+  // 精密機器
+  { ticker: "7741", name: "HOYA", sector: "精密機器" },
+  { ticker: "4543", name: "テルモ", sector: "精密機器" },
+  { ticker: "7731", name: "ニコン", sector: "精密機器" },
+  { ticker: "7733", name: "オリンパス", sector: "精密機器" },
   { ticker: "7701", name: "島津製作所", sector: "精密機器" },
 
-  // その他 (任天堂、JT等)
-  { ticker: "2914", name: "日本たばこ産業", sector: "食料品" },
+  // その他製品
   { ticker: "7974", name: "任天堂", sector: "その他製品" },
+  { ticker: "7911", name: "TOPPAN", sector: "その他製品" },
+  { ticker: "7912", name: "大日本印刷", sector: "その他製品" },
+  { ticker: "7832", name: "バンダイナムコHLD", sector: "その他製品" },
+
+  // 鉱業・石油
+  { ticker: "1605", name: "INPEX", sector: "鉱業" },
+  { ticker: "5020", name: "ENEOSホールディングス", sector: "石油・石炭製品" },
+  { ticker: "5019", name: "出光興産", sector: "石油・石炭製品" },
 ];

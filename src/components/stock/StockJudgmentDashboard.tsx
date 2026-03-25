@@ -84,7 +84,7 @@ export const StockJudgmentDashboard = () => {
     if (!isMountedRef.current) return false;
 
     try {
-      await StockService.setSyncing(ticker);
+      // 1. クライアント側の状態を即座に「同期中」に更新
       setAllJudgments(prev => {
         const map = new Map(prev.map(d => [d.ticker, d]));
         const ex = map.get(ticker);
@@ -92,6 +92,10 @@ export const StockJudgmentDashboard = () => {
         return Array.from(map.values());
       });
 
+      // 2. サーバ側の同期中フラグ設定 (非ブロッキングまたは短期間のタイムアウト付き)
+      StockService.setSyncing(ticker).catch(e => console.warn("setSyncing failed", e));
+
+      // 3. 同期実行 (タイムアウト付き)
       const syncPromise = StockService.syncStock(ticker);
       const timeoutPromise = new Promise<{ success: false, message: string }>((_, reject) => 
         setTimeout(() => reject(new Error("Request Timeout")), SYNC_TIMEOUT_MS)
@@ -140,6 +144,8 @@ export const StockJudgmentDashboard = () => {
           await new Promise(r => setTimeout(r, jitter));
         }
       }
+    } catch (err) {
+      console.error("Sync loop error:", err);
     } finally {
       syncInProgressRef.current = false;
       if (isMountedRef.current) setSyncStats(prev => ({ ...prev, currentNames: [] }));
