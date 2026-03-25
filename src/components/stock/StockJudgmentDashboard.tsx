@@ -20,10 +20,14 @@ import {
   ShieldCheck, 
   Target,
   Plus,
-  Search as SearchIcon
+  AlertCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+
+const SYNC_CONCURRENCY = 3; // 3並列で実行
+const SYNC_TIMEOUT_MS = 15000; // 15秒でタイムアウト
+const MAX_RETRIES = 1; // 失敗時のリトライ回数
 
 export const StockJudgmentDashboard = () => {
   const [allJudgments, setAllJudgments] = useState<StockJudgment[]>([] as StockJudgment[]);
@@ -76,48 +80,78 @@ export const StockJudgmentDashboard = () => {
     updatedAt: new Date().toISOString(),
     syncStatus: "pending",
     chartData: [],
-    valuationMetrics: {
-      per: 0,
-      pbr: 0,
-      dividendYield: 0,
-      roe: 0,
-      equityRatio: 0
-    }
+    valuationMetrics: { per: 0, pbr: 0, dividendYield: 0, roe: 0, equityRatio: 0 }
   });
 
-  // 1銘柄ずつの順次同期ループ
-  const syncStocksOneByOne = async (tickers: string[]) => {
-    if (syncInProgressRef.current) return;
-    syncInProgressRef.current = true;
-    
+  // 1銘柄の同期（タイムアウトとリトライ付き）
+  const syncWithRetry = async (ticker: string, retryCount = 0): Promise<boolean> => {
+    if (!isMountedRef.current) return false;
+
     try {
-      for (const ticker of tickers) {
-        if (!isMountedRef.current) break;
-        try {
-          // 同期中ステータスをセット
-          await StockService.setSyncing(ticker);
-          setAllJudgments(prev => {
-            const map = new Map(prev.map(d => [d.ticker, d]));
-            const existing = map.get(ticker);
-            if (existing) map.set(ticker, { ...existing, syncStatus: "syncing" });
-            return Array.from(map.values()).sort((a, b) => b.totalScore - a.totalScore);
-          });
-          
-          // 実際の同期実行
-          const result = await StockService.syncStock(ticker);
-          
-          // 結果反映
-          if (result && result.success && result.data) {
-            setAllJudgments(prev => {
-              const map = new Map(prev.map(d => [d.ticker, d]));
-              map.set(ticker, result.data as StockJudgment);
-              return Array.from(map.values()).sort((a, b) => b.totalScore - a.totalScore);
-            });
-          }
-        } catch (err) {
-          console.error(`[Stock] Sync error for ${ticker}:`, err);
-        }
-        await new Promise(r => setTimeout(r, 600));
+      // 1. 同期中ステータスをUIに反映
+      await StockService.setSyncing(ticker);
+      setAllJudgments(prev => {
+        const map = new Map(prev.map(d => [d.ticker, d]));
+        const existing = map.get(ticker);
+        if (existing) map.set(ticker, { ...existing, syncStatus: "syncing" });
+        return Array.from(map.values());
+      });
+
+      // 2. タイムアウト付きで同期実行
+      const syncPromise = StockService.syncStock(ticker);
+      const timeoutPromise = new Promise<{ success: false, message: string }>((_, reject) => 
+        setTimeout(() => reject(new Error("Timeout")), SYNC_TIMEOUT_MS)
+      );
+
+      const result = await Promise.race([syncPromise, timeoutPromise]) as any;
+
+      if (result && result.success && result.data) {
+        setAllJudgments(prev => {
+          const map = new Map(prev.map(d => [d.ticker, d]));
+          map.set(ticker, result.data as StockJudgment);
+          return Array.from(map.values());
+        });
+        return true;
+      } else {
+        throw new Error(result?.message || "Failed");
+      }
+    } catch (err: any) {
+      console.warn(`[Sync] Attempt ${retryCount + 1} failed for ${ticker}:`, err.message);
+      
+      if (retryCount < MAX_RETRIES && isMountedRef.current) {
+        // 短い待機のあとリトライ
+        await new Promise(r => setTimeout(r, 1000));
+        return syncWithRetry(ticker, retryCount + 1);
+      }
+
+      // エラーとして記録
+      setAllJudgments(prev => {
+        const map = new Map(prev.map(d => [d.ticker, d]));
+        const existing = map.get(ticker);
+        if (existing) map.set(ticker, { ...existing, syncStatus: "failed" });
+        return Array.from(map.values());
+      });
+      return false;
+    }
+  };
+
+  // チャンクベースの並列同期マネージャー
+  const processSyncQueue = async (tickers: string[]) => {
+    if (syncInProgressRef.current || tickers.length === 0) return;
+    syncInProgressRef.current = true;
+
+    try {
+      const queue = [...tickers];
+      
+      while (queue.length > 0 && isMountedRef.current) {
+        // 並列実行するチャンクを切り出し
+        const chunk = queue.splice(0, SYNC_CONCURRENCY);
+        
+        // chunk内の全銘柄を同時に開始（Promise.all）
+        await Promise.all(chunk.map(ticker => syncWithRetry(ticker)));
+        
+        // サーバー負荷軽減のための短いインターバル
+        if (queue.length > 0) await new Promise(r => setTimeout(r, 1000));
       }
     } finally {
       syncInProgressRef.current = false;
@@ -144,13 +178,12 @@ export const StockJudgmentDashboard = () => {
           });
           
           if (staleOrUncompleted.length > 0) {
-            syncStocksOneByOne(staleOrUncompleted.map(d => d.ticker));
+            processSyncQueue(staleOrUncompleted.map(d => d.ticker));
           }
         } else {
-          // 初期同期用のプレースホルダーを即座に表示 (主要45銘柄)
           const placeholders = MONITORING_STOCKS.map(s => createEmptyJudgment(s.ticker, s.name, s.sector));
           setAllJudgments(placeholders);
-          syncStocksOneByOne(MONITORING_STOCKS.map(s => s.ticker));
+          processSyncQueue(MONITORING_STOCKS.map(s => s.ticker));
         }
         setLoading(false);
       }
@@ -173,12 +206,18 @@ export const StockJudgmentDashboard = () => {
     const total = allJudgments.length;
     const completed = allJudgments.filter(j => j.syncStatus === "completed").length;
     const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
+    const failed = allJudgments.filter(j => j.syncStatus === "failed").length;
     const pending = allJudgments.filter(j => !j.syncStatus || j.syncStatus === "pending").length;
-    let progress = Math.round((completed / total) * 100);
+    
+    // 進行中は最低 5% を維持、完了数に応じて進む
+    let progress = Math.round(((completed + failed) / total) * 100);
     if (progress === 0 && syncing > 0) progress = 5;
     
-    const currentItem = allJudgments.find(j => j.syncStatus === "syncing");
-    const currentName = currentItem ? `${currentItem.companyName} (${currentItem.ticker})` : null;
+    // 現在解析中の銘柄名（複数並列対応）
+    const syncingItems = allJudgments.filter(j => j.syncStatus === "syncing");
+    const currentName = syncingItems.length > 0 
+      ? syncingItems.map(j => j.companyName).join(", ") 
+      : null;
 
     setSyncStats({ total, completed, syncing, pending, progress, currentName });
   }, [allJudgments]);
@@ -200,8 +239,7 @@ export const StockJudgmentDashboard = () => {
         });
         
         setNewTicker("");
-        // 即座に同期
-        syncStocksOneByOne([ticker]);
+        processSyncQueue([ticker]);
       } else {
         alert(res.message || "銘柄が見つかりませんでした。");
       }
@@ -292,34 +330,42 @@ export const StockJudgmentDashboard = () => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] space-y-5 shadow-xl shadow-indigo-500/5"
+            className="p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] space-y-5 shadow-xl shadow-indigo-500/5 overflow-hidden"
           >
             <div className="flex justify-between items-end">
-                <div className="space-y-1">
+                <div className="space-y-1 flex-1">
                   <div className="flex items-center gap-3">
                       <Zap className="text-indigo-500 animate-pulse" size={20} />
                       <span className="text-sm font-black text-slate-800 dark:text-white">市場データ同期中 ({syncStats.progress}%)</span>
                   </div>
                   {syncStats.currentName && (
-                    <p className="text-[11px] font-bold text-indigo-500 animate-pulse ml-8">
-                      分析中: <span className="font-black">{syncStats.currentName}</span> ...
+                    <p className="text-[11px] font-bold text-indigo-500 animate-pulse ml-8 flex items-center gap-2">
+                      <Target size={12} /> 分析中: <span className="font-black truncate max-w-[200px] md:max-w-none">{syncStats.currentName}</span> ...
                     </p>
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress</span>
-                  <span className="text-xs font-black text-slate-800 dark:text-white">{syncStats.completed} / {syncStats.total} 完了</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Status</span>
+                  <span className="text-xs font-black text-slate-800 dark:text-white leading-none whitespace-nowrap">{syncStats.completed} / {syncStats.total} 完了</span>
                 </div>
             </div>
-            <div className="relative h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700/50">
+            <div className="relative h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${syncStats.progress}%` }} 
-                  transition={{ type: "spring", stiffness: 50 }}
-                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 to-blue-400 shadow-[0_0_15px_rgba(99,102,241,0.5)]" 
+                  transition={{ type: "spring", stiffness: 30, damping: 10 }}
+                  className="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 via-blue-500 to-indigo-600 shadow-[0_0_15px_rgba(99,102,241,0.5)] z-10" 
                 />
-                <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.15)_50%,rgba(255,255,255,0.15)_75%,transparent_75%,transparent)] bg-[length:20px_20px] animate-slide" />
+                <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.15)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.15)_50%,rgba(255,255,255,0.15)_75%,transparent_75%,transparent)] bg-[length:20px_20px] animate-slide opacity-50 z-20" />
             </div>
+            
+            {/* 失敗銘柄がある場合にヒントを表示 */}
+            {allJudgments.some(j => j.syncStatus === "failed") && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-rose-50 dark:bg-rose-500/10 rounded-xl border border-rose-100 dark:border-rose-500/20">
+                <AlertCircle size={14} className="text-rose-500" />
+                <span className="text-[10px] font-bold text-rose-500">一部の銘柄でネットワークエラーが発生しましたが、残りの同期を継続しています。</span>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
