@@ -95,10 +95,16 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
     }
 
     const docRef = doc(db, "japanese_stocks", plainTicker);
-    const docSnap = await getDoc(docRef);
+    
+    // キャッシュチェック (Soft Fail: 権限エラーでも解析へ進む)
+    let docSnap = null;
+    try {
+      docSnap = await getDoc(docRef);
+    } catch (readErr) {
+      console.warn(`[Stock] Cache read skipped for ${ticker}:`, (readErr as any).message);
+    }
 
-    // 1時間以内のキャッシュは即時返す
-    if (docSnap.exists()) {
+    if (docSnap && docSnap.exists()) {
       const existing = docSnap.data() as StockJudgment;
       const lastUpdated = new Date(existing.updatedAt).getTime();
       const oneHour = 1 * 60 * 60 * 1000;
