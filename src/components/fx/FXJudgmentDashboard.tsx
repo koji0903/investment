@@ -21,6 +21,7 @@ export const FXJudgmentDashboard = () => {
   const [filters, setFilters] = useState({ search: "", label: "all" });
   const [sort, setSort] = useState({ key: "totalScore", order: "desc" as "asc" | "desc" });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const syncInProgressRef = React.useRef(false);
 
   const fetchData = async (forceRefresh = false) => {
     if (forceRefresh) {
@@ -37,26 +38,36 @@ export const FXJudgmentDashboard = () => {
 
     // クライアント主導の個別同期
     const syncPairsOneByOne = async (pairCodes: string[]) => {
-      console.log(`[FX] Starting sequential sync for ${pairCodes.length} pairs...`);
-      for (const code of pairCodes) {
-        if (!isMounted) break;
-        try {
-          console.log(`[FX] Syncing ${code}...`);
-          // 1. まず同期中ステータスをセット (UIに即時反映させる)
-          await FXService.setSyncing(code);
-          
-          // 2. 実際の同期実行 (重い処理)
-          const success = await FXService.syncPair(code);
-          if (!success) {
-            console.warn(`[FX] Sync failed for ${code}, but continuing loop...`);
-          }
-        } catch (err) {
-          console.error(`[FX] Critical error syncing ${code}:`, err);
-        }
-        // 次の同期まで待機
-        await new Promise(r => setTimeout(r, 600));
+      if (syncInProgressRef.current) {
+        console.log("[FX] Sync already in progress, skipping loop start.");
+        return;
       }
-      console.log("[FX] Sequential sync cycle finished.");
+      syncInProgressRef.current = true;
+      
+      console.log(`[FX] Starting sequential sync for ${pairCodes.length} pairs...`);
+      try {
+        for (const code of pairCodes) {
+          if (!isMounted) break;
+          try {
+            console.log(`[FX] Syncing ${code}...`);
+            // 1. まず同期中ステータスをセット (UIに即時反映させる)
+            await FXService.setSyncing(code);
+            
+            // 2. 実際の同期実行 (重い処理)
+            const success = await FXService.syncPair(code);
+            if (!success) {
+              console.warn(`[FX] Sync failed for ${code}, but continuing loop...`);
+            }
+          } catch (err) {
+            console.error(`[FX] Error syncing ${code}:`, err);
+          }
+          // 次の同期まで待機
+          await new Promise(r => setTimeout(r, 600));
+        }
+      } finally {
+        syncInProgressRef.current = false;
+        console.log("[FX] Sequential sync cycle finished.");
+      }
     };
 
     // 初期データの取得
@@ -106,12 +117,15 @@ export const FXJudgmentDashboard = () => {
         const merged = Array.from(dataMap.values());
         
         // 同期の自動開始トリガー (同期中が0かつ未完了がある場合)
-        const uncompleted = merged.filter(d => d.syncStatus !== "completed" && d.syncStatus !== "syncing");
+        const uncompleted = merged.filter(d => d.syncStatus !== "completed" && d.syncStatus !== "syncing" && d.syncStatus !== "failed");
         const syncingCount = merged.filter(d => d.syncStatus === "syncing").length;
         
-        if (uncompleted.length > 0 && syncingCount === 0) {
+        if (uncompleted.length > 0 && syncingCount === 0 && !syncInProgressRef.current) {
           console.log(`[FX] Found ${uncompleted.length} uncompleted pairs. Auto-starting sync loop...`);
-          syncPairsOneByOne(uncompleted.map(u => u.pairCode));
+          // setStateの外部で非同期に実行するためsetTimeoutを使用
+          setTimeout(() => {
+            if (isMounted) syncPairsOneByOne(uncompleted.map(u => u.pairCode));
+          }, 0);
         }
 
         return merged.sort((a, b) => b.totalScore - a.totalScore);
