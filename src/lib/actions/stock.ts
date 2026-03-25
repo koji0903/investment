@@ -138,8 +138,17 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
       analyzeStockShareholderReturn(fundamentalData)
     );
 
-    jud.chartData = quotes.slice(-180).map(q => ({ date: q.date.toISOString().split('T')[0], value: q.close as number }));
-    jud.valuationMetrics = { per: fundamentalData.per, pbr: fundamentalData.pbr, dividendYield: fundamentalData.dividendYield, roe: fundamentalData.roe, equityRatio: fundamentalData.equityRatio };
+    jud.chartData = quotes.slice(-180).map((q: any) => ({ 
+      date: new Date(q.date).toISOString().split('T')[0], 
+      value: q.close as number 
+    }));
+    jud.valuationMetrics = { 
+      per: fundamentalData.per, 
+      pbr: fundamentalData.pbr, 
+      dividendYield: fundamentalData.dividendYield, 
+      roe: fundamentalData.roe, 
+      equityRatio: fundamentalData.equityRatio 
+    };
     jud.syncStatus = "completed";
     jud.syncError = syncError;
     jud.updatedAt = new Date().toISOString();
