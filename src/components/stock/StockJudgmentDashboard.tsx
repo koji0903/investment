@@ -10,7 +10,6 @@ import { StockFilterSort } from "./StockFilterSort";
 import { StockSignalBadge } from "./StockUIComponents";
 import { 
   Zap, 
-  Info, 
   ShieldAlert, 
   Trophy, 
   TrendingUp, 
@@ -39,7 +38,10 @@ export const StockJudgmentDashboard = () => {
   
   const [filters, setFilters] = useState({ search: "", label: "all", sector: "all" });
   const [sort, setSort] = useState({ key: "totalScore", order: "desc" as "asc" | "desc" });
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  
+  const [displayLimit, setDisplayLimit] = useState(60);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+  const [viewMode, setViewMode] = useState<"card" | "table">("card");
   
   const [newTicker, setNewTicker] = useState("");
   const [isAdding, setIsAdding] = useState(false);
@@ -55,6 +57,17 @@ export const StockJudgmentDashboard = () => {
     failedStocks: [] as { ticker: string, name: string, error?: string }[]
   });
   const isMountedRef = useRef(true);
+
+  // マーケット統計 (Market Pulse)
+  const marketPulse = useMemo(() => {
+    const completed = allJudgments.filter(j => j.syncStatus === "completed");
+    if (completed.length === 0) return { avgScore: 0, bullishCount: 0, bearishCount: 0, highDivCount: 0, pct: 0 };
+    const avgScore = Math.round(completed.reduce((acc, curr) => acc + curr.totalScore, 0) / completed.length);
+    const bullishCount = completed.filter(j => j.totalScore >= 70).length;
+    const bearishCount = completed.filter(j => j.totalScore <= 30).length;
+    const highDivCount = completed.filter(j => (j.valuationMetrics?.dividendYield || 0) >= 4).length;
+    return { avgScore, bullishCount, bearishCount, highDivCount, pct: Math.round((completed.length / allJudgments.length) * 100) };
+  }, [allJudgments]);
 
   const createEmptyJudgment = (ticker: string, name: string, sector: string = "読み込み中"): StockJudgment => ({
     ticker, companyName: name, sector, currentPrice: 0,
@@ -98,7 +111,7 @@ export const StockJudgmentDashboard = () => {
       }
     } catch (err: any) {
       if (retryCount < MAX_RETRIES && isMountedRef.current) {
-        await new Promise(r => setTimeout(r, 3000)); // リトライ前にしっかり待機
+        await new Promise(r => setTimeout(r, 3000)); 
         return syncWithRetry(ticker, retryCount + 1);
       }
 
@@ -122,7 +135,6 @@ export const StockJudgmentDashboard = () => {
         const chunk = queue.splice(0, SYNC_CONCURRENCY);
         await Promise.all(chunk.map(ticker => syncWithRetry(ticker)));
         
-        // ジッター（ゆらぎ）付き待機: 1.5s ~ 3.5s
         if (queue.length > 0) {
           const jitter = 1500 + Math.random() * 2000;
           await new Promise(r => setTimeout(r, jitter));
@@ -140,18 +152,26 @@ export const StockJudgmentDashboard = () => {
     try {
       const data = await StockService.getJudgments();
       if (isMountedRef.current) {
-        if (data && data.length > 0) {
-          setAllJudgments(data as StockJudgment[]);
-          const staleOrUncompleted = data.filter(d => {
-            const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 6 * 60 * 60 * 1000;
-            return d.syncStatus !== "completed" || isStale;
-          });
-          if (staleOrUncompleted.length > 0) processSyncQueue(staleOrUncompleted.map(d => d.ticker));
-        } else {
-          const placeholders = MONITORING_STOCKS.map(s => createEmptyJudgment(s.ticker, s.name, s.sector));
-          setAllJudgments(placeholders);
-          processSyncQueue(MONITORING_STOCKS.map(s => s.ticker));
-        }
+        // マスターとマージ
+        const masterMap = new Map(MONITORING_STOCKS.map(s => [s.ticker, s]));
+        const judgmentMap = new Map(data.map(d => [d.ticker, d]));
+        
+        const merged: StockJudgment[] = Array.from(masterMap.values()).map(m => {
+          const ex = judgmentMap.get(m.ticker);
+          return ex || createEmptyJudgment(m.ticker, m.name, m.sector);
+        });
+
+        setAllJudgments(merged);
+        
+        const staleOrUncompleted = merged.filter(d => {
+          const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 12 * 60 * 60 * 1000;
+          return d.syncStatus !== "completed" || isStale;
+        });
+
+        // 大量銘柄の場合、まずは表示されているもの周辺から優先的に同期すべきだが、
+        // 今回はシンプルに先頭からバックグラウンドで開始
+        if (staleOrUncompleted.length > 0) processSyncQueue(staleOrUncompleted.map(d => d.ticker).slice(0, 100));
+
         setLoading(false);
       }
     } catch (err) {
@@ -159,27 +179,52 @@ export const StockJudgmentDashboard = () => {
     }
   };
 
+  const sectors = useMemo(() => ["all", ...Array.from(new Set(allJudgments.map(j => j.sector)))].sort(), [allJudgments]);
+
+  const filteredItems = useMemo(() => {
+    let result = [...allJudgments];
+    if (filters.search) {
+      const s = filters.search.toLowerCase();
+      result = result.filter(j => j.companyName.includes(s) || j.ticker.includes(s));
+    }
+    if (filters.label !== "all") {
+      if (filters.label === "high_dividend") result = result.filter(j => (j.valuationMetrics?.dividendYield || 0) >= 3.5);
+      else if (filters.label === "undervalued") result = result.filter(j => j.valuationLabel === "undervalued");
+      else result = result.filter(j => j.signalLabel === filters.label);
+    }
+    if (filters.sector !== "all") result = result.filter(j => j.sector === filters.sector);
+    result.sort((a,b) => {
+      const aV = (a as any)[sort.key] || 0;
+      const bV = (b as any)[sort.key] || 0;
+      return sort.order === "desc" ? bV - aV : aV - bV;
+    });
+    return result;
+  }, [allJudgments, filters, sort]);
+
+  const displayedItems = useMemo(() => filteredItems.slice(0, displayLimit), [filteredItems, displayLimit]);
+
   useEffect(() => {
     isMountedRef.current = true;
     fetchData();
     return () => { isMountedRef.current = false; };
   }, []);
 
+  // Infinite Scroll Implementation
   useEffect(() => {
-    if (allJudgments.length === 0) return;
-    const total = allJudgments.length;
-    const completed = allJudgments.filter(j => j.syncStatus === "completed").length;
-    const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
-    const failed = allJudgments.filter(j => j.syncStatus === "failed").length;
-    
-    let progress = Math.round(((completed + failed) / total) * 100);
-    if (progress === 0 && syncing > 0) progress = 5;
-    
-    const currentNames = allJudgments.filter(j => j.syncStatus === "syncing").map(j => j.companyName);
-    const failedStocks = allJudgments.filter(j => j.syncStatus === "failed").map(j => ({ ticker: j.ticker, name: j.companyName, error: j.syncError }));
+    if (loading || !loadMoreRef.current) return;
 
-    setSyncStats(prev => ({ ...prev, total, completed, syncing, progress, currentNames, failedStocks }));
-  }, [allJudgments]);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && filteredItems.length > displayLimit) {
+          setDisplayLimit(prev => prev + 60);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(loadMoreRef.current);
+    return () => observer.disconnect();
+  }, [loading, filteredItems.length, displayLimit]);
 
   const handleRetryFailed = () => {
     const failedTickers = allJudgments.filter(j => j.syncStatus === "failed").map(j => j.ticker);
@@ -203,27 +248,21 @@ export const StockJudgmentDashboard = () => {
     } catch (err) { alert("エラーが発生しました。"); } finally { setIsAdding(false); }
   };
 
-  const sectors = useMemo(() => ["all", ...Array.from(new Set(allJudgments.map(j => j.sector)))].sort(), [allJudgments]);
+  useEffect(() => {
+    if (allJudgments.length === 0) return;
+    const total = allJudgments.length;
+    const completed = allJudgments.filter(j => j.syncStatus === "completed").length;
+    const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
+    const failed = allJudgments.filter(j => j.syncStatus === "failed").length;
+    
+    let progress = Math.round(((completed + failed) / total) * 100);
+    if (progress === 0 && syncing > 0) progress = 5;
+    
+    const currentNames = allJudgments.filter(j => j.syncStatus === "syncing").map(j => j.companyName);
+    const failedStocks = allJudgments.filter(j => j.syncStatus === "failed").map(j => ({ ticker: j.ticker, name: j.companyName, error: j.syncError }));
 
-  const filteredItems = useMemo(() => {
-    let result = [...allJudgments];
-    if (filters.search) {
-      const s = filters.search.toLowerCase();
-      result = result.filter(j => j.companyName.includes(s) || j.ticker.includes(s));
-    }
-    if (filters.label !== "all") {
-      if (filters.label === "high_dividend") result = result.filter(j => j.dividendProfile === "high_dividend");
-      else if (filters.label === "undervalued") result = result.filter(j => j.valuationLabel === "undervalued");
-      else result = result.filter(j => j.signalLabel === filters.label);
-    }
-    if (filters.sector !== "all") result = result.filter(j => j.sector === filters.sector);
-    result.sort((a,b) => {
-      const aV = (a as any)[sort.key] || 0;
-      const bV = (b as any)[sort.key] || 0;
-      return sort.order === "desc" ? bV - aV : aV - bV;
-    });
-    return result;
-  }, [allJudgments, filters, sort]);
+    setSyncStats(prev => ({ ...prev, total, completed, syncing, progress, currentNames, failedStocks }));
+  }, [allJudgments]);
 
   return (
     <div className="space-y-12 pb-20 font-sans selection:bg-indigo-100 selection:text-indigo-900">
@@ -236,8 +275,8 @@ export const StockJudgmentDashboard = () => {
             <div>
               <h1 className="text-3xl md:text-5xl font-black text-slate-800 dark:text-white tracking-tight">日本株投資判断エンジン</h1>
               <div className="flex items-center gap-2 mt-2">
-                <span className="px-2 py-0.5 bg-indigo-600 rounded text-[9px] font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-600/20">Alpha V2 PRO</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Market Intelligence Engine</span>
+                <span className="px-2 py-0.5 bg-indigo-600 rounded text-[9px] font-black text-white uppercase tracking-widest shadow-lg shadow-indigo-600/20">Market Full V3</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">TSE Prime Intelligence</span>
               </div>
             </div>
           </div>
@@ -260,6 +299,14 @@ export const StockJudgmentDashboard = () => {
         </div>
       </div>
 
+      {/* Market Pulse (Stats) */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <PulseCard label="平均市場スコア" value={marketPulse.avgScore} icon={<Target className="text-indigo-500" />} suffix="pts" />
+        <PulseCard label="強気・超強気" value={marketPulse.bullishCount} icon={<TrendingUp className="text-emerald-500" />} suffix="銘柄" />
+        <PulseCard label="高配当 (4%超)" value={marketPulse.highDivCount} icon={<Coins className="text-amber-500" />} suffix="銘柄" />
+        <PulseCard label="解析進捗" value={marketPulse.pct} icon={<RefreshCw className="text-blue-500" />} suffix="%" progress />
+      </div>
+
       <AnimatePresence>
         {!loading && syncStats.total > 0 && syncStats.progress < 100 && (
           <motion.div initial={{ opacity: 0, y: -20, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
@@ -275,7 +322,7 @@ export const StockJudgmentDashboard = () => {
                       <div className="p-2 bg-indigo-500 rounded-xl text-white shadow-lg shadow-indigo-500/20"><Zap className="animate-pulse" size={24} /></div>
                       <div className="flex flex-col">
                         <span className="text-lg font-black text-slate-800 dark:text-white leading-tight">市場データ同期中</span>
-                        <span className="text-xs font-bold text-slate-400">現在 {syncStats.total} 銘柄の深層解析を実行しています</span>
+                        <span className="text-xs font-bold text-slate-400">東証プライム {syncStats.total} 銘柄の深層解析を実行しています (2並列)</span>
                       </div>
                   </div>
                   {syncStats.currentNames.length > 0 && (
@@ -344,7 +391,7 @@ export const StockJudgmentDashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <RankingCard title="総合スコア" items={[...allJudgments].sort((a,b)=>b.totalScore-a.totalScore).slice(0,3)} icon={<Trophy className="text-amber-500" />} onSelect={setSelectedStock} />
-        <RankingCard title="高配当利回り" items={[...allJudgments].sort((a,b)=>b.shareholderReturnScore-a.shareholderReturnScore).slice(0,3)} icon={<Coins className="text-rose-500" />} onSelect={setSelectedStock} />
+        <RankingCard title="高配当利回り" items={[...allJudgments].sort((a,b)=> (b.valuationMetrics?.dividendYield || 0) - (a.valuationMetrics?.dividendYield || 0)).slice(0,3)} icon={<Coins className="text-rose-500" />} onSelect={setSelectedStock} />
         <RankingCard title="割安バリュエーション" items={[...allJudgments].sort((a,b)=>b.valuationScore-a.valuationScore).slice(0,3)} icon={<TrendingUp className="text-indigo-500" />} onSelect={setSelectedStock} />
       </div>
 
@@ -383,8 +430,21 @@ export const StockJudgmentDashboard = () => {
             </div>
           </div>
         ) : (
-          <div className="relative">
-            <StockList items={filteredItems} onSelect={setSelectedStock} />
+          <div className="space-y-12">
+            <div className="relative">
+              <StockList items={displayedItems} onSelect={setSelectedStock} />
+            </div>
+            
+            <div ref={loadMoreRef} className="h-20 w-full flex items-center justify-center pt-8">
+              {filteredItems.length > displayLimit ? (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-10 h-10 border-4 border-indigo-500/10 border-t-indigo-500 rounded-full animate-spin" />
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading More Intelligence...</span>
+                </div>
+              ) : filteredItems.length > 0 ? (
+                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">--- End of Market Data ---</span>
+              ) : null}
+            </div>
           </div>
         )}
       </div>
@@ -448,6 +508,28 @@ const LogicBoxDark = ({ title, reasons }: { title: string, reasons: string[] }) 
         </li>
       ))}
     </ul>
+  </div>
+);
+
+const PulseCard = ({ label, value, icon, suffix, progress }: { label: string, value: number, icon: React.ReactNode, suffix: string, progress?: boolean }) => (
+  <div className="bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[32px] p-8 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-3">
+        <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl group-hover:bg-indigo-50 dark:group-hover:bg-indigo-900/30 transition-colors">
+          {icon}
+        </div>
+        <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-4xl font-black text-slate-800 dark:text-white tabular-nums">{value}</span>
+        <span className="text-xs font-bold text-slate-400">{suffix}</span>
+      </div>
+      {progress && (
+        <div className="w-full h-1 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden mt-1">
+          <motion.div initial={{ width: 0 }} animate={{ width: `${value}%` }} className="h-full bg-indigo-500" />
+        </div>
+      )}
+    </div>
   </div>
 );
 

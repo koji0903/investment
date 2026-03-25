@@ -135,12 +135,12 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
     const currentPrice = prices[prices.length - 1];
 
     // 2. 財務サマリー取得 (Soft Fail 許容)
-    let summary: any = null;
+    let summary: { defaultKeyStatistics?: any, financialData?: any, summaryDetail?: any } | null = null;
     let syncError: string | undefined = undefined;
     try {
       summary = await yf.quoteSummary(sym, {
         modules: ["defaultKeyStatistics", "financialData", "summaryDetail"]
-      });
+      }) as any;
     } catch (err: any) {
       console.warn(`[Sync] Summary fetch soft failure for ${ticker}:`, err.message);
       syncError = `財務情報の取得に失敗しました(${err.message})。テクニカル分析を中心に判定しています。`;

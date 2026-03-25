@@ -49,7 +49,7 @@ export function calculateStockTotalJudgment(
   const sameSignCount = signs.filter(s => s === Math.sign(totalScore)).length;
   
   // AI総合コメント（簡易生成）
-  const summaryComment = generateSummaryComment(ticker, signalLabel, tech, fund, val, div);
+  const summaryComment = generateSummaryComment(signalLabel, tech, fund);
 
   return {
     ticker,
@@ -82,12 +82,9 @@ export function calculateStockTotalJudgment(
 }
 
 function generateSummaryComment(
-  ticker: string, 
   signal: StockSignalLabel, 
   tech: TechnicalAnalysisResult, 
-  fund: FundamentalAnalysisResult, 
-  val: ValuationAnalysisResult, 
-  div: ShareholderReturnResult
+  fund: FundamentalAnalysisResult
 ): string {
   if (signal === "買い優勢") {
     return `強固なファンダメンタルズ(${fund.score}点)と割安なバリュエーションが魅力です。テクニカル面でも追い風が吹いており、中長期での保有に適した状態です。`;
