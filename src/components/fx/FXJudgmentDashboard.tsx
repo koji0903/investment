@@ -133,6 +133,19 @@ export const FXJudgmentDashboard = () => {
     return result;
   }, [allJudgments, filters, sort]);
 
+  // 同期状況の集計
+  const syncStats = useMemo(() => {
+    const total = allJudgments.length;
+    if (total === 0) return { total: 0, completed: 0, syncing: 0, pending: 0, progress: 0 };
+    
+    const completed = allJudgments.filter(j => j.syncStatus === "completed").length;
+    const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
+    const pending = allJudgments.filter(j => j.syncStatus === "pending" || !j.syncStatus).length;
+    const progress = Math.round((completed / total) * 100);
+    
+    return { total, completed, syncing, pending, progress };
+  }, [allJudgments]);
+
   return (
     <div className="space-y-12">
       {/* Header Section */}
@@ -159,6 +172,90 @@ export const FXJudgmentDashboard = () => {
           </p>
         </div>
       </div>
+
+      {/* Sync Status Summary Section */}
+      {!loading && syncStats.total > 0 && (
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] shadow-sm space-y-5"
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                "p-2.5 rounded-2xl shadow-sm transition-colors duration-500",
+                syncStats.progress === 100 ? "bg-emerald-500 text-white" : "bg-indigo-500 text-white"
+              )}>
+                {syncStats.progress === 100 ? <ShieldCheck size={20} /> : <Zap size={20} className="animate-pulse" />}
+              </div>
+              <div>
+                <h2 className="text-base font-black text-slate-800 dark:text-white leading-tight">分析・データ同期状況</h2>
+                <div className="flex items-center gap-2 mt-1">
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sync Progress</p>
+                   {syncStats.progress < 100 && (
+                     <span className="flex items-center gap-1 text-[9px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded-full animate-pulse">
+                       <Zap size={8} fill="currentColor" />
+                       REALTIME UPDATE
+                     </span>
+                   )}
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 md:flex items-center gap-4 md:gap-8">
+              <div className="flex flex-col">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">完了数</p>
+                <p className="text-lg font-black text-emerald-500 tabular-nums">{syncStats.completed}</p>
+              </div>
+              <div className="flex flex-col">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">同期中</p>
+                <p className="text-lg font-black text-indigo-500 tabular-nums">{syncStats.syncing}</p>
+              </div>
+              <div className="flex flex-col">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">待機中</p>
+                <p className="text-lg font-black text-slate-300 dark:text-slate-600 tabular-nums">{syncStats.pending}</p>
+              </div>
+              <div className="flex flex-col bg-slate-50 dark:bg-slate-800/50 px-5 py-2 rounded-2xl border border-slate-100 dark:border-slate-800 min-w-[90px] items-center">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">全体の進捗</p>
+                <p className="text-xl font-black text-slate-800 dark:text-white tabular-nums">{syncStats.progress}%</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative h-2.5 bg-slate-100 dark:bg-slate-800/80 rounded-full overflow-hidden">
+            <motion.div 
+              initial={{ width: 0 }}
+              animate={{ width: `${syncStats.progress}%` }}
+              transition={{ duration: 1, ease: "circOut" }}
+              className={cn(
+                "absolute top-0 left-0 h-full rounded-full transition-colors duration-700",
+                syncStats.progress === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-indigo-500 to-indigo-400"
+              )}
+            />
+            {syncStats.progress < 100 && (
+              <motion.div 
+                animate={{ x: ["-100%", "200%"] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="absolute top-0 left-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
+              />
+            )}
+          </div>
+
+          <div className="flex items-start gap-3 pt-1">
+             <div className={cn(
+               "p-1.5 rounded-lg mt-0.5",
+               syncStats.progress === 100 ? "bg-emerald-50 dark:bg-emerald-500/10" : "bg-indigo-50 dark:bg-indigo-500/10"
+             )}>
+               {syncStats.progress === 100 ? <ShieldCheck size={14} className="text-emerald-500" /> : <Info size={14} className="text-indigo-500" />}
+             </div>
+             <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed pt-1">
+               {syncStats.progress < 100 
+                 ? "現在、Yahoo Financeからのヒストリカルデータ取得およびAI判定エンジンが順次稼働中です。リストに表示されているデータは最新の分析結果にリアルタイムで更新されます。" 
+                 : "すべての通貨ペアの最新データの同期と分析が完了しました。現在のマーケット環境に基づいた高精度な投資判断情報が表示されています。"}
+             </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Energy Highlights Section */}
       {!loading && energyHighlights.length > 0 && (
