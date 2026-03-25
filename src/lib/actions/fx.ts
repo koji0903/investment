@@ -78,15 +78,39 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
   let judgment: FXJudgment | null = null;
   
   try {
-    // 1. Yahoo Finance からデータを取得
-    const historical = await yf.historical(symbol, {
-      period1: start,
-      period2: end,
-      interval: "1d"
-    }).catch((err: any) => {
-      console.warn(`[FX] Data fetch failed for ${pair.pairCode}:`, err.message);
-      return [];
-    });
+    // 1. Yahoo Finance からデータを取得 (chart は historical より安定している場合がある)
+    let historical: any[] = [];
+    
+    const fetchHistory = async (s: string) => {
+      // まず chart を試す (JSON API なので高速かつ安定)
+      try {
+        const chart = await yf.chart(s, {
+          period1: start,
+          period2: end,
+          interval: "1d"
+        });
+        if (chart && chart.quotes && chart.quotes.length > 0) {
+          return chart.quotes.filter(q => q.close !== null && q.close !== undefined);
+        }
+      } catch (err) {
+        console.warn(`[FX] yf.chart failed for ${s}:`, (err as any).message);
+      }
+      
+      // 次に historical を試す
+      return await yf.historical(s, {
+        period1: start,
+        period2: end,
+        interval: "1d"
+      }).catch(() => []);
+    };
+
+    historical = await fetchHistory(symbol);
+    
+    // USD/JPY の場合は JPY=X という別シンボルも試す
+    if (historical.length < 10 && pair.pairCode === "USD/JPY") {
+      console.log("[FX] Retrying USD/JPY with alternative symbol JPY=X");
+      historical = await fetchHistory("JPY=X");
+    }
 
     if (historical && historical.length >= 10) {
       const prices = historical.map(h => h.close).filter(p => typeof p === "number");
