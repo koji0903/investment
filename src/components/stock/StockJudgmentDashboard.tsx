@@ -27,8 +27,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const SYNC_CONCURRENCY = 2; // レート制限回避のため 2 並列に抑制
-const SYNC_TIMEOUT_MS = 25000; // 25秒に延長
-const MAX_RETRIES = 1;
+const SYNC_TIMEOUT_MS = 60000; // 60秒に延長（Yahoo Financeの遅延対策）
+const MAX_RETRIES = 2; // リトライを2回に増強
 
 export const StockJudgmentDashboard = () => {
   const [allJudgments, setAllJudgments] = useState<StockJudgment[]>([] as StockJudgment[]);
@@ -140,7 +140,8 @@ export const StockJudgmentDashboard = () => {
         await Promise.all(chunk.map(ticker => syncWithRetry(ticker)));
         
         if (queue.length > 0) {
-          const jitter = 1500 + Math.random() * 2000;
+          // チャンク間に少し長めの待機時間を設けてAPIを労わる
+          const jitter = 2000 + Math.random() * 3000;
           await new Promise(r => setTimeout(r, jitter));
         }
       }

@@ -69,38 +69,38 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
       }
     }
 
-    // 1. 株価チャート取得 (必須)
+    // 1. 株価チャートと財務サマリーを並列取得
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - 365);
     
-    let chartRes;
+    let chartRes: any;
+    let summary: any;
+    let syncError: string | undefined = undefined;
+
     try {
-      chartRes = await yf.chart(sym, { period1: start, period2: end, interval: "1d" });
+      const [cResult, sResult] = await Promise.all([
+        yf.chart(sym, { period1: start, period2: end, interval: "1d" }).catch(e => { throw e; }),
+        yf.quoteSummary(sym, { modules: ["defaultKeyStatistics", "financialData", "summaryDetail"] }).catch(e => {
+          console.warn(`[Sync] Summary fetch soft failure for ${ticker}:`, e.message);
+          syncError = `財務情報の取得に失敗しました(${e.message})。テクニカル判定のみ実行します。`;
+          return null;
+        })
+      ]);
+      chartRes = cResult;
+      summary = sResult;
     } catch (err: any) {
-      console.error(`[Sync] Chart fetch error for ${ticker}:`, err.message);
-      return { success: false, message: `株価情報の取得に失敗しました: ${err.message}` };
+      console.error(`[Sync] Critical fetch error for ${ticker}:`, err.message);
+      return { success: false, message: `データ取得に失敗しました: ${err.message}` };
     }
 
     if (!chartRes || !chartRes.quotes || chartRes.quotes.length < 10) {
       return { success: false, message: "有効な株価データがありませんでした" };
     }
 
-    const quotes = chartRes.quotes.filter(q => q.close !== null && q.close !== undefined);
-    const prices = quotes.map(q => q.close as number);
+    const quotes = chartRes.quotes.filter((q: any) => q.close !== null && q.close !== undefined);
+    const prices = quotes.map((q: any) => q.close as number);
     const currentPrice = prices[prices.length - 1];
-
-    // 2. 財務サマリー取得 (Soft Fail 許容)
-    let summary: { defaultKeyStatistics?: any, financialData?: any, summaryDetail?: any } | null = null;
-    let syncError: string | undefined = undefined;
-    try {
-      summary = await yf.quoteSummary(sym, {
-        modules: ["defaultKeyStatistics", "financialData", "summaryDetail"]
-      }) as any;
-    } catch (err: any) {
-      console.warn(`[Sync] Summary fetch soft failure for ${ticker}:`, err.message);
-      syncError = `財務情報の取得に失敗しました(${err.message})。テクニカル分析を中心に判定しています。`;
-    }
 
     const s = (summary?.defaultKeyStatistics || {}) as any;
     const f = (summary?.financialData || {}) as any;
