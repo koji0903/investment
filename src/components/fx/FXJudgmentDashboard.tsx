@@ -157,7 +157,7 @@ export const FXJudgmentDashboard = () => {
       isMounted.current = false;
       if (unsubscribe) unsubscribe();
     };
-  }, []);
+  }, [user?.uid, portfolioId]); // user?.uid が確定してから初期化・購読を行う
 
   // 計算値 (useMemo)
   const energyHighlights = useMemo(() => {
@@ -205,10 +205,12 @@ export const FXJudgmentDashboard = () => {
     const total = allJudgments.length;
     if (total === 0) return { total: 0, completed: 0, syncing: 0, failed: 0, pending: 0, progress: 0 };
     
-    const completed = allJudgments.filter(j => j.syncStatus === "completed").length;
-    const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
-    const failed = allJudgments.filter(j => j.syncStatus === "failed").length;
-    const pending = allJudgments.filter(j => j.syncStatus === "pending" || !j.syncStatus).length;
+    if (total === 0) return { total: 0, completed: 0, syncing: 0, failed: 0, pending: 0, progress: 0 };
+    
+    const completed = allJudgments.filter(j => j && j.syncStatus === "completed").length;
+    const syncing = allJudgments.filter(j => j && j.syncStatus === "syncing").length;
+    const failed = allJudgments.filter(j => j && j.syncStatus === "failed").length;
+    const pending = allJudgments.filter(j => j && (j.syncStatus === "pending" || !j.syncStatus)).length;
     const progress = Math.round((completed / total) * 100);
     
     return { total, completed, syncing, failed, pending, progress };

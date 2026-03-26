@@ -17,6 +17,8 @@ import { SignalLabel, ConfidenceLevel, HoldingStyle, TradingSuitability } from "
  * 判定シグナルバッジ
  */
 export const SignalBadge = ({ label }: { label: SignalLabel }) => {
+  if (!label) return null;
+  
   const styles = {
     "買い優勢": "bg-emerald-500 text-white shadow-lg shadow-emerald-500/20",
     "やや買い": "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30",
@@ -27,15 +29,16 @@ export const SignalBadge = ({ label }: { label: SignalLabel }) => {
     "戻り売り待ち": "bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30",
   };
 
-  const Icon = label.includes("買い") || label === "押し目待ち" ? TrendingUp : label.includes("売り") || label === "戻り売り待ち" ? TrendingDown : Minus;
+  const safeLabel = label || "中立";
+  const Icon = safeLabel.includes("買い") || safeLabel === "押し目待ち" ? TrendingUp : safeLabel.includes("売り") || safeLabel === "戻り売り待ち" ? TrendingDown : Minus;
 
   return (
     <div className={cn(
       "px-3 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 transition-all",
-      styles[label]
+      styles[safeLabel as keyof typeof styles] || styles["中立"]
     )}>
       <Icon size={14} />
-      <span>{label}</span>
+      <span>{safeLabel}</span>
     </div>
   );
 };
@@ -44,6 +47,7 @@ export const SignalBadge = ({ label }: { label: SignalLabel }) => {
  * 信頼度表示
  */
 export const ConfidenceIndicator = ({ level }: { level: ConfidenceLevel }) => {
+  if (!level) return null;
   const colors = {
     "高": "text-emerald-500",
     "中": "text-amber-500",
@@ -65,7 +69,7 @@ export const ConfidenceIndicator = ({ level }: { level: ConfidenceLevel }) => {
           />
         ))}
       </div>
-      <span className={cn("text-[10px] font-black ml-1", colors[level])}>{level}</span>
+      <span className={cn("text-[10px] font-black ml-1", colors[level as keyof typeof colors] || colors["低"])}>{level}</span>
     </div>
   );
 };
@@ -74,6 +78,7 @@ export const ConfidenceIndicator = ({ level }: { level: ConfidenceLevel }) => {
  * 保有スタイルバッジ
  */
 export const HoldingStyleBadge = ({ style }: { style: HoldingStyle }) => {
+  if (!style) return null;
   const config = {
     short_term_only: { label: "短期向き", color: "text-slate-500 bg-slate-100 dark:bg-slate-800" },
     medium_term_long: { label: "中長期ロング向き", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10" },
@@ -81,11 +86,11 @@ export const HoldingStyleBadge = ({ style }: { style: HoldingStyle }) => {
     not_suitable_for_hold: { label: "非推奨", color: "text-rose-500 bg-rose-50" },
   };
 
-  const { label, color } = config[style];
+  const item = config[style as keyof typeof config] || config.short_term_only;
 
   return (
-    <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", color)}>
-      {label}
+    <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", item.color)}>
+      {item.label}
     </span>
   );
 };
@@ -94,6 +99,7 @@ export const HoldingStyleBadge = ({ style }: { style: HoldingStyle }) => {
  * 売買適正バッジ
  */
 export const TradingSuitabilityBadge = ({ suitability }: { suitability: TradingSuitability }) => {
+  if (!suitability) return null;
   const styles = {
     "短期売買向き": "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20",
     "中長期保有向き": "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20",
@@ -102,11 +108,12 @@ export const TradingSuitabilityBadge = ({ suitability }: { suitability: TradingS
   };
 
   return (
-    <div className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black", styles[suitability])}>
+    <div className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black", styles[suitability as keyof typeof styles] || styles["様子見推奨"])}>
       {suitability}
     </div>
   );
 };
+
 /**
  * 同期ステータスバッジ
  */
@@ -119,7 +126,7 @@ export const SyncStatusBadge = ({ status }: { status?: "pending" | "syncing" | "
     failed: { label: "失敗", color: "text-rose-500 bg-rose-50 dark:bg-rose-500/10" },
   };
 
-  const { label, color } = config[status] || config.pending;
+  const { label, color } = config[status as keyof typeof config] || config.pending;
 
   return (
     <div className={cn("px-2 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 border border-current opacity-80", color)}>

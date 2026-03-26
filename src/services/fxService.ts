@@ -19,9 +19,12 @@ import {
 import { analyzeTechnical } from "@/utils/fx/technical";
 import { analyzeFundamental } from "@/utils/fx/fundamental";
 import { evaluateSwap, calculateTotalJudgment } from "@/utils/fx/scoring";
-import { syncFXRealData } from "@/lib/actions/fx";
-
-// マスタ情報の定義は types/fx.ts に移動
+import { 
+  getFXJudgmentsAction, 
+  syncSpecificPairAction, 
+  setSyncingStatusAction,
+  generateFXDummyDataAction
+} from "@/lib/actions/fx";
 
 /**
  * FX 投資判断エンジンのサービス層
@@ -29,7 +32,6 @@ import { syncFXRealData } from "@/lib/actions/fx";
 export const FXService = {
   async getPairs(userId: string, portfolioId: string): Promise<FXJudgment[]> {
     try {
-      const { getFXJudgmentsAction } = await import("@/lib/actions/fx");
       return await getFXJudgmentsAction(userId, portfolioId);
     } catch (error) {
       console.error("Error fetching FX judgments:", error);
@@ -66,8 +68,7 @@ export const FXService = {
 
   async syncRealData(userId: string, portfolioId: string): Promise<FXJudgment[]> {
     try {
-      // サーバーサイドでの一括同期は権限の問題で Firestore に保存できないため、
-      // クライアント側で一括リクエストを行う形式に変更
+      // 逐次同期を行い、確実にクライアント側で保存されるようにする
       const results: FXJudgment[] = [];
       const CHUNK_SIZE = 3;
       
@@ -77,7 +78,6 @@ export const FXService = {
           const res = await FXService.syncPair(userId, portfolioId, pair.pairCode);
           if (res.success && res.data) results.push(res.data);
         }));
-        // 短い待機を入れてレート制限を回避
         await new Promise(r => setTimeout(r, 1000));
       }
       
@@ -90,7 +90,6 @@ export const FXService = {
 
   async syncPair(userId: string, portfolioId: string, pairCode: string): Promise<{ success: boolean; data?: FXJudgment; message?: string }> {
     try {
-      const { syncSpecificPairAction } = await import("@/lib/actions/fx");
       const result = await syncSpecificPairAction(userId, portfolioId, pairCode);
       
       if (result.success && result.data) {
@@ -117,12 +116,11 @@ export const FXService = {
         }, { merge: true });
       }
 
-      const { setSyncingStatusAction } = await import("@/lib/actions/fx");
       await setSyncingStatusAction(userId, portfolioId, pairCode);
       return true;
     } catch (error) {
       console.error(`Error setting syncing status for ${pairCode}:`, error);
-      return true; // 失敗しても続行
+      return true;
     }
   },
 

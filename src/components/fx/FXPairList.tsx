@@ -76,14 +76,14 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                 <td className="px-6 py-5">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-xs border border-slate-200 dark:border-slate-700">
-                      {item.pairCode.split("/")[0]}
+                      {item.pairCode?.split("/")[0] || "?"}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <div className="text-sm font-black text-slate-800 dark:text-white">{item.pairCode}</div>
+                        <div className="text-sm font-black text-slate-800 dark:text-white">{item.pairCode || "---"}</div>
                         <SyncStatusBadge status={item.syncStatus} />
                       </div>
-                      <div className="text-[10px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toFixed(pairToDecimals(item.pairCode))}</div>
+                      <div className="text-[10px] font-bold text-slate-400 tabular-nums">{(item.currentPrice || 0).toFixed(pairToDecimals(item.pairCode || ""))}</div>
                     </div>
                     <div className="ml-auto pr-4 hidden lg:block">
                       <MiniChart 
@@ -101,10 +101,10 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                         item.entryTimingAnalysis.entryScore >= 70 ? "text-indigo-500" : 
                         item.entryTimingAnalysis.entryScore >= 50 ? "text-orange-500" : "text-rose-500"
                       )}>
-                        {item.entryTimingAnalysis.entryLabel} ({item.entryTimingAnalysis.entryScore})
+                        {item.entryTimingAnalysis.entryLabel} ({item.entryTimingAnalysis.entryScore || 0})
                       </span>
-                      <span className="text-[9px] font-bold text-slate-400 mt-1 max-w-[140px] truncate" title={item.entryTimingAnalysis.waitReasons[0]}>
-                        {item.entryTimingAnalysis.shouldWait ? `待機: ${item.entryTimingAnalysis.waitReasons[0]}` : "エントリー推奨"}
+                      <span className="text-[9px] font-bold text-slate-400 mt-1 max-w-[140px] truncate" title={item.entryTimingAnalysis.waitReasons?.[0] || ""}>
+                        {item.entryTimingAnalysis.shouldWait ? `待機: ${item.entryTimingAnalysis.waitReasons?.[0] || "---"}` : "エントリー推奨"}
                       </span>
                     </div>
                   ) : "-"}
@@ -114,12 +114,12 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 w-16 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div 
-                          className={cn("h-full rounded-full", item.energyAnalysis.energyScore > 70 ? "bg-yellow-400" : item.energyAnalysis.energyScore > 40 ? "bg-amber-400" : "bg-slate-300")}
-                          style={{ width: `${item.energyAnalysis.energyScore}%` }}
+                          className={cn("h-full rounded-full", (item.energyAnalysis.energyScore || 0) > 70 ? "bg-yellow-400" : (item.energyAnalysis.energyScore || 0) > 40 ? "bg-amber-400" : "bg-slate-300")}
+                          style={{ width: `${item.energyAnalysis.energyScore || 0}%` }}
                         />
                       </div>
                       <span className="text-[10px] font-black tabular-nums text-slate-600 dark:text-slate-300">
-                        {item.energyAnalysis.energyScore}
+                        {item.energyAnalysis.energyScore || 0}
                       </span>
                     </div>
                   ) : "-"}
@@ -129,17 +129,17 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                     <div className="flex flex-col gap-1">
                       <span className={cn(
                         "text-sm font-black tabular-nums",
-                        item.positionSizing.cappedPositionSize > 0 ? "text-slate-800 dark:text-white" : "text-rose-500"
+                        (item.positionSizing.cappedPositionSize || 0) > 0 ? "text-slate-800 dark:text-white" : "text-rose-500"
                       )}>
-                        {item.positionSizing.suggestedLot}
+                        {item.positionSizing.suggestedLot || "---"}
                       </span>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-[9px] font-bold text-slate-400">
-                          損失想定: {new Intl.NumberFormat('ja-JP', { notation: "compact" }).format(item.positionSizing.estimatedLossAmount)}円
+                          損失想定: {new Intl.NumberFormat('ja-JP', { notation: "compact" }).format(item.positionSizing.estimatedLossAmount || 0)}円
                         </span>
                         <div className="px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-[9px] font-black text-blue-600 dark:text-blue-400 flex items-center gap-1 shadow-sm">
                           <ShieldCheck size={10} className="text-blue-500" />
-                          <span>安全 {item.safetyScore}%</span>
+                          <span>安全 {item.safetyScore || 0}%</span>
                         </div>
                       </div>
                     </div>
@@ -150,12 +150,12 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                     <div className="flex flex-col">
                       <div className="flex items-center gap-1.5 mb-1">
                         <span className="text-[10px] font-black text-slate-400">RR:</span>
-                        <span className={cn("text-xs font-black tabular-nums", item.entryTimingAnalysis.rrRatio >= 1.5 ? "text-emerald-500" : "text-orange-500")}>
-                          {item.entryTimingAnalysis.rrRatio.toFixed(2)}
+                        <span className={cn("text-xs font-black tabular-nums", (item.entryTimingAnalysis.rrRatio || 0) >= 1.5 ? "text-emerald-500" : "text-orange-500")}>
+                          {(item.entryTimingAnalysis.rrRatio || 0).toFixed(2)}
                         </span>
                       </div>
                       <span className="text-[9px] font-bold text-slate-400">
-                        目標: {item.entryTimingAnalysis.targetPrice.toFixed(pairToDecimals(item.pairCode))}
+                        目標: {(item.entryTimingAnalysis.targetPrice || 0).toFixed(pairToDecimals(item.pairCode || ""))}
                       </span>
                     </div>
                   ) : "-"}

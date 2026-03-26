@@ -12,6 +12,8 @@ interface FXEnergyBentoProps {
 }
 
 export const FXEnergyBento: React.FC<FXEnergyBentoProps> = ({ analysis, pairCode }) => {
+  if (!analysis) return null;
+
   const isUp = analysis.breakoutDirection === "up";
   const isDown = analysis.breakoutDirection === "down";
   const isNone = analysis.breakoutDirection === "none";
@@ -25,24 +27,24 @@ export const FXEnergyBento: React.FC<FXEnergyBentoProps> = ({ analysis, pairCode
       {/* 1. Main Score Card */}
       <div className="md:col-span-1 bg-slate-900 dark:bg-black rounded-[32px] p-6 text-white border border-slate-800 flex flex-col justify-between shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-10">
-          <Zap size={120} className={cn(analysis.energyScore > 70 ? "text-yellow-400 fill-yellow-400" : "text-slate-400")} />
+          <Zap size={120} className={cn((analysis.energyScore || 0) > 70 ? "text-yellow-400 fill-yellow-400" : "text-slate-400")} />
         </div>
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Zap size={16} className="text-yellow-400 fill-yellow-400" />
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Market Energy</span>
           </div>
-          <h3 className="text-2xl font-black mb-4">{pairCode}</h3>
+          <h3 className="text-2xl font-black mb-4">{pairCode || "---"}</h3>
           
           <div className="flex items-end gap-2">
-            <span className="text-6xl font-black tabular-nums">{analysis.energyScore}</span>
+            <span className="text-6xl font-black tabular-nums">{analysis.energyScore || 0}</span>
             <span className="text-sm font-bold text-slate-400 mb-2">pts</span>
           </div>
         </div>
 
         <div className="mt-6 flex items-center justify-between">
           <div className="px-3 py-1 rounded-full bg-white/10 border border-white/10 text-[10px] font-black">
-            LEVEL: {analysis.energyLevel.toUpperCase()}
+            LEVEL: {(analysis.energyLevel || "unknown").toUpperCase()}
           </div>
           <div className="flex items-center justify-between gap-2 text-xs font-bold">
             <div className="flex items-center gap-2">
@@ -51,8 +53,8 @@ export const FXEnergyBento: React.FC<FXEnergyBentoProps> = ({ analysis, pairCode
                   <Pause size={14} className="text-blue-400" />
                   <span>
                     エネルギー蓄積中
-                    {analysis.dataProgress < 100 && (
-                      <span className="ml-1 text-[10px] text-blue-400 opacity-80">(収集中: {analysis.dataProgress}%)</span>
+                    {(analysis.dataProgress || 0) < 100 && (
+                      <span className="ml-1 text-[10px] text-blue-400 opacity-80">(収集中: {analysis.dataProgress || 0}%)</span>
                     )}
                   </span>
                 </>
@@ -66,7 +68,7 @@ export const FXEnergyBento: React.FC<FXEnergyBentoProps> = ({ analysis, pairCode
             {/* Certainty Indicator */}
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/10 border border-white/10 text-[9px] font-black text-white/60">
                <ShieldCheck size={10} className="text-indigo-400" />
-               <span>精度 {analysis.certainty}%</span>
+               <span>精度 {analysis.certainty || 0}%</span>
             </div>
           </div>
         </div>
@@ -104,11 +106,11 @@ export const FXEnergyBento: React.FC<FXEnergyBentoProps> = ({ analysis, pairCode
             <div className="flex justify-between items-center py-2 border-b border-slate-100 dark:border-slate-800">
               <span className="text-xs font-bold text-slate-500">だましリスク</span>
               <div className="flex items-center gap-2">
-                <span className={cn("text-sm font-black", analysis.fakeBreakProbability > 60 ? "text-rose-500" : analysis.fakeBreakProbability > 30 ? "text-orange-500" : "text-emerald-500")}>
-                  {analysis.fakeBreakProbability}%
+                <span className={cn("text-sm font-black", (analysis.fakeBreakProbability || 0) > 60 ? "text-rose-500" : (analysis.fakeBreakProbability || 0) > 30 ? "text-orange-500" : "text-emerald-500")}>
+                  {analysis.fakeBreakProbability || 0}%
                 </span>
                 <span className="text-[10px] font-bold text-slate-400">
-                  ({analysis.fakeBreakProbability > 60 ? "高" : analysis.fakeBreakProbability > 30 ? "中" : "低"})
+                  ({(analysis.fakeBreakProbability || 0) > 60 ? "高" : (analysis.fakeBreakProbability || 0) > 30 ? "中" : "低"})
                 </span>
               </div>
             </div>
@@ -142,14 +144,14 @@ export const FXEnergyBento: React.FC<FXEnergyBentoProps> = ({ analysis, pairCode
         </div>
 
         <div className="flex-1 space-y-3">
-          {analysis.targetPrices.map((price, idx) => (
+          {(analysis.targetPrices || []).map((price, idx) => (
             <div key={idx} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl flex items-center justify-between group hover:bg-orange-50 dark:hover:bg-orange-950/20 transition-colors">
               <div className="flex flex-col">
                 <span className="text-[10px] font-black text-slate-400 uppercase">Target {idx + 1}</span>
                 <span className="text-xs font-bold text-slate-500">{idx === 0 ? "理論第1標的" : idx === 1 ? "理論第2標的" : "ボラティリティ上限"}</span>
               </div>
               <span className="text-lg font-black text-slate-800 dark:text-white tabular-nums group-hover:text-orange-500 transition-colors">
-                {price.toFixed(pairCode.includes("JPY") ? 3 : 5)}
+                {(price || 0).toFixed((pairCode || "").includes("JPY") ? 3 : 5)}
               </span>
             </div>
           ))}
