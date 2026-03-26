@@ -29,6 +29,8 @@ import {
 } from "@/types";
 import { AlertRule } from "@/types/alert";
 
+import { DEMO_USER_ID } from "@/context/AuthContext";
+
 /**
  * ユーザーごとの詳細なコレクションパスを取得
  */
@@ -47,6 +49,7 @@ const getReportsCol = (uid: string) => collection(db, "users", uid, "reports");
 // --- Assets ---
 
 export const subscribeAssets = (uid: string, portfolioId: string = "default", callback: (assets: Asset[]) => void) => {
+  if (!uid || uid === DEMO_USER_ID) return () => {};
   return onSnapshot(getAssetsCol(uid, portfolioId), 
     (snapshot) => {
       const assets = snapshot.docs.map(doc => ({
@@ -56,22 +59,25 @@ export const subscribeAssets = (uid: string, portfolioId: string = "default", ca
       callback(assets);
     },
     (error) => {
-      console.error("[Firestore] subscribeAssets error:", error);
+      console.warn("[Firestore] subscribeAssets restricted or error:", error.message);
     }
   );
 };
 
 export const saveAsset = async (uid: string, asset: Omit<Asset, "id">, portfolioId: string = "default") => {
+  if (uid === DEMO_USER_ID) return;
   return addDoc(getAssetsCol(uid, portfolioId), asset);
 };
 
 export const removeAsset = async (uid: string, assetId: string, portfolioId: string = "default") => {
+  if (uid === DEMO_USER_ID) return;
   return deleteDoc(doc(db, "users", uid, "portfolios", portfolioId, "assets", assetId));
 };
 
 // --- Transactions ---
 
 export const subscribeTransactions = (uid: string, portfolioId: string = "default", callback: (transactions: Transaction[]) => void) => {
+  if (!uid || uid === DEMO_USER_ID) return () => {};
   const q = query(getTransactionsCol(uid, portfolioId), orderBy("date", "desc"));
   return onSnapshot(q, 
     (snapshot) => {
@@ -86,12 +92,13 @@ export const subscribeTransactions = (uid: string, portfolioId: string = "defaul
       callback(transactions);
     },
     (error) => {
-      console.error("[Firestore] subscribeTransactions error:", error);
+      console.warn("[Firestore] subscribeTransactions restricted or error:", error.message);
     }
   );
 };
 
 export const saveTransaction = async (uid: string, transaction: Omit<Transaction, "id">, portfolioId: string = "default") => {
+  if (uid === DEMO_USER_ID) return;
   return addDoc(getTransactionsCol(uid, portfolioId), {
     ...transaction,
     date: Timestamp.fromDate(new Date(transaction.date))
@@ -101,6 +108,7 @@ export const saveTransaction = async (uid: string, transaction: Omit<Transaction
 // --- Alerts ---
 
 export const subscribeAlerts = (uid: string, callback: (alerts: AlertRule[]) => void) => {
+  if (!uid || uid === DEMO_USER_ID) return () => {};
   return onSnapshot(getAlertsCol(uid), 
     (snapshot) => {
       const alerts = snapshot.docs.map(doc => ({
@@ -110,27 +118,31 @@ export const subscribeAlerts = (uid: string, callback: (alerts: AlertRule[]) => 
       callback(alerts);
     },
     (error) => {
-      console.error("[Firestore] subscribeAlerts error:", error);
+      console.warn("[Firestore] subscribeAlerts error:", error.message);
     }
   );
 };
 
 export const saveAlert = async (uid: string, alert: AlertRule) => {
+  if (uid === DEMO_USER_ID) return;
   const { id, ...data } = alert;
   return setDoc(doc(db, "users", uid, "alerts", id), data);
 };
 
 export const updateAlertEnabled = async (uid: string, alertId: string, enabled: boolean) => {
+  if (uid === DEMO_USER_ID) return;
   return updateDoc(doc(db, "users", uid, "alerts", alertId), { enabled });
 };
 
 export const removeAlert = async (uid: string, alertId: string) => {
+  if (uid === DEMO_USER_ID) return;
   return deleteDoc(doc(db, "users", uid, "alerts", alertId));
 };
 
 // --- Trade Proposals ---
 
 export const subscribeTradeProposals = (uid: string, callback: (proposals: TradeProposal[]) => void) => {
+  if (!uid || uid === DEMO_USER_ID) return () => {};
   const q = query(getProposalsCol(uid), orderBy("createdAt", "desc"));
   return onSnapshot(q, (snapshot) => {
     const proposals = snapshot.docs.map(doc => {
@@ -146,6 +158,7 @@ export const subscribeTradeProposals = (uid: string, callback: (proposals: Trade
 };
 
 export const executeTradeProposal = async (uid: string, proposal: TradeProposal, portfolioId: string = "default") => {
+  if (uid === DEMO_USER_ID) return;
   const batch = writeBatch(db);
   const proposalRef = doc(db, "users", uid, "proposals", proposal.id);
   const transCol = getTransactionsCol(uid, portfolioId);
@@ -211,10 +224,13 @@ export const executeTradeProposal = async (uid: string, proposal: TradeProposal,
     batch.update(transRef, { assetId: newAssetRef.id });
   }
 
-  return batch.commit();
+  return batch.commit().catch(err => {
+    console.warn("[Firestore] executeTradeProposal batch commit failed:", err.message);
+  });
 };
 
 export const rejectTradeProposal = async (uid: string, proposalId: string) => {
+  if (uid === DEMO_USER_ID) return;
   return updateDoc(doc(db, "users", uid, "proposals", proposalId), {
     status: "rejected",
     rejectedAt: serverTimestamp()
@@ -222,6 +238,7 @@ export const rejectTradeProposal = async (uid: string, proposalId: string) => {
 };
 
 export const addDemoProposal = async (uid: string) => {
+  if (uid === DEMO_USER_ID) return;
   const proposal: Omit<TradeProposal, "id"> = {
     assetSymbol: "NVDA",
     assetName: "NVIDIA Corp",
@@ -242,6 +259,7 @@ export const addDemoProposal = async (uid: string) => {
 // --- Investment Reports ---
 
 export const subscribeReports = (uid: string, callback: (reports: InvestmentReport[]) => void) => {
+  if (!uid || uid === DEMO_USER_ID) return () => {};
   const q = query(getReportsCol(uid), orderBy("date", "desc"));
   return onSnapshot(q, (snapshot) => {
     const reports = snapshot.docs.map(doc => {
@@ -257,6 +275,7 @@ export const subscribeReports = (uid: string, callback: (reports: InvestmentRepo
 };
 
 export const saveReport = async (uid: string, report: Omit<InvestmentReport, "id" | "createdAt">) => {
+  if (uid === DEMO_USER_ID) return;
   return addDoc(getReportsCol(uid), {
     ...report,
     createdAt: serverTimestamp()
@@ -268,27 +287,34 @@ export const saveReport = async (uid: string, report: Omit<InvestmentReport, "id
 const getNotificationSettingsDoc = (uid: string) => doc(db, "users", uid, "settings", "notifications");
 
 export const subscribeNotificationSettings = (uid: string, callback: (settings: NotificationSettings) => void) => {
+  if (!uid || uid === DEMO_USER_ID) {
+    // デモ用初期値
+    callback({
+      lineEnabled: false,
+      lineToken: "",
+      emailEnabled: false,
+      emailAddress: "",
+      triggers: { alerts: true, strategy: true, market: true }
+    });
+    return () => {};
+  }
   return onSnapshot(getNotificationSettingsDoc(uid), (doc) => {
     if (doc.exists()) {
       callback(doc.data() as NotificationSettings);
     } else {
-      // 初期値
       callback({
         lineEnabled: false,
         lineToken: "",
         emailEnabled: false,
         emailAddress: "",
-        triggers: {
-          alerts: true,
-          strategy: true,
-          market: true
-        }
+        triggers: { alerts: true, strategy: true, market: true }
       });
     }
   });
 };
 
 export const updateNotificationSettings = async (uid: string, settings: Partial<NotificationSettings>) => {
+  if (uid === DEMO_USER_ID) return;
   const docRef = getNotificationSettingsDoc(uid);
   return setDoc(docRef, settings, { merge: true });
 };
@@ -298,23 +324,21 @@ export const updateNotificationSettings = async (uid: string, settings: Partial<
 const getRiskRulesDoc = (uid: string) => doc(db, "users", uid, "settings", "riskRules");
 
 export const subscribeRiskRules = (uid: string, callback: (rules: RiskRule) => void) => {
+  if (!uid || uid === DEMO_USER_ID) {
+    callback({ maxLossPct: 15, stopLossPct: 10, maxDrawdownPct: 20, enabled: true, actionType: "alert" });
+    return () => {};
+  }
   return onSnapshot(getRiskRulesDoc(uid), (doc) => {
     if (doc.exists()) {
       callback(doc.data() as RiskRule);
     } else {
-      // 初期値
-      callback({
-        maxLossPct: 15,
-        stopLossPct: 10,
-        maxDrawdownPct: 20,
-        enabled: true,
-        actionType: "alert"
-      });
+      callback({ maxLossPct: 15, stopLossPct: 10, maxDrawdownPct: 20, enabled: true, actionType: "alert" });
     }
   });
 };
 
 export const updateRiskRules = async (uid: string, rules: Partial<RiskRule>) => {
+  if (uid === DEMO_USER_ID) return;
   const docRef = getRiskRulesDoc(uid);
   return setDoc(docRef, rules, { merge: true });
 };
@@ -324,18 +348,14 @@ export const updateRiskRules = async (uid: string, rules: Partial<RiskRule>) => 
 const getTradingRulesDoc = (uid: string) => doc(db, "users", uid, "settings", "tradingRules");
 
 export const subscribeTradingRules = (uid: string, callback: (rules: TradingRule[]) => void) => {
+  if (!uid || uid === DEMO_USER_ID) {
+    callback([{ id: "default-sma", strategy: "sma_crossover", shortPeriod: 5, longPeriod: 25, enabled: true, autoPropose: true }]);
+    return () => {};
+  }
   return onSnapshot(collection(db, "users", uid, "settings", "tradingRules", "items"), (snapshot) => {
     const rules = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TradingRule[];
     if (rules.length === 0) {
-      // 初期値 (デフォルト)
-      callback([{
-        id: "default-sma",
-        strategy: "sma_crossover",
-        shortPeriod: 5,
-        longPeriod: 25,
-        enabled: true,
-        autoPropose: true
-      }]);
+      callback([{ id: "default-sma", strategy: "sma_crossover", shortPeriod: 5, longPeriod: 25, enabled: true, autoPropose: true }]);
     } else {
       callback(rules);
     }
@@ -343,6 +363,7 @@ export const subscribeTradingRules = (uid: string, callback: (rules: TradingRule
 };
 
 export const updateTradingRule = async (uid: string, ruleId: string, rule: Partial<TradingRule>) => {
+  if (uid === DEMO_USER_ID) return;
   const docRef = doc(db, "users", uid, "settings", "tradingRules", "items", ruleId);
   return setDoc(docRef, rule, { merge: true });
 };
@@ -352,21 +373,21 @@ export const updateTradingRule = async (uid: string, ruleId: string, rule: Parti
 const getPositionSizingDoc = (uid: string) => doc(db, "users", uid, "settings", "positionSizing");
 
 export const subscribePositionSizing = (uid: string, callback: (settings: PositionSizingSettings) => void) => {
+  if (!uid || uid === DEMO_USER_ID) {
+    callback({ maxCapitalPerTradePct: 20, riskPerTradePct: 1, enabled: true });
+    return () => {};
+  }
   return onSnapshot(getPositionSizingDoc(uid), (doc) => {
     if (doc.exists()) {
       callback(doc.data() as PositionSizingSettings);
     } else {
-      // 初期値
-      callback({
-        maxCapitalPerTradePct: 20,
-        riskPerTradePct: 1,
-        enabled: true
-      });
+      callback({ maxCapitalPerTradePct: 20, riskPerTradePct: 1, enabled: true });
     }
   });
 };
 
 export const updatePositionSizing = async (uid: string, settings: Partial<PositionSizingSettings>) => {
+  if (uid === DEMO_USER_ID) return;
   const docRef = getPositionSizingDoc(uid);
   return setDoc(docRef, settings, { merge: true });
 };
@@ -374,6 +395,7 @@ export const updatePositionSizing = async (uid: string, settings: Partial<Positi
 // --- Analysis ---
 
 export const subscribeAnalysis = (uid: string, portfolioId: string = "default", callback: (analysis: any) => void) => {
+  if (!uid || uid === DEMO_USER_ID) return () => {};
   return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "summary"), (doc) => {
     if (doc.exists()) {
       callback(doc.data());
@@ -384,6 +406,7 @@ export const subscribeAnalysis = (uid: string, portfolioId: string = "default", 
 };
 
 export const subscribeStrategy = (uid: string, portfolioId: string = "default", callback: (strategy: any) => void) => {
+  if (!uid || uid === DEMO_USER_ID) return () => {};
   return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "strategy"), 
     (doc) => {
       if (doc.exists()) {
@@ -393,12 +416,13 @@ export const subscribeStrategy = (uid: string, portfolioId: string = "default", 
       }
     },
     (error) => {
-      console.error("[Firestore] subscribeStrategy error:", error);
+      console.warn("[Firestore] subscribeStrategy suppressed or error:", error.message);
     }
   );
 };
 
 export const subscribeBehavior = (uid: string, portfolioId: string = "default", callback: (behavior: any) => void) => {
+  if (!uid || uid === DEMO_USER_ID) return () => {};
   return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "behavior"), 
     (doc) => {
       if (doc.exists()) {
@@ -408,12 +432,13 @@ export const subscribeBehavior = (uid: string, portfolioId: string = "default", 
       }
     },
     (error) => {
-      console.error("[Firestore] subscribeBehavior error:", error);
+      console.warn("[Firestore] subscribeBehavior suppressed or error:", error.message);
     }
   );
 };
 
 export const subscribeGrowthMetrics = (uid: string, portfolioId: string = "default", callback: (growth: any) => void) => {
+  if (!uid || uid === DEMO_USER_ID) return () => {};
   return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "growth"), 
     (doc) => {
       if (doc.exists()) {
@@ -423,12 +448,13 @@ export const subscribeGrowthMetrics = (uid: string, portfolioId: string = "defau
       }
     },
     (error) => {
-      console.error("[Firestore] subscribeGrowthMetrics error:", error);
+      console.warn("[Firestore] subscribeGrowthMetrics suppressed or error:", error.message);
     }
   );
 };
 
 export const saveGrowthMetrics = async (uid: string, portfolioId: string = "default", metrics: any) => {
+  if (uid === DEMO_USER_ID) return;
   return setDoc(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "growth"), {
     ...metrics,
     updatedAt: serverTimestamp()
@@ -436,6 +462,7 @@ export const saveGrowthMetrics = async (uid: string, portfolioId: string = "defa
 };
 
 export const subscribePortfolioMetrics = (uid: string, portfolioId: string = "default", callback: (metrics: any) => void) => {
+  if (!uid || uid === DEMO_USER_ID) return () => {};
   const q = query(collection(db, "users", uid, "portfolios", portfolioId, "portfolio_metrics"), orderBy("updatedAt", "desc"));
   return onSnapshot(q, 
     (snapshot) => {
@@ -446,12 +473,13 @@ export const subscribePortfolioMetrics = (uid: string, portfolioId: string = "de
       }
     },
     (error) => {
-      console.error("[Firestore] subscribePortfolioMetrics error:", error);
+      console.warn("[Firestore] subscribePortfolioMetrics suppressed or error:", error.message);
     }
   );
 };
 
 export const savePortfolioMetrics = async (uid: string, portfolioId: string = "default", metrics: any) => {
+  if (uid === DEMO_USER_ID) return;
   return addDoc(collection(db, "users", uid, "portfolios", portfolioId, "portfolio_metrics"), {
     ...metrics,
     updatedAt: serverTimestamp()
@@ -459,10 +487,15 @@ export const savePortfolioMetrics = async (uid: string, portfolioId: string = "d
 };
 
 export const updateRiskSettings = async (uid: string, settings: { riskTolerance?: string, autoExecute?: boolean }) => {
+  if (uid === DEMO_USER_ID) return;
   return setDoc(doc(db, "users", uid, "settings", "general"), { ...settings, updatedAt: serverTimestamp() }, { merge: true });
 };
 
 export const subscribeRiskSettings = (uid: string, callback: (settings: any) => void) => {
+  if (!uid || uid === DEMO_USER_ID) {
+    callback({ riskTolerance: "moderate", autoExecute: false });
+    return () => {};
+  }
   return onSnapshot(doc(db, "users", uid, "settings", "general"), 
     (doc) => {
       if (doc.exists()) {
@@ -472,42 +505,30 @@ export const subscribeRiskSettings = (uid: string, callback: (settings: any) => 
       }
     },
     (error) => {
-      console.error("[Firestore] subscribeRiskSettings error:", error);
+      console.warn("[Firestore] subscribeRiskSettings error:", error.message);
     }
   );
 };
 
 export const initializeUserData = async (uid: string, email: string, displayName: string = "") => {
+  if (uid === DEMO_USER_ID) return;
   const batch = writeBatch(db);
-
-  // 1. ユーザー基本ドキュメント
   const userRef = doc(db, "users", uid);
-  batch.set(userRef, {
-    email,
-    displayName,
-    createdAt: serverTimestamp(),
-    lastLogin: serverTimestamp(),
-  });
-
-  // 2. デフォルトポートフォリオ
+  batch.set(userRef, { email, displayName, createdAt: serverTimestamp(), lastLogin: serverTimestamp() });
   const portfolioRef = doc(db, "users", uid, "portfolios", "default");
-  batch.set(portfolioRef, {
-    name: "メインポートフォリオ",
-    createdAt: serverTimestamp(),
-  });
-
-  // 3. 初期設定
+  batch.set(portfolioRef, { name: "メインポートフォリオ", createdAt: serverTimestamp() });
   const settingsRef = doc(db, "users", uid, "settings", "general");
-  batch.set(settingsRef, {
-    riskTolerance: "moderate",
-    currency: "JPY",
-    updatedAt: serverTimestamp(),
+  batch.set(settingsRef, { riskTolerance: "moderate", currency: "JPY", updatedAt: serverTimestamp() });
+  return batch.commit().catch(err => {
+    console.warn("[Firestore] initializeUserData batch commit failed:", err.message);
   });
-
-  return batch.commit();
 };
 
 export const generateDemoData = async (uid: string, portfolioId: string = "default") => {
+  if (uid === DEMO_USER_ID) {
+    console.log("[Demo] Skipping Firestore write for demo user.");
+    return;
+  }
   const batch = writeBatch(db);
   const assetsCol = getAssetsCol(uid, portfolioId);
   const transCol = getTransactionsCol(uid, portfolioId);
@@ -523,95 +544,66 @@ export const generateDemoData = async (uid: string, portfolioId: string = "defau
 
   demoAssets.forEach(data => {
     const assetRef = doc(assetsCol);
-    batch.set(assetRef, {
-      ...data,
-      updatedAt: serverTimestamp()
-    });
-
-    // 初期購入トランザクション
+    batch.set(assetRef, { ...data, updatedAt: serverTimestamp() });
     const transRef = doc(transCol);
-    batch.set(transRef, {
-      assetId: assetRef.id,
-      type: "buy",
-      quantity: data.quantity,
-      price: data.averageCost,
-      date: serverTimestamp()
-    });
+    batch.set(transRef, { assetId: assetRef.id, type: "buy", quantity: data.quantity, price: data.averageCost, date: serverTimestamp() });
   });
 
-  // 追加: デモ用の成長指標を生成
   const growthRef = doc(db, "users", uid, "portfolios", portfolioId, "analysis", "growth");
-  batch.set(growthRef, {
-    cagr: 12.5,
-    returnRate: 15.8,
-    sharpeRatio: 1.45,
-    maxDrawdown: 6.2,
-    lastCalculated: new Date().toISOString(),
-    updatedAt: serverTimestamp()
-  });
-
-  // 追加: デモ用のポートフォリオメトリクス（履歴）を生成
+  batch.set(growthRef, { cagr: 12.5, returnRate: 15.8, sharpeRatio: 1.45, maxDrawdown: 6.2, lastCalculated: new Date().toISOString(), updatedAt: serverTimestamp() });
+  
   const metricsCol = collection(db, "users", uid, "portfolios", portfolioId, "portfolio_metrics");
   const metricsRef = doc(metricsCol);
-  batch.set(metricsRef, {
-    total: 82,
-    diversification: 85,
-    risk: 78,
-    efficiency: 91,
-    growth: 80,
-    consistency: 75,
-    updatedAt: serverTimestamp()
-  });
+  batch.set(metricsRef, { total: 82, diversification: 85, risk: 78, efficiency: 91, growth: 80, consistency: 75, updatedAt: serverTimestamp() });
 
-  return batch.commit();
+  return batch.commit().catch(err => {
+    console.warn("[Firestore] generateDemoData batch commit failed:", err.message);
+  });
 };
 
 export const clearPortfolioData = async (uid: string, portfolioId: string = "default") => {
-  const batch = writeBatch(db);
+  if (uid === DEMO_USER_ID) return;
   const assetsCol = getAssetsCol(uid, portfolioId);
   const transCol = getTransactionsCol(uid, portfolioId);
-
-  // 全アセットの取得
-  const assetsSnap = await getDocs(assetsCol);
-  assetsSnap.docs.forEach(d => batch.delete(d.ref));
-
-  // 全トランザクションの取得
-  const transSnap = await getDocs(transCol);
-  transSnap.docs.forEach(d => batch.delete(d.ref));
-
-  return batch.commit();
+  const assetsSnap = await getDocs(assetsCol).catch(() => ({ docs: [] } as any));
+  const transSnap = await getDocs(transCol).catch(() => ({ docs: [] } as any));
+  const batch = writeBatch(db);
+  assetsSnap.docs.forEach((d: any) => batch.delete(d.ref));
+  transSnap.docs.forEach((d: any) => batch.delete(d.ref));
+  return batch.commit().catch(err => {
+    console.warn("[Firestore] clearPortfolioData batch commit failed:", err.message);
+  });
 };
 
 /**
  * 金融機関連携の状態を購読する
  */
 export const subscribeBrokerConnections = (uid: string, onUpdate: (data: BrokerConnection[]) => void) => {
+  if (!uid || uid === DEMO_USER_ID) {
+    onUpdate([
+      { id: "stock", providerId: "stock", name: "証券口座", isConnected: false, lastSyncedAt: null, status: "disconnected" },
+      { id: "crypto", providerId: "crypto", name: "暗号資産", isConnected: false, lastSyncedAt: null, status: "disconnected" },
+      { id: "fx", providerId: "fx", name: "FX（外国為替）", isConnected: false, lastSyncedAt: null, status: "disconnected" }
+    ]);
+    return () => {};
+  }
   const q = query(collection(db, "users", uid, "settings", "brokerConnections", "items"));
-  return onSnapshot(q, 
-    (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BrokerConnection));
-      if (data.length === 0) {
-        // 初期データ作成
-        const initial: BrokerConnection[] = [
-          { id: "stock", providerId: "stock", name: "証券口座", isConnected: false, lastSyncedAt: null, status: "disconnected" },
-          { id: "crypto", providerId: "crypto", name: "暗号資産", isConnected: false, lastSyncedAt: null, status: "disconnected" },
-          { id: "fx", providerId: "fx", name: "FX（外国為替）", isConnected: false, lastSyncedAt: null, status: "disconnected" }
-        ];
-        onUpdate(initial);
-      } else {
-        onUpdate(data);
-      }
-    },
-    (error) => {
-      console.error("[Firestore] subscribeBrokerConnections error:", error);
+  return onSnapshot(q, (snapshot) => {
+    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BrokerConnection));
+    if (data.length === 0) {
+      onUpdate([
+        { id: "stock", providerId: "stock", name: "証券口座", isConnected: false, lastSyncedAt: null, status: "disconnected" },
+        { id: "crypto", providerId: "crypto", name: "暗号資産", isConnected: false, lastSyncedAt: null, status: "disconnected" },
+        { id: "fx", providerId: "fx", name: "FX（外国為替）", isConnected: false, lastSyncedAt: null, status: "disconnected" }
+      ]);
+    } else {
+      onUpdate(data);
     }
-  );
+  });
 };
 
-/**
- * 金融機関連携の状態を更新する
- */
 export const updateBrokerConnection = async (uid: string, connectionId: string, update: Partial<BrokerConnection>) => {
+  if (uid === DEMO_USER_ID) return;
   const docRef = doc(db, "users", uid, "settings", "brokerConnections", "items", connectionId);
   await setDoc(docRef, update, { merge: true });
 };

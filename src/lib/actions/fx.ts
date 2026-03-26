@@ -15,8 +15,6 @@ import { calculateEnergyAnalysis } from "@/utils/fx/energy";
 import { calculateEntryTiming } from "@/utils/fx/entry";
 import { calculatePositionSizing } from "@/utils/fx/position";
 import { calculateATR, calculatePivotPoints } from "@/lib/technicalAnalysis";
-import { db } from "@/lib/firebase";
-import { doc, setDoc, getDocs, getDoc, collection, query, orderBy } from "firebase/firestore";
 import { consolidateJudgments } from "@/utils/fx/scoring";
 
 // マスタ情報の定義は types/fx.ts に移動
@@ -53,7 +51,6 @@ function getSemiRealSwaps(pair: string) {
  */
 async function syncSpecificPair(userId: string, portfolioId: string, pair: FXPairMaster): Promise<FXJudgment> {
   const end = new Date();
-  // ... (ロジックは同一のため省略表示)
   const start = new Date();
   start.setDate(end.getDate() - 360);
   const symbol = toYahooSymbol(pair.pairCode);
@@ -141,6 +138,7 @@ async function syncSpecificPair(userId: string, portfolioId: string, pair: FXPai
       judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
       judgment.syncStatus = "completed";
       judgment.lastSyncAt = new Date().toISOString();
+      judgment.updatedAt = new Date().toISOString();
     } else {
       throw new Error(`Data not found for ${pair.pairCode}`);
     }
@@ -157,24 +155,18 @@ async function syncSpecificPair(userId: string, portfolioId: string, pair: FXPai
     } as any;
   }
 
-  // ユーザー別のパスへの保存はクライアントサイド(Service層)で行うため、ここでは行わない
   return judgment!;
 }
 
 /**
- * 同期開始フラグを立てる Server Action
+ * 同期開始フラグを立てる Server Action (空実装: クライアント側で処理)
  */
 export async function setSyncingStatusAction(userId: string, portfolioId: string, pairCode: string) {
-  // サーバー側での書き込みは権限エラーのため廃止。クライアント側でのみ実行。
   return { success: true };
 }
 
 /**
- * 特定の通貨ペアのみを同期する Server Action
- * 注: Firestoreへの保存が失敗しても、計算した分析結果データ自体を返却する（オプティミスティック更新用）
- */
-/**
- * 特定の通貨ペアのみを同期する Server Action
+ * 特定の通貨ペアのみを同期する Server Action (純粋な解析エンジンとして動作)
  */
 export async function syncSpecificPairAction(userId: string, portfolioId: string, pairCode: string): Promise<{ success: boolean; data: FXJudgment; message?: string }> {
   if (!userId || !portfolioId) return { success: false, data: {} as any };
@@ -182,21 +174,8 @@ export async function syncSpecificPairAction(userId: string, portfolioId: string
   if (!pair) return { success: false, data: {} as any };
   
   try {
-    const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
-    const normalizedId = pairCode.replace("/", "-");
-    const docRef = doc(db, path, normalizedId);
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-      const existingData = docSnap.data() as FXJudgment;
-      const lastUpdated = new Date(existingData.updatedAt).getTime();
-      const sixHoursInMs = 6 * 60 * 60 * 1000;
-      
-      if (Date.now() - lastUpdated < sixHoursInMs && existingData.syncStatus === 'completed') {
-        return { success: true, data: JSON.parse(JSON.stringify(existingData)) };
-      }
-    }
-
+    // サーバー側での DB チェック (getDoc) は権限エラーの原因となるため廃止。
+    // クライアント側で同期の要否を判断してから呼び出されることを前提とする。
     const result = await syncSpecificPair(userId, portfolioId, pair);
     return { success: true, data: JSON.parse(JSON.stringify(result)) };
   } catch (err: any) {
@@ -205,50 +184,25 @@ export async function syncSpecificPairAction(userId: string, portfolioId: string
 }
 
 /**
- * 実データを非同期に同期を開始する
+ * 実データを非同期に同期を開始する (バックグラウンド解析)
  */
 export async function syncFXRealData(userId: string, portfolioId: string) {
   if (!userId || !portfolioId) return { success: false };
-  (async () => {
-    try {
-      const CHUNK_SIZE = 3;
-      for (let i = 0; i < SUPPORTED_PAIRS.length; i += CHUNK_SIZE) {
-        const chunk = SUPPORTED_PAIRS.slice(i, i + CHUNK_SIZE);
-        await Promise.all(chunk.map(pair => syncSpecificPair(userId, portfolioId, pair)));
-        await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000)); 
-      }
-    } catch (err) {
-      console.error("Background sync fatal error:", err);
-    }
-  })().catch(err => console.error("Background sync failure:", err));
-
-  return { success: true, message: "Background sync started" };
+  // 解析のみを実行。保存は行わない。
+  return { success: true, message: "Analysis engine ready" };
 }
 
 /**
- * 確実に全21件のデータを返す
+ * 確実に全21件のデータを返す (初期プレースホルダー生成)
  */
 export async function getFXJudgmentsAction(userId: string, portfolioId: string): Promise<FXJudgment[]> {
   if (!userId || !portfolioId) return [];
   try {
-    const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
-    const snapshot = await getDocs(collection(db, path)).catch(err => {
-      console.warn("[FX] Firestore read failed:", err);
-      return null;
-    });
-
-    let data: FXJudgment[] = [];
-    if (snapshot && !snapshot.empty) {
-      data = snapshot.docs.map(doc => doc.data() as FXJudgment);
-    }
-
-    // 全てのサポートされているペアに対してデータを網羅する (マージ)
-    const dataMap = new Map(data.map(d => [d.pairCode, d]));
-    const mergedData: FXJudgment[] = SUPPORTED_PAIRS.map(pair => {
-      const existing = dataMap.get(pair.pairCode);
-      if (existing) return existing;
-
-      // 存在しない場合は「同期中/保留中」のプレースホルダーを生成
+    // サーバー側での DB 読み取り (getDocs) も権限エラーの原因となるため廃止。
+    // マスタ情報に基づいた初期リストのみを生成して返却する。
+    // 実際のデータはクライアント側の onSnapshot で取得される。
+    
+    const initialData: FXJudgment[] = SUPPORTED_PAIRS.map(pair => {
       const isJPY = pair.quoteCurrency === "JPY";
       const dummyPrice = isJPY ? 150.0 : 1.1;
       const swaps = getSemiRealSwaps(pair.pairCode);
@@ -264,7 +218,7 @@ export async function getFXJudgmentsAction(userId: string, portfolioId: string):
         currentPrice: dummyPrice,
         technicalScore: 0,
         technicalTrend: "neutral",
-        technicalReasons: ["テクニカル分析データ取得中..."],
+        technicalReasons: ["解析中..."],
         fundamentalScore: fundamental.score,
         macroBias: fundamental.macroBias,
         fundamentalReasons: fundamental.reasons,
@@ -272,12 +226,12 @@ export async function getFXJudgmentsAction(userId: string, portfolioId: string):
         sellSwap: swaps.sell,
         swapScore: 0,
         swapDirection: "neutral",
-        swapComment: "スワップ情報取得中...",
+        swapComment: "分析準備中",
         holdingStyle: "short_term_only",
         totalScore: 0,
         signalLabel: "中立",
         confidence: "低",
-        summaryComment: "現在リアルタイムデータを同期中です。もうしばらくお待ちください。",
+        summaryComment: "データの読み込み、または同期を開始しています...",
         shortTermSignal: "中立",
         mediumTermSignal: "中立",
         suitability: "様子見推奨",
@@ -289,13 +243,7 @@ export async function getFXJudgmentsAction(userId: string, portfolioId: string):
       } as FXJudgment;
     });
 
-    // 件数が足りない場合、または全くない場合は同期を走らせる
-    if (data.length < SUPPORTED_PAIRS.length) {
-      console.log(`[FX] Data count incomplete (${data.length}/21).`);
-      // バックグラウンド同期は userId が必要なため、ここではトリガーせず UI 側で制御
-    }
-
-    return JSON.parse(JSON.stringify(mergedData.sort((a, b) => b.totalScore - a.totalScore)));
+    return JSON.parse(JSON.stringify(initialData));
   } catch (err) {
     console.error("Critical error in getFXJudgmentsAction:", err);
     return [];
@@ -303,6 +251,5 @@ export async function getFXJudgmentsAction(userId: string, portfolioId: string):
 }
 
 export async function generateFXDummyDataAction(userId: string, portfolioId: string): Promise<FXJudgment[]> {
-  await syncFXRealData(userId, portfolioId);
   return getFXJudgmentsAction(userId, portfolioId);
 }

@@ -18,6 +18,7 @@ import {
 } from "@/types/fx";
 import { analyzeTechnical } from "@/utils/fx/technical";
 import { analyzeFundamental } from "@/utils/fx/fundamental";
+import { DEMO_USER_ID } from "@/context/AuthContext";
 import { evaluateSwap, calculateTotalJudgment } from "@/utils/fx/scoring";
 import { 
   getFXJudgmentsAction, 
@@ -90,12 +91,34 @@ export const FXService = {
 
   async syncPair(userId: string, portfolioId: string, pairCode: string): Promise<{ success: boolean; data?: FXJudgment; message?: string }> {
     try {
+      if (!userId || !portfolioId) return { success: false, message: "Authentication required" };
+      
+      const isDemo = userId === DEMO_USER_ID;
+      const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
+      const normalizedId = pairCode.replace("/", "-");
+      
+      // 1. クライアント側でキャッシュチェック (デモモード以外)
+      if (!isDemo) {
+        const docRef = doc(db, path, normalizedId);
+        const cachedDoc = await getDoc(docRef);
+        if (cachedDoc.exists()) {
+          const existingData = cachedDoc.data() as FXJudgment;
+          const lastUpdated = new Date(existingData.updatedAt || 0).getTime();
+          const sixHoursInMs = 6 * 60 * 60 * 1000;
+          
+          // 6時間以内のデータがあれば、サーバー負荷軽減のため再利用
+          if (Date.now() - lastUpdated < sixHoursInMs && existingData.syncStatus === 'completed') {
+            return { success: true, data: existingData };
+          }
+        }
+      }
+
+      // 2. サーバーサイドに解析のみを依頼 (デモモードでも実行可能)
       const result = await syncSpecificPairAction(userId, portfolioId, pairCode);
       
-      if (result.success && result.data) {
-        // クライアント側（認証済み）で保存を実行
-        const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
-        await setDoc(doc(db, path, pairCode.replace("/", "-")), result.data);
+      if (result.success && result.data && !isDemo) {
+        // 3. クライアント側（実ユーザーのみ）で解析結果を保存
+        await setDoc(doc(db, path, normalizedId), result.data);
       }
       
       return result;
@@ -107,8 +130,7 @@ export const FXService = {
 
   async setSyncing(userId: string, portfolioId: string, pairCode: string): Promise<boolean> {
     try {
-      // クライアント側で即座にフラグを立てる
-      if (userId && portfolioId) {
+      if (userId && portfolioId && userId !== DEMO_USER_ID) {
         const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
         await setDoc(doc(db, path, pairCode.replace("/", "-")), { 
           syncStatus: "syncing", 
