@@ -50,7 +50,7 @@ export interface StockJudgment {
   signalLabel: StockSignalLabel;
   certainty: number;           // 0-100 (%) 統合判断の確からしさ
   summaryComment: string;      // AIによる総合コメント
-  syncStatus?: "pending" | "syncing" | "completed" | "failed"; // 同期ステータス
+  syncStatus?: "pending" | "syncing" | "completed" | "failed" | "warning"; // 同期ステータス
   syncError?: string;          // 同期失敗時のエラーメッセージ
   lastSyncAt?: string;         // 最終同期時刻
   updatedAt: string;

@@ -104,9 +104,33 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
     } catch (err: any) {
       console.error(`[Sync] Critical fetch error for ${ticker}:`, err.message);
       const isDelisted = err.message.includes("No data found");
+      
+      if (isDelisted) {
+        return {
+          success: true,
+          data: {
+            ticker: plainTicker,
+            companyName: stk?.name || plainTicker,
+            sector: stk?.sector || "不明",
+            currentPrice: 0,
+            technicalScore: 0, technicalTrend: "neutral", technicalReasons: ["銘柄データが見つかりません"],
+            fundamentalScore: 0, growthProfile: "weak", financialHealth: "weak", fundamentalReasons: ["データ取得不能"],
+            valuationScore: 0, valuationLabel: "fair", valuationReasons: ["判定不能"],
+            shareholderReturnScore: 0, dividendProfile: "low_dividend", holdSuitability: "neutral", shareholderReasons: ["情報なし"],
+            totalScore: 0, signalLabel: "中立", certainty: 0, 
+            summaryComment: "銘柄データが見つかりません。上場廃止またはティッカー変更の可能性があります。",
+            syncStatus: "warning",
+            syncError: "銘柄データが見つかりません（上場廃止の可能性があります）",
+            updatedAt: new Date().toISOString(),
+            chartData: [],
+            valuationMetrics: { per: 0, pbr: 0, dividendYield: 0, roe: 0, equityRatio: 0 }
+          } as StockJudgment
+        };
+      }
+
       return { 
         success: false, 
-        message: isDelisted ? `銘柄データが見つかりません（上場廃止の可能性があります）: ${err.message}` : `データ取得に失敗しました: ${err.message}` 
+        message: `データ取得に失敗しました: ${err.message}` 
       };
     }
 

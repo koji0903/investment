@@ -59,7 +59,7 @@ export const StockCertaintyIndicator = ({ certainty }: { certainty: number }) =>
 /**
  * 同期ステータス表示
  */
-export const SyncStatusIndicator = ({ status }: { status?: "pending" | "syncing" | "completed" | "failed" }) => {
+export const SyncStatusIndicator = ({ status }: { status?: "pending" | "syncing" | "completed" | "failed" | "warning" }) => {
   if (status === "syncing") {
     return (
       <div className="flex items-center gap-2">
@@ -76,6 +76,14 @@ export const SyncStatusIndicator = ({ status }: { status?: "pending" | "syncing"
       <div className="flex items-center gap-1.5 text-emerald-500 font-black">
         <ShieldCheck size={12} />
         <span className="text-[10px] tracking-tighter">分析完了</span>
+      </div>
+    );
+  }
+  if (status === "warning") {
+    return (
+      <div className="flex items-center gap-1.5 text-amber-500 font-black">
+        <ShieldAlert size={12} />
+        <span className="text-[10px] tracking-tighter">一部制限</span>
       </div>
     );
   }

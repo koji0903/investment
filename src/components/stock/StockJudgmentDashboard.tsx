@@ -57,7 +57,8 @@ export const StockJudgmentDashboard = () => {
     pending: 0, 
     progress: 0,
     currentNames: [] as string[],
-    failedStocks: [] as { ticker: string, name: string, error?: string }[]
+    failedStocks: [] as { ticker: string, name: string, error?: string }[],
+    warningStocks: [] as { ticker: string, name: string, error?: string }[]
   });
   const isMountedRef = useRef(true);
   const priorityQueueRef = useRef<Set<string>>(new Set());
@@ -329,14 +330,16 @@ export const StockJudgmentDashboard = () => {
     const completed = allJudgments.filter(j => j.syncStatus === "completed").length;
     const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
     const failed = allJudgments.filter(j => j.syncStatus === "failed").length;
+    const warning = allJudgments.filter(j => j.syncStatus === "warning").length;
     
-    let progress = Math.round(((completed + failed) / total) * 100);
+    let progress = Math.round(((completed + failed + warning) / total) * 100);
     if (progress === 0 && syncing > 0) progress = 5;
     
     const currentNames = allJudgments.filter(j => j.syncStatus === "syncing").map(j => j.companyName);
     const failedStocks = allJudgments.filter(j => j.syncStatus === "failed").map(j => ({ ticker: j.ticker, name: j.companyName, error: j.syncError }));
+    const warningStocks = allJudgments.filter(j => j.syncStatus === "warning").map(j => ({ ticker: j.ticker, name: j.companyName, error: j.syncError }));
 
-    setSyncStats(prev => ({ ...prev, total, completed, syncing, progress, currentNames, failedStocks }));
+    setSyncStats(prev => ({ ...prev, total, completed, syncing, progress, currentNames, failedStocks, warningStocks }));
   }, [allJudgments]);
 
   return (
@@ -422,6 +425,40 @@ export const StockJudgmentDashboard = () => {
                 <div className="absolute inset-0 bg-[linear-gradient(45deg,rgba(255,255,255,0.1)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.1)_50%,rgba(255,255,255,0.1)_75%,transparent_75%,transparent)] bg-[length:40px_40px] animate-slide opacity-30 z-20" />
             </div>
             
+            {syncStats.warningStocks.length > 0 && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                className="flex flex-col gap-4 p-6 bg-amber-50/50 dark:bg-amber-950/20 rounded-[28px] border border-amber-100 dark:border-amber-900/30 backdrop-blur-sm"
+              >
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-2xl text-amber-600"><Plus size={24} className="rotate-45" /></div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-black text-amber-700 dark:text-amber-400">
+                        {syncStats.warningStocks.length}銘柄でデータ不整合を通知
+                      </p>
+                      <p className="text-[11px] font-bold text-amber-600/80 leading-relaxed">
+                        一部の市場データ（財務情報等）が制限されていますが、テクニカル分析による自動判定は継続しています。
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-4 border-t border-amber-100 dark:border-amber-900/20">
+                  {syncStats.warningStocks.map(s => (
+                    <div key={s.ticker} className="flex flex-col p-3 bg-white/50 dark:bg-slate-900/50 rounded-xl border border-amber-100/50 dark:border-amber-900/10">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 truncate">{s.name}</span>
+                        <span className="text-[9px] font-bold text-slate-400 tracking-tighter">{s.ticker}</span>
+                      </div>
+                      <p className="text-[9px] font-medium text-amber-600 line-clamp-2 italic">
+                        "{s.error || "データ制限あり"}"
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
             {syncStats.failedStocks.length > 0 && (
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
                 className="flex flex-col gap-4 p-6 bg-rose-50/50 dark:bg-rose-950/20 rounded-[28px] border border-rose-100 dark:border-rose-900/30 backdrop-blur-sm"
@@ -431,22 +468,21 @@ export const StockJudgmentDashboard = () => {
                     <div className="p-3 bg-rose-100 dark:bg-rose-900/50 rounded-2xl text-rose-600"><AlertCircle size={24} /></div>
                     <div className="space-y-1">
                       <p className="text-sm font-black text-rose-700 dark:text-rose-400">
-                        {syncStats.failedStocks.length}銘柄で解析エラーを検知しました
+                        {syncStats.failedStocks.length}銘柄で致命的な解析エラーを検知しました
                       </p>
                       <p className="text-[11px] font-bold text-rose-500/80 leading-relaxed">
-                        一部の市場データ（財務情報等）が制限されていますが、テクニカル分析による自動判定は継続しています。
+                        APIのレート制限や通信エラーにより、データの取得が完全に中断されました。
                       </p>
                     </div>
                   </div>
                   <button onClick={handleRetryFailed} disabled={syncInProgressRef.current}
-                    className="flex items-center gap-3 px-8 py-3.5 bg-rose-600 text-white rounded-[20px] text-xs font-black hover:bg-rose-700 disabled:opacity-50 transition-all shadow-xl shadow-rose-600/20 active:scale-95 shrink-0"
+                    className="flex items-center gap-3 px-8 py-3.5 bg-rose-600 text-white rounded-[20px] text-xs font-black hover:bg-rose-700 disabled:opacity-50 transition-all shadow-xl shadow-rose-600/20 active:scale-90 shrink-0"
                   >
                     <RefreshCw size={16} className={cn(syncInProgressRef.current && "animate-spin")} />
-                    全エラー銘柄を再同期
+                    再同期を実行
                   </button>
                 </div>
                 
-                {/* 詳細なエラーリスト */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-4 border-t border-rose-100 dark:border-rose-900/20">
                   {syncStats.failedStocks.map(s => (
                     <div key={s.ticker} className="flex flex-col p-3 bg-white/50 dark:bg-slate-900/50 rounded-xl border border-rose-100/50 dark:border-rose-900/10">
@@ -455,7 +491,7 @@ export const StockJudgmentDashboard = () => {
                         <span className="text-[9px] font-bold text-slate-400 tracking-tighter">{s.ticker}</span>
                       </div>
                       <p className="text-[9px] font-medium text-rose-500 line-clamp-2 italic">
-                        "{s.error || "データ取得失敗"}"
+                        "{s.error || "接続エラー"}"
                       </p>
                     </div>
                   ))}
