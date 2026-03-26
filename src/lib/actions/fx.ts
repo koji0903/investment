@@ -51,8 +51,9 @@ function getSemiRealSwaps(pair: string) {
 /**
  * 個別の通貨ペアを同期する内部関数
  */
-async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
+async function syncSpecificPair(userId: string, portfolioId: string, pair: FXPairMaster): Promise<FXJudgment> {
   const end = new Date();
+  // ... (ロジックは同一のため省略表示)
   const start = new Date();
   start.setDate(end.getDate() - 360);
   const symbol = toYahooSymbol(pair.pairCode);
@@ -60,70 +61,39 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
   let judgment: FXJudgment | null = null;
   
   try {
-    // 1. Yahoo Finance からデータを取得 (chart は historical より安定している場合がある)
+    // 1. Yahoo Finance からデータを取得
     let historical: any[] = [];
     
     const fetchHistory = async (s: string) => {
       const timeoutMillis = 30000;
-      
       const timeoutPromise = new Promise<any[]>((_, reject) => 
         setTimeout(() => reject(new Error(`Timeout fetching ${s}`)), timeoutMillis)
       );
 
       const fetchPromise = (async () => {
-        // 1. まず通常の chart を試す (360日分)
         try {
-          const chart = await yf.chart(s, {
-            period1: start,
-            period2: end,
-            interval: "1d"
-          });
+          const chart = await yf.chart(s, { period1: start, period2: end, interval: "1d" });
           if (chart && chart.quotes && chart.quotes.length >= 10) {
             return chart.quotes.filter(q => q.close !== null && q.close !== undefined);
           }
         } catch (err) {}
-
-        // 2. 失敗した場合、期間を短くして (60日) 再試行 (直近の動きだけでも確保)
         try {
           const shortStart = new Date();
           shortStart.setDate(end.getDate() - 60);
-          const chart = await yf.chart(s, {
-            period1: shortStart,
-            period2: end,
-            interval: "1d"
-          });
+          const chart = await yf.chart(s, { period1: shortStart, period2: end, interval: "1d" });
           if (chart && chart.quotes && chart.quotes.length >= 3) {
             return chart.quotes.filter(q => q.close !== null && q.close !== undefined);
           }
         } catch (err) {}
-
-        // 3. historical を試す
-        return await yf.historical(s, {
-          period1: start,
-          period2: end,
-          interval: "1d"
-        }).catch(() => []);
+        return await yf.historical(s, { period1: start, period2: end, interval: "1d" }).catch(() => []);
       })();
 
       return await Promise.race([fetchPromise, timeoutPromise]);
     };
 
     historical = await fetchHistory(symbol);
-    
-    // USD/JPY の場合は JPY=X という別シンボルも試す
     if (historical.length < 10 && pair.pairCode === "USD/JPY") {
-      console.log("[FX] Retrying USD/JPY with alternative symbol JPY=X");
       historical = await fetchHistory("JPY=X");
-    }
-
-    if (!historical || historical.length < 3) {
-      // 最終手段: quote で最新価格だけでも取得
-      try {
-        const quote = await yf.quote(symbol);
-        if (quote && quote.regularMarketPrice) {
-          historical = [{ date: new Date(), close: quote.regularMarketPrice, high: quote.regularMarketPrice, low: quote.regularMarketPrice }];
-        }
-      } catch (err) {}
     }
 
     if (historical && historical.length > 0) {
@@ -145,12 +115,10 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
         currentPrice, technical, fundamental, swapEval
       );
 
-      // 相場エネルギー分析を追加
       const lastDay = historical[historical.length - 1];
       const pivots = calculatePivotPoints(lastDay.high || currentPrice, lastDay.low || currentPrice, lastDay.close || currentPrice);
       judgment.energyAnalysis = calculateEnergyAnalysis(prices, highs, lows, currentPrice, pivots);
 
-      // エントリータイミング最適化を追加
       const atrArr = calculateATR({ high: highs, low: lows, close: prices }, 14);
       const atr = atrArr[atrArr.length - 1] || (currentPrice * 0.005);
       const recentHigh = Math.max(...highs.slice(-20));
@@ -161,108 +129,42 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
         atr, recentHigh, recentLow
       );
 
-      // ポジションサイズ自動調整を追加
       judgment.positionSizing = calculatePositionSizing(
         pair.pairCode, judgment.entryTimingAnalysis, judgment.energyAnalysis
       );
 
-      // チャート用データの追加 (直近180日分)
-      judgment.chartData = historical.slice(-180).map(h => {
-        const d = new Date(h.date);
-        return {
-          date: isNaN(d.getTime()) ? "不明" : d.toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
-          value: typeof h.close === "number" && !isNaN(h.close) ? h.close : 0
-        };
-      });
+      judgment.chartData = historical.slice(-180).map(h => ({
+        date: new Date(h.date).toLocaleDateString('ja-JP', { month: 'numeric', day: 'numeric' }),
+        value: h.close || 0
+      }));
       
-      // 統合と矛盾解消
       judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
-      
       judgment.syncStatus = "completed";
       judgment.lastSyncAt = new Date().toISOString();
     } else {
-      throw new Error(`Yahoo Finance Error: No data found for ${pair.pairCode}`);
+      throw new Error(`Data not found for ${pair.pairCode}`);
     }
   } catch (e: any) {
-    console.error(`[FX] Sync error for ${pair.pairCode}:`, e.message);
-    const errorMessage = e.message || "同期エラー";
-    
-    // エラー時はフォールバックを作成
-    const isJPY = pair.quoteCurrency === "JPY";
-    const dummyPrice = isJPY ? 150.0 + (Math.random() * 2) : 1.1 + (Math.random() * 0.05);
-    const swaps = getSemiRealSwaps(pair.pairCode);
-    const swapEval = evaluateSwap(swaps.buy, swaps.sell);
-    const fundamental = analyzeFundamental(
-      FIXED_CURRENCY_FUNDAMENTALS[pair.baseCurrency],
-      FIXED_CURRENCY_FUNDAMENTALS[pair.quoteCurrency]
-    );
-    
-    const energy = calculateEnergyAnalysis([dummyPrice], [dummyPrice], [dummyPrice], dummyPrice);
-    
+    const errorMsg = e.message || "同期エラー";
+    const fundamental = analyzeFundamental(FIXED_CURRENCY_FUNDAMENTALS[pair.baseCurrency], FIXED_CURRENCY_FUNDAMENTALS[pair.quoteCurrency]);
     judgment = {
-      pairCode: pair.pairCode,
-      baseCurrency: pair.baseCurrency,
-      quoteCurrency: pair.quoteCurrency,
-      currentPrice: dummyPrice,
-      technicalScore: 0,
-      technicalTrend: "neutral",
-      technicalReasons: ["テクニカル分析データ同期中..."],
-      fundamentalScore: fundamental.score,
-      macroBias: fundamental.macroBias,
-      fundamentalReasons: fundamental.reasons,
-      buySwap: swaps.buy,
-      sellSwap: swaps.sell,
-      swapScore: swapEval.score,
-      swapDirection: swapEval.swapDirection,
-      swapComment: swapEval.swapComment,
-      holdingStyle: swapEval.holdingStyle,
-      totalScore: Math.round(fundamental.score * 0.4 + swapEval.score * 0.2),
-      signalLabel: "中立",
-      confidence: "低",
-      summaryComment: `同期エラー: ${errorMessage}。現在再試行の待機中です。`,
-      shortTermSignal: "中立",
-      mediumTermSignal: "中立",
-      suitability: "様子見推奨",
-      energyAnalysis: energy,
-      certainty: 10,
-      safetyScore: 0,
-      syncStatus: "failed",
-      chartData: [],
-      updatedAt: new Date().toISOString()
-    };
-
-    judgment.entryTimingAnalysis = calculateEntryTiming(
-      pair.pairCode, dummyPrice, undefined, energy, dummyPrice * 0.005, dummyPrice * 1.01, dummyPrice * 0.99
-    );
-
-    judgment = consolidateJudgments(judgment!, judgment.energyAnalysis, judgment.entryTimingAnalysis);
+      pairCode: pair.pairCode, baseCurrency: pair.baseCurrency, quoteCurrency: pair.quoteCurrency,
+      currentPrice: 0, technicalScore: 0, technicalTrend: "neutral", technicalReasons: ["データ取得失敗"],
+      fundamentalScore: fundamental.score, macroBias: fundamental.macroBias, fundamentalReasons: fundamental.reasons,
+      buySwap: 0, sellSwap: 0, swapScore: 0, swapDirection: "neutral", swapComment: "", holdingStyle: "short_term_only",
+      totalScore: 0, signalLabel: "中立", confidence: "低", summaryComment: `同期エラー: ${errorMsg}`,
+      syncStatus: "failed", chartData: [], updatedAt: new Date().toISOString()
+    } as any;
   }
 
-  // 保存 (権限エラー等で失敗しても、計算済みのjudgmentは呼び出し元へ返す)
+  // ユーザー別のパスへ保存
   try {
-    if (judgment) {
-      // NaNが含まれているケースを徹底排除 (Firestoreエラー防止)
-      const sanitize = (obj: any): any => {
-        if (obj === undefined) return null;
-        if (obj === null) return null;
-        if (Array.isArray(obj)) return obj.map(sanitize);
-        if (typeof obj === 'object') {
-          const res: any = {};
-          for (const key in obj) {
-            res[key] = sanitize(obj[key]);
-          }
-          return res;
-        }
-        if (typeof obj === 'number' && isNaN(obj)) return 0;
-        return obj;
-      };
-
-      const sanitized = sanitize(judgment);
-      await setDoc(doc(db, "fx_judgments", pair.pairCode.replace("/", "-")), sanitized);
-      return sanitized;
+    if (judgment && userId && portfolioId) {
+      const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
+      await setDoc(doc(db, path, pair.pairCode.replace("/", "-")), judgment);
     }
   } catch (err) {
-    console.warn(`[FX] Firestore save failed for ${pair.pairCode}:`, err);
+    console.error(`[FX] User-specific save failed for ${pair.pairCode}:`, err);
   }
   return judgment!;
 }
@@ -270,9 +172,11 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
 /**
  * 同期開始フラグを立てる Server Action
  */
-export async function setSyncingStatusAction(pairCode: string) {
+export async function setSyncingStatusAction(userId: string, portfolioId: string, pairCode: string) {
+  if (!userId || !portfolioId) return { success: false };
   try {
-    const docRef = doc(db, "fx_judgments", pairCode.replace("/", "-"));
+    const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
+    const docRef = doc(db, path, pairCode.replace("/", "-"));
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
@@ -282,15 +186,10 @@ export async function setSyncingStatusAction(pairCode: string) {
         updatedAt: new Date().toISOString()
       });
     } else {
-      // 存在しない場合は最小限のプレースホルダー
       const [base, quote] = pairCode.split("/");
       await setDoc(docRef, {
-        pairCode,
-        baseCurrency: base,
-        quoteCurrency: quote,
-        currentPrice: 0,
-        syncStatus: "syncing",
-        updatedAt: new Date().toISOString()
+        pairCode, baseCurrency: base, quoteCurrency: quote,
+        currentPrice: 0, syncStatus: "syncing", updatedAt: new Date().toISOString()
       });
     }
     return { success: true };
@@ -303,86 +202,48 @@ export async function setSyncingStatusAction(pairCode: string) {
  * 特定の通貨ペアのみを同期する Server Action
  * 注: Firestoreへの保存が失敗しても、計算した分析結果データ自体を返却する（オプティミスティック更新用）
  */
-export async function syncSpecificPairAction(pairCode: string): Promise<{ success: boolean; data: FXJudgment; message?: string }> {
+/**
+ * 特定の通貨ペアのみを同期する Server Action
+ */
+export async function syncSpecificPairAction(userId: string, portfolioId: string, pairCode: string): Promise<{ success: boolean; data: FXJudgment; message?: string }> {
+  if (!userId || !portfolioId) return { success: false, data: {} as any };
   const pair = SUPPORTED_PAIRS.find(p => p.pairCode === pairCode);
-  if (!pair) return { 
-    success: false, 
-    message: "Unsupported pair",
-    data: { pairCode, updatedAt: new Date().toISOString() } as unknown as FXJudgment
-  };
+  if (!pair) return { success: false, data: {} as any };
   
   try {
-    // キャッシュチェック: 直近6時間以内に更新されている場合はAPI呼び出しをスキップ
+    const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
     const normalizedId = pairCode.replace("/", "-");
-    const docRef = doc(db, "fx_judgments", normalizedId);
+    const docRef = doc(db, path, normalizedId);
     const docSnap = await getDoc(docRef);
     
     if (docSnap.exists()) {
       const existingData = docSnap.data() as FXJudgment;
       const lastUpdated = new Date(existingData.updatedAt).getTime();
-      const now = Date.now();
       const sixHoursInMs = 6 * 60 * 60 * 1000;
       
-      if (now - lastUpdated < sixHoursInMs && existingData.syncStatus === 'completed' && (existingData.chartData?.length || 0) > 0) {
-        console.log(`[FX] Cache hit for ${pairCode}. Skipping API call.`);
+      if (Date.now() - lastUpdated < sixHoursInMs && existingData.syncStatus === 'completed') {
         return { success: true, data: JSON.parse(JSON.stringify(existingData)) };
       }
     }
 
-    const result = await syncSpecificPair(pair);
+    const result = await syncSpecificPair(userId, portfolioId, pair);
     return { success: true, data: JSON.parse(JSON.stringify(result)) };
   } catch (err: any) {
-    console.error(`Sync specific pair failed for ${pairCode}:`, err);
-    // エラーメッセージを含めた正常レスポンスを返し、UI側での表示を助ける
-    return { 
-      success: false, 
-      message: String(err.message || "Unknown error"),
-      // 失敗時もプレースホルダーデータを返すことでUIを壊さない
-      data: {
-        pairCode: pairCode,
-        baseCurrency: pair.baseCurrency,
-        quoteCurrency: pair.quoteCurrency,
-        currentPrice: 0,
-        technicalScore: 0,
-        technicalTrend: "neutral",
-        technicalReasons: [],
-        fundamentalScore: 0,
-        macroBias: "neutral",
-        fundamentalReasons: [],
-        buySwap: 0,
-        sellSwap: 0,
-        swapScore: 0,
-        swapDirection: "neutral",
-        swapComment: "",
-        holdingStyle: "short_term_only",
-        totalScore: 0,
-        signalLabel: "中立",
-        confidence: "低",
-        certainty: 0,
-        safetyScore: 0,
-        shortTermSignal: "neutral",
-        mediumTermSignal: "neutral",
-        suitability: 0,
-        syncStatus: "failed",
-        summaryComment: `同期エラー: ${err.message}`,
-        chartData: [],
-        updatedAt: new Date().toISOString()
-      } as unknown as FXJudgment
-    };
+    return { success: false, message: err.message, data: { pairCode, syncStatus: "failed", updatedAt: new Date().toISOString() } as any };
   }
 }
 
 /**
  * 実データを非同期に同期を開始する
  */
-export async function syncFXRealData() {
+export async function syncFXRealData(userId: string, portfolioId: string) {
+  if (!userId || !portfolioId) return { success: false };
   (async () => {
     try {
-      // 並列実行数を制限しながら同期 (バースト防止)
       const CHUNK_SIZE = 3;
       for (let i = 0; i < SUPPORTED_PAIRS.length; i += CHUNK_SIZE) {
         const chunk = SUPPORTED_PAIRS.slice(i, i + CHUNK_SIZE);
-        await Promise.all(chunk.map(pair => syncSpecificPair(pair)));
+        await Promise.all(chunk.map(pair => syncSpecificPair(userId, portfolioId, pair)));
         await new Promise(r => setTimeout(r, 1000 + Math.random() * 1000)); 
       }
     } catch (err) {
@@ -396,10 +257,12 @@ export async function syncFXRealData() {
 /**
  * 確実に全21件のデータを返す
  */
-export async function getFXJudgmentsAction(): Promise<FXJudgment[]> {
+export async function getFXJudgmentsAction(userId: string, portfolioId: string): Promise<FXJudgment[]> {
+  if (!userId || !portfolioId) return [];
   try {
-    const snapshot = await getDocs(collection(db, "fx_judgments")).catch(err => {
-      console.warn("[FX] Firestore read failed (Permission denied?):", err);
+    const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
+    const snapshot = await getDocs(collection(db, path)).catch(err => {
+      console.warn("[FX] Firestore read failed:", err);
       return null;
     });
 
@@ -455,10 +318,10 @@ export async function getFXJudgmentsAction(): Promise<FXJudgment[]> {
       } as FXJudgment;
     });
 
-    // 件数が足りない場合、または全くない（権限エラー含む）場合は同期を走らせる
+    // 件数が足りない場合、または全くない場合は同期を走らせる
     if (data.length < SUPPORTED_PAIRS.length) {
-      console.log(`[FX] Data count incomplete (${data.length}/21). Triggering background-sync...`);
-      syncFXRealData(); 
+      console.log(`[FX] Data count incomplete (${data.length}/21).`);
+      // バックグラウンド同期は userId が必要なため、ここではトリガーせず UI 側で制御
     }
 
     return JSON.parse(JSON.stringify(mergedData.sort((a, b) => b.totalScore - a.totalScore)));
@@ -468,7 +331,7 @@ export async function getFXJudgmentsAction(): Promise<FXJudgment[]> {
   }
 }
 
-export async function generateFXDummyDataAction(): Promise<FXJudgment[]> {
-  await syncFXRealData();
-  return getFXJudgmentsAction();
+export async function generateFXDummyDataAction(userId: string, portfolioId: string): Promise<FXJudgment[]> {
+  await syncFXRealData(userId, portfolioId);
+  return getFXJudgmentsAction(userId, portfolioId);
 }

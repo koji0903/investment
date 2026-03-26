@@ -8,6 +8,7 @@ import { StockList } from "./StockList";
 import { StockDetailModal } from "./StockDetailModal";
 import { StockFilterSort } from "./StockFilterSort";
 import { StockSignalBadge } from "./StockUIComponents";
+import { useAuth } from "@/context/AuthContext";
 import { 
   Zap, 
   ShieldAlert, 
@@ -45,6 +46,8 @@ export const StockJudgmentDashboard = () => {
   
   const [newTicker, setNewTicker] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const { user } = useAuth();
+  const portfolioId = "default";
 
   const syncInProgressRef = useRef(false);
   const [syncStats, setSyncStats] = useState({ 
@@ -96,11 +99,13 @@ export const StockJudgmentDashboard = () => {
         return Array.from(map.values());
       });
 
-      // 2. サーバ側の同期中フラグ設定 (非ブロッキングまたは短期間のタイムアウト付き)
-      StockService.setSyncing(ticker).catch(e => console.warn("setSyncing failed", e));
+      // 2. サーバ側の同期中フラグ設定
+      if (user?.uid) {
+        StockService.setSyncing(user.uid, portfolioId, ticker).catch(e => console.warn("setSyncing failed", e));
+      }
 
       // 3. 同期実行 (タイムアウト付き)
-      const syncPromise = StockService.syncStock(ticker);
+      const syncPromise = user?.uid ? StockService.syncStock(user.uid, portfolioId, ticker) : Promise.resolve({ success: false, message: "No Auth" });
       const timeoutPromise = new Promise<{ success: false, message: string }>((_, reject) => 
         setTimeout(() => reject(new Error("Request Timeout")), SYNC_TIMEOUT_MS)
       );
@@ -194,10 +199,11 @@ export const StockJudgmentDashboard = () => {
   };
 
   const fetchData = async () => {
+    if (!user?.uid) return;
     setLoading(true);
     setError(null);
     try {
-      const data = await StockService.getJudgments();
+      const data = await StockService.getJudgments(user.uid, portfolioId);
       if (isMountedRef.current) {
         // マスターとマージ
         const masterMap = new Map(MONITORING_STOCKS.map(s => [s.ticker, s]));

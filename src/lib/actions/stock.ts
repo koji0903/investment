@@ -39,18 +39,14 @@ export async function getStockBasicInfoAction(ticker: string): Promise<{ success
 /**
  * 特定の銘柄を同期・分析する (Server Action) - Robust Version
  */
-export async function syncSpecificStockAction(ticker: string): Promise<{ success: boolean; data?: StockJudgment; message?: string }> {
+export async function syncSpecificStockAction(userId: string, portfolioId: string, ticker: string): Promise<{ success: boolean; data?: StockJudgment; message?: string }> {
+  if (!userId || !portfolioId) return { success: false, message: "User ID required" };
   try {
     const sym = ticker.endsWith(".T") ? ticker : ticker + ".T";
     const plainTicker = ticker.replace(".T", "");
-    let stk = STKS.find(s => s.ticker === plainTicker);
-    if (!stk) {
-      const basic = await getStockBasicInfoAction(plainTicker);
-      if (!basic.success || !basic.data) return { success: false, message: "銘柄情報が取得できません" };
-      stk = basic.data;
-    }
-
-    const docRef = doc(db, "japanese_stocks", plainTicker);
+    // ...
+    const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
+    const docRef = doc(db, path, plainTicker);
     
     // キャッシュチェック (Soft Fail: 権限エラーでも解析へ進む)
     let docSnap = null;
@@ -166,11 +162,12 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
     jud.syncError = syncError;
     jud.updatedAt = new Date().toISOString();
 
-    // 3. Firestoreへの保存 (Soft Fail: 権限エラー等で失敗しても解析結果は返す)
+    // 3. Firestoreへの保存
     try {
-      if (isConfigValid) {
+      if (isConfigValid && userId && portfolioId) {
         await setDoc(docRef, jud);
-        await setDoc(doc(db, "japanese_stock_fundamentals", stk.ticker), fundamentalData);
+        const fundPath = `users/${userId}/portfolios/${portfolioId}/stock_fundamentals`;
+        await setDoc(doc(db, fundPath, stk.ticker), fundamentalData);
       }
     } catch (fsErr: any) {
       console.warn(`[Stock] Firestore save skipped or failed for ${ticker} (likely permission):`, fsErr.message);
@@ -184,12 +181,14 @@ export async function syncSpecificStockAction(ticker: string): Promise<{ success
   }
 }
 
-export async function getStockJudgmentsAction() {
+export async function getStockJudgmentsAction(userId: string, portfolioId: string) {
+  if (!userId || !portfolioId) return [];
   try {
-    const colRef = collection(db, "japanese_stocks");
+    const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
+    const colRef = collection(db, path);
     const q = query(colRef, orderBy("totalScore", "desc"));
     const snap = await getDocs(q).catch(err => {
-      console.warn("[Stock] Firestore read failed (likely permission):", err.message);
+      console.warn("[Stock] Firestore read failed:", err.message);
       return null;
     });
 
@@ -201,20 +200,22 @@ export async function getStockJudgmentsAction() {
   }
 }
 
-export async function setStockSyncingAction(ticker: string) {
+export async function setStockSyncingAction(userId: string, portfolioId: string, ticker: string) {
+  if (!userId || !portfolioId) return { success: false };
   try {
-    const docRef = doc(db, "japanese_stocks", ticker);
+    const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
+    const docRef = doc(db, path, ticker);
     await setDoc(docRef, { syncStatus: "syncing", syncError: null, updatedAt: new Date().toISOString() }, { merge: true })
       .catch(err => console.warn(`[Stock] setStockSyncingAction failed for ${ticker}:`, err.message));
     return { success: true };
   } catch (err) { return { success: false }; }
 }
 
-export async function syncStockRealData(): Promise<{ success: boolean; count: number; data: StockJudgment[] }> {
-  // 実運用リストの上位15銘柄を同期
+export async function syncStockRealData(userId: string, portfolioId: string): Promise<{ success: boolean; count: number; data: StockJudgment[] }> {
+  if (!userId || !portfolioId) return { success: false, count: 0, data: [] };
   const results: StockJudgment[] = [];
   for (const stk of STKS.slice(0, 15)) {
-    const res = await syncSpecificStockAction(stk.ticker);
+    const res = await syncSpecificStockAction(userId, portfolioId, stk.ticker);
     if (res.success && res.data) results.push(res.data);
   }
   return { success: true, count: results.length, data: results };

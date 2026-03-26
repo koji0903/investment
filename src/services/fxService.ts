@@ -27,24 +27,20 @@ import { syncFXRealData } from "@/lib/actions/fx";
  * FX 投資判断エンジンのサービス層
  */
 export const FXService = {
-  /**
-   * 通貨ペア一覧を取得
-   */
-  async getPairs(): Promise<FXJudgment[]> {
+  async getPairs(userId: string, portfolioId: string): Promise<FXJudgment[]> {
     try {
       const { getFXJudgmentsAction } = await import("@/lib/actions/fx");
-      return await getFXJudgmentsAction();
+      return await getFXJudgmentsAction(userId, portfolioId);
     } catch (error) {
       console.error("Error fetching FX judgments:", error);
       return [];
     }
   },
 
-  /**
-   * 通貨ペア判定をリアルタイム購読
-   */
-  subscribePairs: (callback: (data: FXJudgment[]) => void) => {
-    const q = query(collection(db, "fx_judgments"));
+  subscribePairs: (userId: string, portfolioId: string, callback: (data: FXJudgment[]) => void) => {
+    if (!userId || !portfolioId) return () => {};
+    const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
+    const q = query(collection(db, path));
     return onSnapshot(q, 
       (snapshot) => {
         const data = snapshot.docs.map(doc => doc.data() as FXJudgment);
@@ -56,12 +52,10 @@ export const FXService = {
     );
   },
 
-  /**
-   * 特定の通貨ペアの判定を取得
-   */
-  async getJudgmentByPair(pairCode: string): Promise<FXJudgment | null> {
+  async getJudgmentByPair(userId: string, portfolioId: string, pairCode: string): Promise<FXJudgment | null> {
     try {
-      const docRef = doc(db, "fx_judgments", pairCode.replace("/", "-"));
+      const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
+      const docRef = doc(db, path, pairCode.replace("/", "-"));
       const docSnap = await getDoc(docRef);
       return docSnap.exists() ? (docSnap.data() as FXJudgment) : null;
     } catch (error) {
@@ -70,28 +64,22 @@ export const FXService = {
     }
   },
 
-  /**
-   * 実データを同期して取得
-   */
-  async syncRealData(): Promise<FXJudgment[]> {
+  async syncRealData(userId: string, portfolioId: string): Promise<FXJudgment[]> {
     try {
       const { syncFXRealData, getFXJudgmentsAction } = await import("@/lib/actions/fx");
-      await syncFXRealData();
-      return await getFXJudgmentsAction();
+      await syncFXRealData(userId, portfolioId);
+      return await getFXJudgmentsAction(userId, portfolioId);
     } catch (error) {
       console.error("Error syncing real FX data:", error);
       const { generateFXDummyDataAction } = await import("@/lib/actions/fx");
-      return await generateFXDummyDataAction().catch(() => []);
+      return await generateFXDummyDataAction(userId, portfolioId).catch(() => []);
     }
   },
 
-  /**
-   * 特定の通貨ペアのみを同期
-   */
-  async syncPair(pairCode: string): Promise<{ success: boolean; data?: FXJudgment; message?: string }> {
+  async syncPair(userId: string, portfolioId: string, pairCode: string): Promise<{ success: boolean; data?: FXJudgment; message?: string }> {
     try {
       const { syncSpecificPairAction } = await import("@/lib/actions/fx");
-      const result = await syncSpecificPairAction(pairCode);
+      const result = await syncSpecificPairAction(userId, portfolioId, pairCode);
       return result;
     } catch (error: any) {
       console.error(`Error syncing pair ${pairCode}:`, error);
@@ -99,14 +87,11 @@ export const FXService = {
     }
   },
 
-  /**
-   * 同期中ステータスを即座に反映
-   */
-  async setSyncing(pairCode: string): Promise<boolean> {
+  async setSyncing(userId: string, portfolioId: string, pairCode: string): Promise<boolean> {
     try {
       const { setSyncingStatusAction } = await import("@/lib/actions/fx");
-      await setSyncingStatusAction(pairCode);
-      return true; // 失敗しても true を返し、ループを止めない
+      await setSyncingStatusAction(userId, portfolioId, pairCode);
+      return true;
     } catch (error) {
       console.error(`Error setting syncing status for ${pairCode}:`, error);
       return true; // 失敗しても続行

@@ -14,12 +14,9 @@ import { TSE_PRIME_MASTER } from "@/data/tse_prime_master";
 export const MONITORING_STOCKS: StockPairMaster[] = TSE_PRIME_MASTER;
 
 export const StockService = {
-  /**
-   * 日本株判定一覧を取得
-   */
-  getJudgments: async (): Promise<StockJudgment[]> => {
+  getJudgments: async (userId: string, portfolioId: string): Promise<StockJudgment[]> => {
     try {
-      return await getStockJudgmentsAction();
+      return await getStockJudgmentsAction(userId, portfolioId);
     } catch (error) {
       console.error("Error fetching stock judgments:", error);
       return [];
@@ -38,24 +35,18 @@ export const StockService = {
     }
   },
 
-  /**
-   * 個別銘柄を同期
-   */
-  syncStock: async (ticker: string) => {
+  syncStock: async (userId: string, portfolioId: string, ticker: string) => {
     try {
-      return await syncSpecificStockAction(ticker);
+      return await syncSpecificStockAction(userId, portfolioId, ticker);
     } catch (error) {
       console.error(`Error syncing stock ${ticker}:`, error);
       return { success: false, message: "同期エラーが発生しました" };
     }
   },
 
-  /**
-   * 同期中ステータスを設定
-   */
-  setSyncing: async (ticker: string) => {
+  setSyncing: async (userId: string, portfolioId: string, ticker: string) => {
     try {
-      return await setStockSyncingAction(ticker);
+      return await setStockSyncingAction(userId, portfolioId, ticker);
     } catch (error) {
        console.error(`Error setting syncing status for ${ticker}:`, error);
        return { success: false };
@@ -65,9 +56,9 @@ export const StockService = {
   /**
    * 全銘柄のリアルデータ同期
    */
-  syncRealData: async (): Promise<StockJudgment[]> => {
+  syncRealData: async (userId: string, portfolioId: string): Promise<StockJudgment[]> => {
     try {
-      const res = await syncStockRealData();
+      const res = await syncStockRealData(userId, portfolioId);
       return (res.data ?? []) as StockJudgment[];
     } catch (error) {
       console.error("Error syncing real stock data:", error);

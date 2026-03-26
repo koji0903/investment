@@ -8,6 +8,7 @@ import { FXPairDetailModal } from "./FXPairDetailModal";
 import { FXEnergyBento } from "./FXEnergyBento";
 import { FXFilterSort } from "./FXFilterSort";
 import { SignalBadge } from "./FXUIComponents";
+import { useAuth } from "@/context/AuthContext";
 import { Zap, Info, ShieldAlert, Trophy, TrendingUp, TrendingDown, Coins, ChevronRight, Target, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,8 @@ export const FXJudgmentDashboard = () => {
   const [filters, setFilters] = useState({ search: "", label: "all" });
   const [sort, setSort] = useState({ key: "totalScore", order: "desc" as "asc" | "desc" });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const { user } = useAuth();
+  const portfolioId = "default"; // 必要に応じて拡張可能
 
   const isMounted = useRef(true);
   const syncInProgressRef = useRef(false);
@@ -46,31 +49,32 @@ export const FXJudgmentDashboard = () => {
           try {
             syncingPairsRef.current.add(code);
             
-            // ステータスを「同期中」に更新
             setAllJudgments(prev => prev.map(d => 
               d.pairCode === code ? { ...d, syncStatus: "syncing" } : d
             ));
 
-            await FXService.setSyncing(code);
-            const result = await FXService.syncPair(code);
-            
-            if (isMounted.current) {
-              setAllJudgments(prev => {
-                const dataMap = new Map(prev.map(d => [d.pairCode, d]));
-                if (result.success && result.data) {
-                  dataMap.set(code, { ...result.data, syncStatus: "completed" });
-                } else {
-                  const existing = dataMap.get(code);
-                  if (existing) {
-                    dataMap.set(code, { 
-                      ...existing, 
-                      syncStatus: "failed", 
-                      summaryComment: result.message || "同期に失敗しました" 
-                    });
+            if (user?.uid) {
+              await FXService.setSyncing(user.uid, portfolioId, code);
+              const result = await FXService.syncPair(user.uid, portfolioId, code);
+              
+              if (isMounted.current) {
+                setAllJudgments(prev => {
+                  const dataMap = new Map(prev.map(d => [d.pairCode, d]));
+                  if (result.success && result.data) {
+                    dataMap.set(code, { ...result.data, syncStatus: "completed" });
+                  } else {
+                    const existing = dataMap.get(code);
+                    if (existing) {
+                      dataMap.set(code, { 
+                        ...existing, 
+                        syncStatus: "failed", 
+                        summaryComment: result.message || "同期に失敗しました" 
+                      });
+                    }
                   }
-                }
-                return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
-              });
+                  return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
+                });
+              }
             }
           } catch (err) {
             console.error(`[FX] Sync failed for ${code}:`, err);
@@ -94,9 +98,10 @@ export const FXJudgmentDashboard = () => {
     isMounted.current = true;
 
     const init = async () => {
+      if (!user?.uid) return;
       setLoading(true);
       try {
-        const data = await FXService.getPairs();
+        const data = await FXService.getPairs(user.uid, portfolioId);
         if (isMounted.current) {
           setAllJudgments(data);
           setLoading(false);
@@ -125,7 +130,8 @@ export const FXJudgmentDashboard = () => {
 
     init();
 
-    const unsubscribe = FXService.subscribePairs((realtimeData) => {
+    if (!user?.uid) return;
+    const unsubscribe = FXService.subscribePairs(user.uid, portfolioId, (realtimeData) => {
       if (!isMounted.current) return;
       
       setAllJudgments(prev => {
@@ -209,11 +215,10 @@ export const FXJudgmentDashboard = () => {
   }, [allJudgments]);
 
   const fetchData = async (forceRefresh = false) => {
-    if (forceRefresh) {
+    if (forceRefresh && user?.uid) {
       setError(null);
       try {
-        await FXService.syncRealData();
-        // fetchData は useEffect 内の init を通じて呼ばれるのでここでは init は叩かない
+        await FXService.syncRealData(user.uid, portfolioId);
       } catch (err) {
         console.error(err);
         setError("データの更新に失敗しました。時間をおいて再試行してください。");
