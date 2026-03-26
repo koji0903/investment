@@ -2,7 +2,12 @@
 
 import YahooFinance from "yahoo-finance2";
 const yf = new YahooFinance();
-import { FXJudgment, FXPairMaster, CurrencyFundamental } from "@/types/fx";
+import { 
+  FXJudgment, 
+  FXPairMaster, 
+  CurrencyFundamental, 
+  SUPPORTED_PAIRS 
+} from "@/types/fx";
 import { analyzeTechnical } from "@/utils/fx/technical";
 import { analyzeFundamental } from "@/utils/fx/fundamental";
 import { evaluateSwap, calculateTotalJudgment } from "@/utils/fx/scoring";
@@ -14,30 +19,7 @@ import { db } from "@/lib/firebase";
 import { doc, setDoc, getDocs, getDoc, collection, query, orderBy } from "firebase/firestore";
 import { consolidateJudgments } from "@/utils/fx/scoring";
 
-// 対象とする通貨ペア
-const SUPPORTED_PAIRS: FXPairMaster[] = [
-  { pairCode: "USD/JPY", baseCurrency: "USD", quoteCurrency: "JPY" },
-  { pairCode: "EUR/JPY", baseCurrency: "EUR", quoteCurrency: "JPY" },
-  { pairCode: "GBP/JPY", baseCurrency: "GBP", quoteCurrency: "JPY" },
-  { pairCode: "AUD/JPY", baseCurrency: "AUD", quoteCurrency: "JPY" },
-  { pairCode: "NZD/JPY", baseCurrency: "NZD", quoteCurrency: "JPY" },
-  { pairCode: "CAD/JPY", baseCurrency: "CAD", quoteCurrency: "JPY" },
-  { pairCode: "CHF/JPY", baseCurrency: "CHF", quoteCurrency: "JPY" },
-  { pairCode: "ZAR/JPY", baseCurrency: "ZAR", quoteCurrency: "JPY" },
-  { pairCode: "MXN/JPY", baseCurrency: "MXN", quoteCurrency: "JPY" },
-  { pairCode: "TRY/JPY", baseCurrency: "TRY", quoteCurrency: "JPY" },
-  { pairCode: "EUR/USD", baseCurrency: "EUR", quoteCurrency: "USD" },
-  { pairCode: "GBP/USD", baseCurrency: "GBP", quoteCurrency: "USD" },
-  { pairCode: "AUD/USD", baseCurrency: "AUD", quoteCurrency: "USD" },
-  { pairCode: "NZD/USD", baseCurrency: "NZD", quoteCurrency: "USD" },
-  { pairCode: "USD/CAD", baseCurrency: "USD", quoteCurrency: "CAD" },
-  { pairCode: "USD/CHF", baseCurrency: "USD", quoteCurrency: "CHF" },
-  { pairCode: "EUR/GBP", baseCurrency: "EUR", quoteCurrency: "GBP" },
-  { pairCode: "EUR/AUD", baseCurrency: "EUR", quoteCurrency: "AUD" },
-  { pairCode: "GBP/AUD", baseCurrency: "GBP", quoteCurrency: "AUD" },
-  { pairCode: "EUR/CHF", baseCurrency: "EUR", quoteCurrency: "CHF" },
-  { pairCode: "AUD/NZD", baseCurrency: "AUD", quoteCurrency: "NZD" },
-];
+// マスタ情報の定義は types/fx.ts に移動
 
 const FIXED_CURRENCY_FUNDAMENTALS: Record<string, CurrencyFundamental> = {
   USD: { currencyCode: "USD", interestRate: 5.5, inflationScore: 6, growthScore: 7, centralBankBias: "hawkish", riskSensitivity: 0, safeHavenScore: 8, commodityLinkedScore: 0, updatedAt: new Date().toISOString() },
@@ -89,21 +71,33 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
       );
 
       const fetchPromise = (async () => {
-        // まず chart を試す (JSON API なので高速かつ安定)
+        // 1. まず通常の chart を試す (360日分)
         try {
           const chart = await yf.chart(s, {
             period1: start,
             period2: end,
             interval: "1d"
           });
-          if (chart && chart.quotes && chart.quotes.length > 10) {
+          if (chart && chart.quotes && chart.quotes.length >= 10) {
             return chart.quotes.filter(q => q.close !== null && q.close !== undefined);
           }
-        } catch (err) {
-          console.warn(`[FX] yf.chart failed for ${s}:`, (err as any).message);
-        }
-        
-        // 次に historical を試す
+        } catch (err) {}
+
+        // 2. 失敗した場合、期間を短くして (60日) 再試行 (直近の動きだけでも確保)
+        try {
+          const shortStart = new Date();
+          shortStart.setDate(end.getDate() - 60);
+          const chart = await yf.chart(s, {
+            period1: shortStart,
+            period2: end,
+            interval: "1d"
+          });
+          if (chart && chart.quotes && chart.quotes.length >= 3) {
+            return chart.quotes.filter(q => q.close !== null && q.close !== undefined);
+          }
+        } catch (err) {}
+
+        // 3. historical を試す
         return await yf.historical(s, {
           period1: start,
           period2: end,
@@ -122,10 +116,20 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
       historical = await fetchHistory("JPY=X");
     }
 
-    if (historical && historical.length >= 10) {
+    if (!historical || historical.length < 3) {
+      // 最終手段: quote で最新価格だけでも取得
+      try {
+        const quote = await yf.quote(symbol);
+        if (quote && quote.regularMarketPrice) {
+          historical = [{ date: new Date(), close: quote.regularMarketPrice, high: quote.regularMarketPrice, low: quote.regularMarketPrice }];
+        }
+      } catch (err) {}
+    }
+
+    if (historical && historical.length > 0) {
       const prices = historical.map(h => h.close).filter(p => typeof p === "number");
-      const highs = historical.map(h => h.high).filter(p => typeof p === "number");
-      const lows = historical.map(h => h.low).filter(p => typeof p === "number");
+      const highs = historical.map(h => h.high || h.close).filter(p => typeof p === "number");
+      const lows = historical.map(h => h.low || h.close).filter(p => typeof p === "number");
       
       const currentPrice = prices[prices.length - 1];
       const technical = analyzeTechnical(prices, currentPrice);
@@ -143,7 +147,7 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
 
       // 相場エネルギー分析を追加
       const lastDay = historical[historical.length - 1];
-      const pivots = calculatePivotPoints(lastDay.high, lastDay.low, lastDay.close);
+      const pivots = calculatePivotPoints(lastDay.high || currentPrice, lastDay.low || currentPrice, lastDay.close || currentPrice);
       judgment.energyAnalysis = calculateEnergyAnalysis(prices, highs, lows, currentPrice, pivots);
 
       // エントリータイミング最適化を追加
@@ -177,7 +181,7 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
       judgment.syncStatus = "completed";
       judgment.lastSyncAt = new Date().toISOString();
     } else {
-      throw new Error(`Insufficient historical data for ${pair.pairCode} (found ${historical?.length || 0} days)`);
+      throw new Error(`Yahoo Finance Error: No data found for ${pair.pairCode}`);
     }
   } catch (e: any) {
     console.error(`[FX] Sync error for ${pair.pairCode}:`, e.message);
@@ -239,8 +243,10 @@ async function syncSpecificPair(pair: FXPairMaster): Promise<FXJudgment> {
     if (judgment) {
       // NaNが含まれているケースを徹底排除 (Firestoreエラー防止)
       const sanitize = (obj: any): any => {
+        if (obj === undefined) return null;
+        if (obj === null) return null;
         if (Array.isArray(obj)) return obj.map(sanitize);
-        if (obj !== null && typeof obj === 'object') {
+        if (typeof obj === 'object') {
           const res: any = {};
           for (const key in obj) {
             res[key] = sanitize(obj[key]);

@@ -60,6 +60,7 @@ export const StockJudgmentDashboard = () => {
   const priorityQueueRef = useRef<Set<string>>(new Set());
   const backgroundQueueRef = useRef<string[]>([]);
   const workerRunningRef = useRef(false);
+  const initialSyncTriggeredRef = useRef(false);
 
   // マーケット統計 (Market Pulse)
   const marketPulse = useMemo(() => {
@@ -215,7 +216,8 @@ export const StockJudgmentDashboard = () => {
         });
 
         // 低負荷化のため、初期表示（上位20銘柄程度）のみ自動同期を開始
-        if (staleOrUncompleted.length > 0) {
+        if (!initialSyncTriggeredRef.current && staleOrUncompleted.length > 0) {
+          initialSyncTriggeredRef.current = true;
           processSyncQueue(staleOrUncompleted.map(d => d.ticker).slice(0, 20));
         }
 

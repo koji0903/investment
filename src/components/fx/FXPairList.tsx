@@ -9,7 +9,7 @@ import {
   TradingSuitabilityBadge,
   SyncStatusBadge
 } from "./FXUIComponents";
-import { ChevronRight, Zap, Target, ShieldCheck } from "lucide-react";
+import { ChevronRight, Zap, Target, ShieldCheck, ShieldAlert } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ResponsiveContainer, AreaChart, Area, YAxis } from "recharts";
@@ -162,8 +162,16 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                 </td>
                 <td className="px-6 py-5">
                   <div className="flex flex-col gap-2 items-start">
-                    <SignalBadge label={item.signalLabel} />
-                    <TradingSuitabilityBadge suitability={item.suitability} />
+                    {item.syncStatus === "failed" ? (
+                      <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-2 py-1 rounded-lg border border-rose-100 dark:border-rose-500/20 max-w-[150px] leading-tight">
+                        {item.summaryComment || "同期失敗"}
+                      </span>
+                    ) : (
+                      <>
+                        <SignalBadge label={item.signalLabel} />
+                        <TradingSuitabilityBadge suitability={item.suitability} />
+                      </>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-5">
@@ -193,23 +201,22 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
             onClick={() => onSelect(item)}
             className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] shadow-sm space-y-4"
           >
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-xs border border-slate-200 dark:border-slate-700">
-                  {item.pairCode.split("/")[0]}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-black text-slate-800 dark:text-white leading-none">{item.pairCode}</h3>
-                    <SyncStatusBadge status={item.syncStatus} />
-                  </div>
-                  <p className="text-[11px] font-bold text-slate-400 mt-1 tabular-nums">
-                    {item.currentPrice.toFixed(pairToDecimals(item.pairCode))}
-                  </p>
-                </div>
+              {item.syncStatus === "failed" ? (
+                 <div className="flex items-center gap-2 px-3 py-1 bg-rose-50 dark:bg-rose-500/10 text-rose-500 border border-rose-100 dark:border-rose-500/20 rounded-full">
+                   <ShieldAlert size={12} />
+                   <span className="text-[10px] font-black">エラー発生</span>
+                 </div>
+              ) : (
+                <SignalBadge label={item.signalLabel} />
+              )}
+            
+            {item.syncStatus === "failed" && (
+              <div className="p-3 bg-rose-50 dark:bg-rose-500/5 rounded-2xl border border-rose-100/50 dark:border-rose-500/10 mt-2">
+                <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 break-words leading-relaxed">
+                   原因: {item.summaryComment || "一時的な接続エラーまたはデータ欠損"}
+                </p>
               </div>
-              <SignalBadge label={item.signalLabel} />
-            </div>
+            )}
 
             {/* Mobile Mini Chart */}
             {item.chartData && item.chartData.length > 0 && (

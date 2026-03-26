@@ -12,6 +12,30 @@ export const onTransactionUpdate = onDocumentWritten(
     const { userId, portfolioId } = event.params;
     const db = admin.firestore();
 
+interface Transaction {
+  assetId: string;
+  type: "buy" | "sell";
+  quantity: number;
+  price: number;
+  date: string;
+}
+
+interface ClosedPosition {
+  assetId: string;
+  holdingDays: number;
+  profit: number;
+  profitRate: number;
+}
+
+/**
+ * 取引データが更新された際に、ポートフォリオ分析を再計算する
+ */
+export const onTransactionUpdate = onDocumentWritten(
+  "users/{userId}/portfolios/{portfolioId}/transactions/{txId}",
+  async (event) => {
+    const { userId, portfolioId } = event.params;
+    const db = admin.firestore();
+
     // 1. 全取引履歴の取得
     const txSnapshot = await db
       .collection("users")
@@ -22,7 +46,7 @@ export const onTransactionUpdate = onDocumentWritten(
       .orderBy("date", "asc")
       .get();
 
-    const transactions = txSnapshot.docs.map(doc => doc.data());
+    const transactions = txSnapshot.docs.map(doc => doc.data() as Transaction);
 
     // 2. 資産別の算出 (数量、平均取得単価)
     const assetSummary: Record<string, { quantity: number; totalCost: number }> = {};
@@ -59,7 +83,7 @@ export const onTransactionUpdate = onDocumentWritten(
     const winRate = totalTrades > 0 ? (winCount / totalTrades) * 100 : 0;
 
     // 4. 行動分析 (Behavior Analysis)
-    const closedPositions: any[] = [];
+    const closedPositions: ClosedPosition[] = [];
     const openPositions: Record<string, { buyDate: string; quantity: number; price: number }[]> = {};
 
     transactions.forEach(tx => {
@@ -95,8 +119,8 @@ export const onTransactionUpdate = onDocumentWritten(
     const avgLossDays = losingTrades.length > 0 ? losingTrades.reduce((s, p) => s + p.holdingDays, 0) / losingTrades.length : 0;
 
     // 投資傾向の判定
-    let tendency = "分析中";
-    let advice = "取引を継続してデータを蓄積してください。";
+    let tendency: string = "分析中";
+    let advice: string = "取引を継続してデータを蓄積してください。";
 
     if (closedPositions.length >= 3) {
       if (avgWinDays < avgLossDays) {
@@ -149,6 +173,15 @@ export const onTransactionUpdate = onDocumentWritten(
 
     console.log(`Behavior analysis updated for user: ${userId}`);
 
+    interface Asset {
+      id: string;
+      symbol: string;
+      name: string;
+      quantity: number;
+      averageCost: number;
+      currentPrice?: number;
+    }
+
     // 6. 投資戦略の生成 (Strategy)
     // ユーザー設定 (リスク許容度) の取得
     const settingsSnap = await db.collection("users").doc(userId).collection("settings").doc("general").get();
@@ -156,11 +189,11 @@ export const onTransactionUpdate = onDocumentWritten(
 
     // 現在の資産価格情報の取得
     const assetsSnap = await db.collection("users").doc(userId).collection("portfolios").doc(portfolioId).collection("assets").get();
-    const assetsData = assetsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const assetsData = assetsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Asset));
 
-    const totalPortfolioValue = assetsData.reduce((sum, a: any) => sum + (a.quantity * (a.currentPrice || a.averageCost)), 0);
+    const totalPortfolioValue = assetsData.reduce((sum, a) => sum + (a.quantity * (a.currentPrice || a.averageCost)), 0);
     
-    const recommendations = assetsData.map((asset: any) => {
+    const recommendations = assetsData.map((asset) => {
       const currentPrice = asset.currentPrice || asset.averageCost;
       const profitRate = asset.averageCost > 0 ? ((currentPrice - asset.averageCost) / asset.averageCost) * 100 : 0;
       const weight = totalPortfolioValue > 0 ? ((asset.quantity * currentPrice) / totalPortfolioValue) * 100 : 0;

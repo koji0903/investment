@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { FXJudgment, SignalLabel } from "@/types/fx";
 import { FXService } from "@/services/fxService";
 import { FXPairList } from "./FXPairList";
@@ -21,151 +21,125 @@ export const FXJudgmentDashboard = () => {
   const [filters, setFilters] = useState({ search: "", label: "all" });
   const [sort, setSort] = useState({ key: "totalScore", order: "desc" as "asc" | "desc" });
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const syncInProgressRef = React.useRef(false);
-  const syncingPairsRef = React.useRef<Set<string>>(new Set());
 
-  const fetchData = async (forceRefresh = false) => {
-    if (forceRefresh) {
-      setError(null);
-      await FXService.syncRealData().catch(err => {
-        console.error(err);
-        setError("データの同期に失敗しました。時間をおいて再度お試しください。");
-      });
-    }
-  };
+  const isMounted = useRef(true);
+  const syncInProgressRef = useRef(false);
+  const syncingPairsRef = useRef<Set<string>>(new Set());
+  const initialSyncTriggered = useRef(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  // 同期キュー処理
+  const processSyncQueue = async (pairCodes: string[]) => {
+    if (syncInProgressRef.current || pairCodes.length === 0 || !isMounted.current) return;
+    
+    syncInProgressRef.current = true;
+    console.log(`[FX] Starting sync for ${pairCodes.length} pairs...`);
+    
+    const queue = [...pairCodes];
+    const CONCURRENCY = 2;
 
-    // クライアント主導の個別同期
-    const processSyncQueue = async (pairCodes: string[]) => {
-      if (syncInProgressRef.current || pairCodes.length === 0) return;
-      syncInProgressRef.current = true;
-      
-      console.log(`[FX] Starting parallel sync for ${pairCodes.length} pairs...`);
-      const queue = [...pairCodes];
-      const CONCURRENCY = 2;
+    try {
+      while (queue.length > 0 && isMounted.current) {
+        const chunk = queue.splice(0, CONCURRENCY);
+        await Promise.all(chunk.map(async (code) => {
+          if (!isMounted.current) return;
+          
+          try {
+            syncingPairsRef.current.add(code);
+            
+            // ステータスを「同期中」に更新
+            setAllJudgments(prev => prev.map(d => 
+              d.pairCode === code ? { ...d, syncStatus: "syncing" } : d
+            ));
 
-      try {
-        while (queue.length > 0 && isMounted) {
-          const chunk = queue.splice(0, CONCURRENCY);
-          await Promise.all(chunk.map(async (code) => {
-            try {
-              // 1. 同期中ステータスを追跡
-              syncingPairsRef.current.add(code);
-              
+            await FXService.setSyncing(code);
+            const result = await FXService.syncPair(code);
+            
+            if (isMounted.current) {
               setAllJudgments(prev => {
                 const dataMap = new Map(prev.map(d => [d.pairCode, d]));
-                const existing = dataMap.get(code);
-                if (existing) {
-                  dataMap.set(code, { ...existing, syncStatus: "syncing" });
-                }
-                return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
-              });
-
-              // 2. 外部サービス呼び出し (非同期)
-              await FXService.setSyncing(code);
-              const result = await FXService.syncPair(code);
-              
-              // 3. 結果をローカル状態に反映 (即時)
-              setAllJudgments(prev => {
-                const dataMap = new Map(prev.map(d => [d.pairCode, d]));
-                if (result.data) {
-                  dataMap.set(code, { ...result.data!, syncStatus: result.success ? "completed" : "failed" });
-                } else if (!result.success) {
-                  // 失敗時
+                if (result.success && result.data) {
+                  dataMap.set(code, { ...result.data, syncStatus: "completed" });
+                } else {
                   const existing = dataMap.get(code);
                   if (existing) {
-                    dataMap.set(code, { ...existing, syncStatus: "failed", summaryComment: `同期エラー: ${result.message}` });
+                    dataMap.set(code, { 
+                      ...existing, 
+                      syncStatus: "failed", 
+                      summaryComment: result.message || "同期に失敗しました" 
+                    });
                   }
                 }
                 return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
               });
-            } catch (err) {
-              console.error(`[FX] Sync failed for ${code}:`, err);
-            } finally {
-              syncingPairsRef.current.delete(code);
             }
-          }));
-
-          if (queue.length > 0) {
-            // チャンク間にジッター付き待機
-            await new Promise(r => setTimeout(r, 2000 + Math.random() * 2000));
+          } catch (err) {
+            console.error(`[FX] Sync failed for ${code}:`, err);
+          } finally {
+            syncingPairsRef.current.delete(code);
           }
-        }
-      } finally {
-        syncInProgressRef.current = false;
-        console.log("[FX] Sync cycle finished.");
-      }
-    };
+        }));
 
-    // 初期データの取得
-    const loadInitialData = async () => {
+        if (queue.length > 0 && isMounted.current) {
+          await new Promise(r => setTimeout(r, 2000 + Math.random() * 1000));
+        }
+      }
+    } finally {
+      syncInProgressRef.current = false;
+      console.log("[FX] Sync cycle finished.");
+    }
+  };
+
+  // 初期データロード & リアルタイム購読
+  useEffect(() => {
+    isMounted.current = true;
+
+    const init = async () => {
       setLoading(true);
       try {
-        const initialData = await FXService.getPairs();
-        if (isMounted) {
-          setAllJudgments(initialData);
+        const data = await FXService.getPairs();
+        if (isMounted.current) {
+          setAllJudgments(data);
           setLoading(false);
-          if (initialData.length > 0) {
-            const latest = [...initialData].sort((a, b) => 
-              new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-            )[0]?.updatedAt;
-            setLastUpdated(latest);
-
-            // 取得したデータのうち、未完了または鮮度が古い(6時間以上)ものをクライアント側から順次同期
-            const uncompleted = initialData.filter(d => {
+          
+          // 初回データ取得後、未完了または古いデータがある場合に一度だけ同期を開始
+          if (!initialSyncTriggered.current && data.length > 0) {
+            initialSyncTriggered.current = true;
+            const toSync = data.filter(d => {
               const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 6 * 60 * 60 * 1000;
               return d.syncStatus !== "completed" || isStale;
-            });
-            if (uncompleted.length > 0) {
-              processSyncQueue(uncompleted.map(d => d.pairCode));
+            }).map(d => d.pairCode);
+            
+            if (toSync.length > 0) {
+              processSyncQueue(toSync);
             }
           }
         }
       } catch (err) {
-        console.error("Initial data load failed:", err);
-        if (isMounted) setLoading(false);
+        console.error("Failed to load initial data:", err);
+        if (isMounted.current) {
+          setError("データの読み込みに失敗しました。再試行してください。");
+          setLoading(false);
+        }
       }
     };
 
+    init();
 
-    loadInitialData();
-
-    // リアルタイム購読の開始
     const unsubscribe = FXService.subscribePairs((realtimeData) => {
-      if (!isMounted) return;
+      if (!isMounted.current) return;
       
       setAllJudgments(prev => {
         const dataMap = new Map(prev.map(d => [d.pairCode, d]));
         realtimeData.forEach(d => {
-          // ローカルで同期中のものは、サーバーからの古い情報をマージしない
+          // 同期処理中のものはマージしない
           if (!syncingPairsRef.current.has(d.pairCode)) {
             dataMap.set(d.pairCode, d);
           }
         });
-
-        const merged = Array.from(dataMap.values());
-        
-        // 同期の自動開始トリガー (同期中が0かつ未完了または鮮度が古いものがある場合)
-        const uncompleted = merged.filter(d => {
-          const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 6 * 60 * 60 * 1000;
-          const isNotSyncing = !syncingPairsRef.current.has(d.pairCode) && d.syncStatus !== "syncing" && d.syncStatus !== "failed";
-          return isNotSyncing && (d.syncStatus !== "completed" || isStale);
-        });
-        
-        if (uncompleted.length > 0 && syncingPairsRef.current.size === 0 && !syncInProgressRef.current) {
-          console.log(`[FX] Found ${uncompleted.length} uncompleted or stale pairs. Auto-starting sync loop...`);
-          setTimeout(() => {
-            if (isMounted) processSyncQueue(uncompleted.map(u => u.pairCode));
-          }, 0);
-        }
-
-        return merged.sort((a, b) => b.totalScore - a.totalScore);
+        return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
       });
 
       if (realtimeData.length > 0) {
-        setLoading(false);
         const latest = [...realtimeData].sort((a, b) => 
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         )[0]?.updatedAt;
@@ -174,12 +148,12 @@ export const FXJudgmentDashboard = () => {
     });
 
     return () => {
-      isMounted = false;
+      isMounted.current = false;
       if (unsubscribe) unsubscribe();
     };
   }, []);
 
-  // エネルギーハイライトの作成
+  // 計算値 (useMemo)
   const energyHighlights = useMemo(() => {
     return [...allJudgments]
       .filter(j => j.energyAnalysis)
@@ -187,7 +161,6 @@ export const FXJudgmentDashboard = () => {
       .slice(0, 3);
   }, [allJudgments]);
 
-  // ランキングデータの作成
   const rankings = useMemo(() => {
     const buyRanking = [...allJudgments].sort((a, b) => b.totalScore - a.totalScore).slice(0, 3);
     const sellRanking = [...allJudgments].sort((a, b) => a.totalScore - b.totalScore).slice(0, 3);
@@ -210,6 +183,7 @@ export const FXJudgmentDashboard = () => {
         result = result.filter(j => j.signalLabel === filters.label);
       }
     }
+    
     result.sort((a: any, b: any) => {
       const aVal = a[sort.key];
       const bVal = b[sort.key];
@@ -221,10 +195,9 @@ export const FXJudgmentDashboard = () => {
     return result;
   }, [allJudgments, filters, sort]);
 
-  // 同期状況の集計
   const syncStats = useMemo(() => {
     const total = allJudgments.length;
-    if (total === 0) return { total: 0, completed: 0, syncing: 0, pending: 0, progress: 0 };
+    if (total === 0) return { total: 0, completed: 0, syncing: 0, failed: 0, pending: 0, progress: 0 };
     
     const completed = allJudgments.filter(j => j.syncStatus === "completed").length;
     const syncing = allJudgments.filter(j => j.syncStatus === "syncing").length;
@@ -234,6 +207,19 @@ export const FXJudgmentDashboard = () => {
     
     return { total, completed, syncing, failed, pending, progress };
   }, [allJudgments]);
+
+  const fetchData = async (forceRefresh = false) => {
+    if (forceRefresh) {
+      setError(null);
+      try {
+        await FXService.syncRealData();
+        // fetchData は useEffect 内の init を通じて呼ばれるのでここでは init は叩かない
+      } catch (err) {
+        console.error(err);
+        setError("データの更新に失敗しました。時間をおいて再試行してください。");
+      }
+    }
+  };
 
   return (
     <div className="space-y-12">
@@ -304,34 +290,10 @@ export const FXJudgmentDashboard = () => {
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">失敗数</p>
                 <p className="text-lg font-black text-rose-500 tabular-nums">{syncStats.failed}</p>
               </div>
-              <div className="flex flex-col">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">待機中</p>
-                <p className="text-lg font-black text-slate-300 dark:text-slate-600 tabular-nums">{syncStats.pending}</p>
-              </div>
               <div className="flex flex-col bg-slate-50 dark:bg-slate-800/50 px-5 py-2 rounded-2xl border border-slate-100 dark:border-slate-800 min-w-[90px] items-center">
                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">全体の進捗</p>
                 <p className="text-xl font-black text-slate-800 dark:text-white tabular-nums">{syncStats.progress}%</p>
               </div>
-              
-              {/* Force Refresh Button inside summary */}
-              {syncStats.progress < 100 && (
-                <button 
-                  onClick={() => {
-                    const pending = allJudgments
-                      .filter(j => j.syncStatus !== "completed")
-                      .map(j => j.pairCode);
-                    if (pending.length > 0) {
-                      // Note: We need to expose syncPairsOneByOne or handle it via a new effect.
-                      // For now, let's keep it simple.
-                      window.location.reload(); 
-                    }
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-500 rounded-xl text-[10px] font-black hover:bg-indigo-100 transition-colors"
-                >
-                  <TrendingUp size={12} />
-                  手動で同期を再開
-                </button>
-              )}
             </div>
           </div>
 
@@ -345,27 +307,6 @@ export const FXJudgmentDashboard = () => {
                 syncStats.progress === 100 ? "bg-emerald-500" : "bg-gradient-to-r from-indigo-500 to-indigo-400"
               )}
             />
-            {syncStats.progress < 100 && (
-              <motion.div 
-                animate={{ x: ["-100%", "200%"] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                className="absolute top-0 left-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent skew-x-12"
-              />
-            )}
-          </div>
-
-          <div className="flex items-start gap-3 pt-1">
-             <div className={cn(
-               "p-1.5 rounded-lg mt-0.5",
-               syncStats.progress === 100 ? "bg-emerald-50 dark:bg-emerald-500/10" : "bg-indigo-50 dark:bg-indigo-500/10"
-             )}>
-               {syncStats.progress === 100 ? <ShieldCheck size={14} className="text-emerald-500" /> : <Info size={14} className="text-indigo-500" />}
-             </div>
-             <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed pt-1">
-               {syncStats.progress < 100 
-                 ? "現在、Yahoo Financeからのヒストリカルデータ取得およびAI判定エンジンが順次稼働中です。リストに表示されているデータは最新の分析結果にリアルタイムで更新されます。" 
-                 : "すべての通貨ペアの最新データの同期と分析が完了しました。現在のマーケット環境に基づいた高精度な投資判断情報が表示されています。"}
-             </p>
           </div>
         </motion.div>
       )}
@@ -396,71 +337,11 @@ export const FXJudgmentDashboard = () => {
                     <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight leading-none">{j.pairCode}</h3>
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Energy Unit {idx + 1}</p>
                   </div>
-                  <div className="h-px flex-1 bg-slate-200/60 dark:bg-slate-800/60 ml-4" />
                 </div>
                 <FXEnergyBento analysis={j.energyAnalysis!} pairCode={j.pairCode} />
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Market Stats Summary */}
-      {!loading && allJudgments.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatBox 
-            label="分析対象" 
-            value={`${allJudgments.length} ペア`} 
-            color="indigo" 
-            sub="主要・資源国・高金利"
-          />
-          <StatBox 
-            label="買いサイン" 
-            value={`${allJudgments.filter(j => j.signalLabel.includes("買い")).length}`} 
-            color="emerald" 
-            sub="買い優勢・やや買い"
-          />
-          <StatBox 
-            label="売りサイン" 
-            value={`${allJudgments.filter(j => j.signalLabel.includes("売り")).length}`} 
-            color="rose" 
-            sub="売り優勢・やや売り"
-          />
-          <StatBox 
-            label="高信頼度" 
-            value={`${allJudgments.filter(j => j.confidence === "高").length}`} 
-            color="amber" 
-            sub="分析精度：高"
-          />
-        </div>
-      )}
-
-      {!loading && allJudgments.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <RankingCard 
-            title="買い優勢" 
-            items={rankings.buyRanking} 
-            icon={<TrendingUp size={18} className="text-emerald-500" />}
-            onSelect={setSelectedJudgment}
-          />
-          <RankingCard 
-            title="売り優勢" 
-            items={rankings.sellRanking} 
-            icon={<TrendingDown size={18} className="text-rose-500" />}
-            onSelect={setSelectedJudgment}
-          />
-          <RankingCard 
-            title="スワップ妙味" 
-            items={rankings.swapRanking} 
-            icon={<Coins size={18} className="text-amber-500" />}
-            onSelect={setSelectedJudgment}
-          />
-          <RankingCard 
-            title="安全性重視 (Loss Control)" 
-            items={rankings.safetyRanking} 
-            icon={<ShieldCheck size={18} className="text-blue-500" />}
-            onSelect={setSelectedJudgment}
-          />
         </div>
       )}
 
@@ -484,79 +365,9 @@ export const FXJudgmentDashboard = () => {
               <div key={i} className="h-48 bg-slate-100 dark:bg-slate-800 rounded-[32px] animate-pulse" />
             ))}
           </div>
-        ) : filteredAndSortedJudgments.length === 0 ? (
-          <div className="py-24 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[40px] space-y-4">
-            <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto text-slate-300">
-               <Zap size={32} />
-            </div>
-            <div>
-              <p className="text-lg font-black text-slate-800 dark:text-white">表示できる判断情報がありません</p>
-              <p className="text-xs font-bold text-slate-400">検索条件を変更するか、右上の「データ再生成」をクリックしてください。</p>
-            </div>
-          </div>
         ) : (
           <FXPairList judgments={filteredAndSortedJudgments} onSelect={setSelectedJudgment} />
         )}
-      </div>
-
-      {/* Analysis Logic Info Section */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-8 md:p-10 space-y-8">
-        <div className="flex items-center gap-4">
-          <div className="p-2 bg-indigo-500 rounded-xl text-white">
-            <Info size={20} />
-          </div>
-          <h2 className="text-xl font-black text-slate-800 dark:text-white">分析判定ロジックの詳細</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-           <div className="space-y-4">
-             <h3 className="text-sm font-black text-indigo-500 uppercase tracking-wider flex items-center gap-2">
-               <Zap size={16} /> 短期判定 (主にテクニカル)
-             </h3>
-             <ul className="text-xs font-bold text-slate-500 dark:text-slate-400 space-y-2 leading-relaxed">
-               <li>・移動平均線のパーフェクトオーダーによるトレンド追随</li>
-               <li>・RSI 30/70 による売られすぎ・買われすぎの転換点</li>
-               <li>・MACDクロスによるモメンタム加速の判定</li>
-               <li className="text-amber-500">・強気相場でもRSI過熱時は「押し目待ち」として警告</li>
-             </ul>
-           </div>
-           <div className="space-y-4">
-             <h3 className="text-sm font-black text-emerald-500 uppercase tracking-wider flex items-center gap-2">
-               <Target size={16} /> 中長期判定 (基礎 & スワップ)
-             </h3>
-             <ul className="text-xs font-bold text-slate-500 dark:text-slate-400 space-y-2 leading-relaxed">
-               <li>・通貨ペア間の政策金利差（キャリートレードの優位性）</li>
-               <li>・中央銀行のタカ派・ハト派スタンスの乖離</li>
-               <li>・景気指標およびインフレ傾向の相対評価</li>
-               <li className="text-rose-500">・スワップが大幅マイナス（-200/日超）の場合は長期保有不向きと判定</li>
-             </ul>
-           </div>
-        </div>
-
-        {/* Certainty & Feedback Logic Info */}
-        <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
-          <h3 className="text-sm font-black text-indigo-500 uppercase tracking-wider flex items-center gap-2 mb-4">
-            <ShieldCheck size={16} /> 分析精度と自己フィードバック・アルゴリズム
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
-              <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mb-2">① データ充足性 (信頼の基礎)</p>
-              <p className="text-[10px] font-bold text-slate-500 leading-relaxed">過去20日間のヒストリカルデータ取得状況に基づき、分析の母集団が十分かを判定。未収集データが多いほど精度は低下します。</p>
-            </div>
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
-              <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mb-2">② インジケーター収束 (不一致検知)</p>
-              <p className="text-[10px] font-bold text-slate-500 leading-relaxed">テクニカル、ファンダメンタル、相場エネルギーの方向性が一致しているかを自己分析。不一致時は精度を下方修正し「慎重」シグナルを出します。</p>
-            </div>
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
-              <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mb-2">③ ボラティリティ適合 (環境分析)</p>
-              <p className="text-[10px] font-bold text-slate-500 leading-relaxed">現在の価格がボリンジャーバンド内に収まっているか、ATRが極端に拡大していないかをチェック。異常値検出時は精度を自動調整します。</p>
-            </div>
-            <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
-              <p className="text-[11px] font-black text-slate-700 dark:text-slate-200 mb-2">④ セーフティ・スコア (損失最小化)</p>
-              <p className="text-[10px] font-bold text-slate-500 leading-relaxed">損切幅のタイトさ、ボラティリティの安定性、リスクリワード比から「低リスクな運用が可能か」を評価。損失額の抑制を最優先する指標です。</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       <FXPairDetailModal judgment={selectedJudgment} onClose={() => setSelectedJudgment(null)} />

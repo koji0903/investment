@@ -22,6 +22,30 @@ export interface FXPairMaster {
   displayName?: string;
 }
 
+export const SUPPORTED_PAIRS: FXPairMaster[] = [
+  { pairCode: "USD/JPY", baseCurrency: "USD", quoteCurrency: "JPY" },
+  { pairCode: "EUR/JPY", baseCurrency: "EUR", quoteCurrency: "JPY" },
+  { pairCode: "GBP/JPY", baseCurrency: "GBP", quoteCurrency: "JPY" },
+  { pairCode: "AUD/JPY", baseCurrency: "AUD", quoteCurrency: "JPY" },
+  { pairCode: "NZD/JPY", baseCurrency: "NZD", quoteCurrency: "JPY" },
+  { pairCode: "CAD/JPY", baseCurrency: "CAD", quoteCurrency: "JPY" },
+  { pairCode: "CHF/JPY", baseCurrency: "CHF", quoteCurrency: "JPY" },
+  { pairCode: "ZAR/JPY", baseCurrency: "ZAR", quoteCurrency: "JPY" },
+  { pairCode: "MXN/JPY", baseCurrency: "MXN", quoteCurrency: "JPY" },
+  { pairCode: "TRY/JPY", baseCurrency: "TRY", quoteCurrency: "JPY" },
+  { pairCode: "EUR/USD", baseCurrency: "EUR", quoteCurrency: "USD" },
+  { pairCode: "GBP/USD", baseCurrency: "GBP", quoteCurrency: "USD" },
+  { pairCode: "AUD/USD", baseCurrency: "AUD", quoteCurrency: "USD" },
+  { pairCode: "NZD/USD", baseCurrency: "NZD", quoteCurrency: "USD" },
+  { pairCode: "USD/CAD", baseCurrency: "USD", quoteCurrency: "CAD" },
+  { pairCode: "USD/CHF", baseCurrency: "USD", quoteCurrency: "CHF" },
+  { pairCode: "EUR/GBP", baseCurrency: "EUR", quoteCurrency: "GBP" },
+  { pairCode: "EUR/AUD", baseCurrency: "EUR", quoteCurrency: "AUD" },
+  { pairCode: "GBP/AUD", baseCurrency: "GBP", quoteCurrency: "AUD" },
+  { pairCode: "EUR/CHF", baseCurrency: "EUR", quoteCurrency: "CHF" },
+  { pairCode: "AUD/NZD", baseCurrency: "AUD", quoteCurrency: "NZD" },
+];
+
 /**
  * 通貨のファンダメンタル指標
  */

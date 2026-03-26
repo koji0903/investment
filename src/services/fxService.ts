@@ -11,40 +11,17 @@ import {
   onSnapshot
 } from "firebase/firestore";
 import { 
-  FXPairMaster, 
-  CurrencyFundamental, 
   FXJudgment, 
-  CurrencyCode 
+  CurrencyCode,
+  CurrencyFundamental,
+  SUPPORTED_PAIRS
 } from "@/types/fx";
 import { analyzeTechnical } from "@/utils/fx/technical";
 import { analyzeFundamental } from "@/utils/fx/fundamental";
 import { evaluateSwap, calculateTotalJudgment } from "@/utils/fx/scoring";
 import { syncFXRealData } from "@/lib/actions/fx";
 
-// 対象とする通貨ペア
-const SUPPORTED_PAIRS: FXPairMaster[] = [
-  { pairCode: "USD/JPY", baseCurrency: "USD", quoteCurrency: "JPY" },
-  { pairCode: "EUR/JPY", baseCurrency: "EUR", quoteCurrency: "JPY" },
-  { pairCode: "GBP/JPY", baseCurrency: "GBP", quoteCurrency: "JPY" },
-  { pairCode: "AUD/JPY", baseCurrency: "AUD", quoteCurrency: "JPY" },
-  { pairCode: "NZD/JPY", baseCurrency: "NZD", quoteCurrency: "JPY" },
-  { pairCode: "CAD/JPY", baseCurrency: "CAD", quoteCurrency: "JPY" },
-  { pairCode: "CHF/JPY", baseCurrency: "CHF", quoteCurrency: "JPY" },
-  { pairCode: "ZAR/JPY", baseCurrency: "ZAR", quoteCurrency: "JPY" },
-  { pairCode: "MXN/JPY", baseCurrency: "MXN", quoteCurrency: "JPY" },
-  { pairCode: "TRY/JPY", baseCurrency: "TRY", quoteCurrency: "JPY" },
-  { pairCode: "EUR/USD", baseCurrency: "EUR", quoteCurrency: "USD" },
-  { pairCode: "GBP/USD", baseCurrency: "GBP", quoteCurrency: "USD" },
-  { pairCode: "AUD/USD", baseCurrency: "AUD", quoteCurrency: "USD" },
-  { pairCode: "NZD/USD", baseCurrency: "NZD", quoteCurrency: "USD" },
-  { pairCode: "USD/CAD", baseCurrency: "USD", quoteCurrency: "CAD" },
-  { pairCode: "USD/CHF", baseCurrency: "USD", quoteCurrency: "CHF" },
-  { pairCode: "EUR/GBP", baseCurrency: "EUR", quoteCurrency: "GBP" },
-  { pairCode: "EUR/AUD", baseCurrency: "EUR", quoteCurrency: "AUD" },
-  { pairCode: "GBP/AUD", baseCurrency: "GBP", quoteCurrency: "AUD" },
-  { pairCode: "EUR/CHF", baseCurrency: "EUR", quoteCurrency: "CHF" },
-  { pairCode: "AUD/NZD", baseCurrency: "AUD", quoteCurrency: "NZD" },
-];
+// マスタ情報の定義は types/fx.ts に移動
 
 /**
  * FX 投資判断エンジンのサービス層
@@ -53,7 +30,7 @@ export const FXService = {
   /**
    * 通貨ペア一覧を取得
    */
-  getPairs: async (): Promise<FXJudgment[]> => {
+  async getPairs(): Promise<FXJudgment[]> {
     try {
       const { getFXJudgmentsAction } = await import("@/lib/actions/fx");
       return await getFXJudgmentsAction();
@@ -77,7 +54,7 @@ export const FXService = {
   /**
    * 特定の通貨ペアの判定を取得
    */
-  getJudgmentByPair: async (pairCode: string): Promise<FXJudgment | null> => {
+  async getJudgmentByPair(pairCode: string): Promise<FXJudgment | null> {
     try {
       const docRef = doc(db, "fx_judgments", pairCode.replace("/", "-"));
       const docSnap = await getDoc(docRef);
@@ -91,7 +68,7 @@ export const FXService = {
   /**
    * 実データを同期して取得
    */
-  syncRealData: async (): Promise<FXJudgment[]> => {
+  async syncRealData(): Promise<FXJudgment[]> {
     try {
       const { syncFXRealData, getFXJudgmentsAction } = await import("@/lib/actions/fx");
       await syncFXRealData();
@@ -106,7 +83,7 @@ export const FXService = {
   /**
    * 特定の通貨ペアのみを同期
    */
-  syncPair: async (pairCode: string): Promise<{ success: boolean; data?: FXJudgment; message?: string }> => {
+  async syncPair(pairCode: string): Promise<{ success: boolean; data?: FXJudgment; message?: string }> {
     try {
       const { syncSpecificPairAction } = await import("@/lib/actions/fx");
       const result = await syncSpecificPairAction(pairCode);
@@ -120,7 +97,7 @@ export const FXService = {
   /**
    * 同期中ステータスを即座に反映
    */
-  setSyncing: async (pairCode: string): Promise<boolean> => {
+  async setSyncing(pairCode: string): Promise<boolean> {
     try {
       const { setSyncingStatusAction } = await import("@/lib/actions/fx");
       await setSyncingStatusAction(pairCode);
@@ -134,7 +111,7 @@ export const FXService = {
   /**
    * ダミーデータを生成して Firestore に保存 (初期化/テスト用)
    */
-  generateAndSaveDummyData: async (): Promise<FXJudgment[]> => {
+  async generateAndSaveDummyData(): Promise<FXJudgment[]> {
     const fundamentals = FXService.generateDummyFundamentals();
     const judgments: FXJudgment[] = [];
 
@@ -182,7 +159,7 @@ export const FXService = {
   /**
    * 通貨ごとのファンダメンタルダミーデータ
    */
-  generateDummyFundamentals: (): Record<string, CurrencyFundamental> => {
+  generateDummyFundamentals(): Record<string, CurrencyFundamental> {
     const now = new Date().toISOString();
     return {
       USD: { currencyCode: "USD", interestRate: 5.5, inflationScore: 6, growthScore: 7, centralBankBias: "hawkish", riskSensitivity: 0, safeHavenScore: 8, commodityLinkedScore: 0, updatedAt: now },
@@ -202,7 +179,7 @@ export const FXService = {
   /**
    * 価格履歴のダミー生成
    */
-  generateDummyPriceHistory: (pair: string): number[] => {
+  generateDummyPriceHistory(pair: string): number[] {
     let basePrice = 100;
     if (pair.includes("JPY")) basePrice = 150;
     if (pair.includes("EUR/USD")) basePrice = 1.08;
@@ -225,7 +202,7 @@ export const FXService = {
   /**
    * スワップポイントのダミー取得
    */
-  getDummySwaps: (pair: string): { buy: number; sell: number } => {
+  getDummySwaps(pair: string): { buy: number; sell: number } {
     // 実際にはAPIやマスタから取得
     if (pair === "USD/JPY") return { buy: 230, sell: -250 };
     if (pair === "AUD/JPY") return { buy: 180, sell: -200 };
