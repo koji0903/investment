@@ -110,7 +110,7 @@ export const FXJudgmentDashboard = () => {
           if (!initialSyncTriggered.current && data.length > 0) {
             initialSyncTriggered.current = true;
             const toSync = data.filter(d => {
-              const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 6 * 60 * 60 * 1000;
+              const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 24 * 60 * 60 * 1000;
               return d.syncStatus !== "completed" || isStale;
             }).map(d => d.pairCode);
             

@@ -164,7 +164,7 @@ export const StockJudgmentDashboard = () => {
           
           // 指定銘柄の同期を実行 (同期済みなら飛ばす)
           const stock = allJudgments.find(j => j.ticker === targetTicker);
-          const isStale = stock ? (Date.now() - new Date(stock.updatedAt).getTime()) > 12 * 60 * 60 * 1000 : true;
+          const isStale = stock ? (Date.now() - new Date(stock.updatedAt).getTime()) > 24 * 60 * 60 * 1000 : true;
           
           if (!stock || stock.syncStatus !== "completed" || isStale) {
             await syncWithRetry(targetTicker);
@@ -221,7 +221,7 @@ export const StockJudgmentDashboard = () => {
         setAllJudgments(merged);
         
         const staleOrUncompleted = merged.filter(d => {
-          const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 12 * 60 * 60 * 1000;
+          const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 24 * 60 * 60 * 1000;
           return d.syncStatus !== "completed" || isStale;
         });
 
@@ -273,7 +273,7 @@ export const StockJudgmentDashboard = () => {
     if (loading || filteredItems.length === 0) return;
     
     const staleOnes = filteredItems.slice(0, 10).filter(d => {
-      const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 12 * 60 * 60 * 1000;
+      const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 24 * 60 * 60 * 1000;
       return d.syncStatus !== "completed" || isStale;
     });
 
@@ -610,4 +610,4 @@ const PulseCard = ({ label, value, icon, suffix, progress }: { label: string, va
   </div>
 );
 
-export default StockJudgmentDashboard;
+

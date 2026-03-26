@@ -97,19 +97,17 @@ export const FXService = {
       const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
       const normalizedId = pairCode.replace("/", "-");
       
-      // 1. クライアント側でキャッシュチェック (デモモード以外)
-      if (!isDemo) {
-        const docRef = doc(db, path, normalizedId);
-        const cachedDoc = await getDoc(docRef);
-        if (cachedDoc.exists()) {
-          const existingData = cachedDoc.data() as FXJudgment;
-          const lastUpdated = new Date(existingData.updatedAt || 0).getTime();
-          const sixHoursInMs = 6 * 60 * 60 * 1000;
-          
-          // 6時間以内のデータがあれば、サーバー負荷軽減のため再利用
-          if (Date.now() - lastUpdated < sixHoursInMs && existingData.syncStatus === 'completed') {
-            return { success: true, data: existingData };
-          }
+      // 1. クライアント側でキャッシュチェック
+      const docRef = doc(db, path, normalizedId);
+      const cachedDoc = await getDoc(docRef);
+      if (cachedDoc.exists()) {
+        const existingData = cachedDoc.data() as FXJudgment;
+        const lastUpdated = new Date(existingData.updatedAt || 0).getTime();
+        const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
+        
+        // 24時間以内の完了データがあれば、サーバー負荷軽減のため再利用
+        if (Date.now() - lastUpdated < twentyFourHoursInMs && existingData.syncStatus === 'completed') {
+          return { success: true, data: existingData };
         }
       }
 

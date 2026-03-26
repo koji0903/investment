@@ -12,7 +12,8 @@ import {
   Timestamp,
   updateDoc,
   serverTimestamp,
-  writeBatch
+  writeBatch,
+  getDoc
 } from "firebase/firestore";
 import { db } from "./firebase";
 export { db };
@@ -624,4 +625,10 @@ export const updateStockSyncingStatus = async (uid: string, portfolioId: string,
     syncStatus: "syncing", 
     updatedAt: new Date().toISOString() 
   }, { merge: true });
+};
+
+export const getStockJudgment = async (uid: string, portfolioId: string, ticker: string) => {
+  const docRef = doc(db, "users", uid, "portfolios", portfolioId, "stock_judgments", ticker);
+  const snap = await getDoc(docRef);
+  return snap.exists() ? snap.data() : null;
 };

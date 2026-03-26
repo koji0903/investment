@@ -1,6 +1,7 @@
 import { db, saveStockJudgment, updateStockSyncingStatus } from "@/lib/db";
-import { collection, query, onSnapshot, orderBy, doc } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, doc, getDoc } from "firebase/firestore";
 import { StockJudgment, StockPairMaster } from "@/types/stock";
+import { DEMO_USER_ID } from "@/context/AuthContext";
 import { 
   getStockJudgmentsAction, 
   syncSpecificStockAction, 
@@ -37,17 +38,29 @@ export const StockService = {
 
   syncStock: async (userId: string, portfolioId: string, ticker: string) => {
     try {
+      if (!userId || !portfolioId) return { success: false, message: "Authentication required" };
+
+      // 1. クライアント側でキャッシュチェック
+      const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
+      const docRef = doc(db, path, ticker);
+      const cachedDoc = await getDoc(docRef);
+      
+      if (cachedDoc.exists()) {
+        const existingData = cachedDoc.data() as StockJudgment;
+        const lastUpdated = new Date(existingData.updatedAt || 0).getTime();
+        const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
+        
+        // 24時間以内の完了データがあれば、サーバー負荷軽減のため再利用
+        if (Date.now() - lastUpdated < twentyFourHoursInMs && existingData.syncStatus === 'completed') {
+          return { success: true, data: existingData };
+        }
+      }
+
+      // 2. サーバーサイドで解析実行
       const result = await syncSpecificStockAction(userId, portfolioId, ticker);
       if (result.success && result.data) {
         // クライアント側（認証済み、デモガード付き）で保存を実行
         await saveStockJudgment(userId, portfolioId, ticker, result.data);
-        
-        // 財務データも保存
-        if ((result.data as any).valuationMetrics) {
-          const fundPath = `users/${userId}/portfolios/${portfolioId}/stock_fundamentals`;
-          // 本来は fundamentalData が必要だが、Judgment に含まれる範囲で代用または別途取得
-          // ここでは Judgment 本体の保存を優先
-        }
       }
       return result;
     } catch (error) {
