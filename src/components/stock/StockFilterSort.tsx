@@ -8,6 +8,7 @@ interface StockFilterSortProps {
   onFilterChange: (filters: any) => void;
   onSortChange: (sortConfig: any) => void;
   onRefresh: () => void;
+  filters: any;
   loading: boolean;
 }
 
@@ -15,21 +16,22 @@ export const StockFilterSort: React.FC<StockFilterSortProps> = ({
   onFilterChange, 
   onSortChange, 
   onRefresh,
+  filters,
   loading 
 }) => {
-  const [search, setSearch] = useState("");
-  const [activeFilter, setActiveFilter] = useState("all");
+  const [search, setSearch] = useState(filters.search || "");
+  const [activeFilter, setActiveFilter] = useState(filters.label || "all");
   const [sortKey, setSortKey] = useState("totalScore");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const handleSearch = (val: string) => {
     setSearch(val);
-    onFilterChange({ search: val, label: activeFilter });
+    onFilterChange({ ...filters, search: val });
   };
 
   const handleFilter = (label: string) => {
     setActiveFilter(label);
-    onFilterChange({ search, label });
+    onFilterChange({ ...filters, label });
   };
 
   const handleSort = (key: string) => {

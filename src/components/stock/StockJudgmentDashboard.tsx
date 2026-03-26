@@ -250,6 +250,7 @@ export const StockJudgmentDashboard = () => {
     if (filters.label !== "all") {
       if (filters.label === "high_dividend") result = result.filter(j => (j.valuationMetrics?.dividendYield || 0) >= 3.5);
       else if (filters.label === "undervalued") result = result.filter(j => j.valuationLabel === "undervalued");
+      else if (filters.label === "growth") result = result.filter(j => j.growthProfile === "growth");
       else result = result.filter(j => j.signalLabel === filters.label);
     }
     if (filters.sector !== "all") result = result.filter(j => j.sector === filters.sector);
@@ -510,7 +511,7 @@ export const StockJudgmentDashboard = () => {
 
       <div className="space-y-10">
         <div className="flex flex-col gap-8">
-          <StockFilterSort loading={loading} onFilterChange={setFilters} onSortChange={setSort} onRefresh={fetchData} />
+          <StockFilterSort loading={loading} filters={filters} onFilterChange={setFilters} onSortChange={setSort} onRefresh={fetchData} />
           <div className="flex items-center gap-3 overflow-x-auto pb-6 scrollbar-hide px-1">
             {sectors.map(s => (
               <button key={s} onClick={() => setFilters(prev => ({ ...prev, sector: s }))}
