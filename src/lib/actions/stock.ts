@@ -44,7 +44,13 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
   try {
     const sym = ticker.endsWith(".T") ? ticker : ticker + ".T";
     const plainTicker = ticker.replace(".T", "");
-    // ...
+    let stk = STKS.find(s => s.ticker === plainTicker);
+    if (!stk) {
+      const basic = await getStockBasicInfoAction(plainTicker);
+      if (!basic.success || !basic.data) return { success: false, message: "銘柄情報が取得できません" };
+      stk = basic.data;
+    }
+
     const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
     const docRef = doc(db, path, plainTicker);
     
