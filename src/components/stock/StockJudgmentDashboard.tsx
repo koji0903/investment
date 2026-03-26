@@ -225,10 +225,10 @@ export const StockJudgmentDashboard = () => {
           return d.syncStatus !== "completed" || isStale;
         });
 
-        // 低負荷化のため、初期表示（上位20銘柄程度）のみ自動同期を開始
+        // 全件のバックグラウンド同期を開始
         if (!initialSyncTriggeredRef.current && staleOrUncompleted.length > 0) {
           initialSyncTriggeredRef.current = true;
-          processSyncQueue(staleOrUncompleted.map(d => d.ticker).slice(0, 20));
+          processSyncQueue(staleOrUncompleted.map(d => d.ticker));
         }
 
         setLoading(false);
