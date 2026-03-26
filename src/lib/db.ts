@@ -47,13 +47,18 @@ const getReportsCol = (uid: string) => collection(db, "users", uid, "reports");
 // --- Assets ---
 
 export const subscribeAssets = (uid: string, portfolioId: string = "default", callback: (assets: Asset[]) => void) => {
-  return onSnapshot(getAssetsCol(uid, portfolioId), (snapshot) => {
-    const assets = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Asset[];
-    callback(assets);
-  });
+  return onSnapshot(getAssetsCol(uid, portfolioId), 
+    (snapshot) => {
+      const assets = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Asset[];
+      callback(assets);
+    },
+    (error) => {
+      console.error("[Firestore] subscribeAssets error:", error);
+    }
+  );
 };
 
 export const saveAsset = async (uid: string, asset: Omit<Asset, "id">, portfolioId: string = "default") => {
@@ -68,17 +73,22 @@ export const removeAsset = async (uid: string, assetId: string, portfolioId: str
 
 export const subscribeTransactions = (uid: string, portfolioId: string = "default", callback: (transactions: Transaction[]) => void) => {
   const q = query(getTransactionsCol(uid, portfolioId), orderBy("date", "desc"));
-  return onSnapshot(q, (snapshot) => {
-    const transactions = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        date: data.date instanceof Timestamp ? data.date.toDate().toISOString() : data.date
-      };
-    }) as Transaction[];
-    callback(transactions);
-  });
+  return onSnapshot(q, 
+    (snapshot) => {
+      const transactions = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          date: data.date instanceof Timestamp ? data.date.toDate().toISOString() : data.date
+        };
+      }) as Transaction[];
+      callback(transactions);
+    },
+    (error) => {
+      console.error("[Firestore] subscribeTransactions error:", error);
+    }
+  );
 };
 
 export const saveTransaction = async (uid: string, transaction: Omit<Transaction, "id">, portfolioId: string = "default") => {
@@ -91,13 +101,18 @@ export const saveTransaction = async (uid: string, transaction: Omit<Transaction
 // --- Alerts ---
 
 export const subscribeAlerts = (uid: string, callback: (alerts: AlertRule[]) => void) => {
-  return onSnapshot(getAlertsCol(uid), (snapshot) => {
-    const alerts = snapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id
-    })) as AlertRule[];
-    callback(alerts);
-  });
+  return onSnapshot(getAlertsCol(uid), 
+    (snapshot) => {
+      const alerts = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        id: doc.id
+      })) as AlertRule[];
+      callback(alerts);
+    },
+    (error) => {
+      console.error("[Firestore] subscribeAlerts error:", error);
+    }
+  );
 };
 
 export const saveAlert = async (uid: string, alert: AlertRule) => {
@@ -369,33 +384,48 @@ export const subscribeAnalysis = (uid: string, portfolioId: string = "default", 
 };
 
 export const subscribeStrategy = (uid: string, portfolioId: string = "default", callback: (strategy: any) => void) => {
-  return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "strategy"), (doc) => {
-    if (doc.exists()) {
-      callback(doc.data());
-    } else {
-      callback(null);
+  return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "strategy"), 
+    (doc) => {
+      if (doc.exists()) {
+        callback(doc.data());
+      } else {
+        callback(null);
+      }
+    },
+    (error) => {
+      console.error("[Firestore] subscribeStrategy error:", error);
     }
-  });
+  );
 };
 
 export const subscribeBehavior = (uid: string, portfolioId: string = "default", callback: (behavior: any) => void) => {
-  return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "behavior"), (doc) => {
-    if (doc.exists()) {
-      callback(doc.data());
-    } else {
-      callback(null);
+  return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "behavior"), 
+    (doc) => {
+      if (doc.exists()) {
+        callback(doc.data());
+      } else {
+        callback(null);
+      }
+    },
+    (error) => {
+      console.error("[Firestore] subscribeBehavior error:", error);
     }
-  });
+  );
 };
 
 export const subscribeGrowthMetrics = (uid: string, portfolioId: string = "default", callback: (growth: any) => void) => {
-  return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "growth"), (doc) => {
-    if (doc.exists()) {
-      callback(doc.data());
-    } else {
-      callback(null);
+  return onSnapshot(doc(db, "users", uid, "portfolios", portfolioId, "analysis", "growth"), 
+    (doc) => {
+      if (doc.exists()) {
+        callback(doc.data());
+      } else {
+        callback(null);
+      }
+    },
+    (error) => {
+      console.error("[Firestore] subscribeGrowthMetrics error:", error);
     }
-  });
+  );
 };
 
 export const saveGrowthMetrics = async (uid: string, portfolioId: string = "default", metrics: any) => {
@@ -407,13 +437,18 @@ export const saveGrowthMetrics = async (uid: string, portfolioId: string = "defa
 
 export const subscribePortfolioMetrics = (uid: string, portfolioId: string = "default", callback: (metrics: any) => void) => {
   const q = query(collection(db, "users", uid, "portfolios", portfolioId, "portfolio_metrics"), orderBy("updatedAt", "desc"));
-  return onSnapshot(q, (snapshot) => {
-    if (!snapshot.empty) {
-      callback(snapshot.docs[0].data());
-    } else {
-      callback(null);
+  return onSnapshot(q, 
+    (snapshot) => {
+      if (!snapshot.empty) {
+        callback(snapshot.docs[0].data());
+      } else {
+        callback(null);
+      }
+    },
+    (error) => {
+      console.error("[Firestore] subscribePortfolioMetrics error:", error);
     }
-  });
+  );
 };
 
 export const savePortfolioMetrics = async (uid: string, portfolioId: string = "default", metrics: any) => {
@@ -428,13 +463,18 @@ export const updateRiskSettings = async (uid: string, settings: { riskTolerance?
 };
 
 export const subscribeRiskSettings = (uid: string, callback: (settings: any) => void) => {
-  return onSnapshot(doc(db, "users", uid, "settings", "general"), (doc) => {
-    if (doc.exists()) {
-      callback(doc.data());
-    } else {
-      callback({ riskTolerance: "moderate", autoExecute: false });
+  return onSnapshot(doc(db, "users", uid, "settings", "general"), 
+    (doc) => {
+      if (doc.exists()) {
+        callback(doc.data());
+      } else {
+        callback({ riskTolerance: "moderate", autoExecute: false });
+      }
+    },
+    (error) => {
+      console.error("[Firestore] subscribeRiskSettings error:", error);
     }
-  });
+  );
 };
 
 export const initializeUserData = async (uid: string, email: string, displayName: string = "") => {
@@ -547,20 +587,25 @@ export const clearPortfolioData = async (uid: string, portfolioId: string = "def
  */
 export const subscribeBrokerConnections = (uid: string, onUpdate: (data: BrokerConnection[]) => void) => {
   const q = query(collection(db, "users", uid, "settings", "brokerConnections", "items"));
-  return onSnapshot(q, (snapshot) => {
-    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BrokerConnection));
-    if (data.length === 0) {
-      // 初期データ作成
-      const initial: BrokerConnection[] = [
-        { id: "stock", providerId: "stock", name: "証券口座", isConnected: false, lastSyncedAt: null, status: "disconnected" },
-        { id: "crypto", providerId: "crypto", name: "暗号資産", isConnected: false, lastSyncedAt: null, status: "disconnected" },
-        { id: "fx", providerId: "fx", name: "FX（外国為替）", isConnected: false, lastSyncedAt: null, status: "disconnected" }
-      ];
-      onUpdate(initial);
-    } else {
-      onUpdate(data);
+  return onSnapshot(q, 
+    (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BrokerConnection));
+      if (data.length === 0) {
+        // 初期データ作成
+        const initial: BrokerConnection[] = [
+          { id: "stock", providerId: "stock", name: "証券口座", isConnected: false, lastSyncedAt: null, status: "disconnected" },
+          { id: "crypto", providerId: "crypto", name: "暗号資産", isConnected: false, lastSyncedAt: null, status: "disconnected" },
+          { id: "fx", providerId: "fx", name: "FX（外国為替）", isConnected: false, lastSyncedAt: null, status: "disconnected" }
+        ];
+        onUpdate(initial);
+      } else {
+        onUpdate(data);
+      }
+    },
+    (error) => {
+      console.error("[Firestore] subscribeBrokerConnections error:", error);
     }
-  });
+  );
 };
 
 /**

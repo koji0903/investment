@@ -45,10 +45,15 @@ export const FXService = {
    */
   subscribePairs: (callback: (data: FXJudgment[]) => void) => {
     const q = query(collection(db, "fx_judgments"));
-    return onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data() as FXJudgment);
-      callback(data.sort((a, b) => b.totalScore - a.totalScore));
-    });
+    return onSnapshot(q, 
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => doc.data() as FXJudgment);
+        callback(data.sort((a, b) => b.totalScore - a.totalScore));
+      },
+      (error) => {
+        console.error("[Firestore] FXService.subscribePairs error:", error);
+      }
+    );
   },
 
   /**

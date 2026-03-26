@@ -14,9 +14,20 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Next.js のチャンクや API リクエストはキャッシュせず常にネットワークを優先
+  if (event.request.url.includes('/_next/') || event.request.url.includes('/api/')) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
+    fetch(event.request)
+      .then((response) => {
+        // ネットワーク成功時は必要に応じてキャッシュを更新（将来的な拡張用）
+        return response;
+      })
+      .catch(() => {
+        // ネットワーク失敗時のみキャッシュを探す (修正: Network-First)
+        return caches.match(event.request);
+      })
   );
 });
