@@ -168,18 +168,7 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
     jud.syncError = syncError;
     jud.updatedAt = new Date().toISOString();
 
-    // 3. Firestoreへの保存
-    try {
-      if (isConfigValid && userId && portfolioId) {
-        await setDoc(docRef, jud);
-        const fundPath = `users/${userId}/portfolios/${portfolioId}/stock_fundamentals`;
-        await setDoc(doc(db, fundPath, stk.ticker), fundamentalData);
-      }
-    } catch (fsErr: any) {
-      console.warn(`[Stock] Firestore save skipped or failed for ${ticker} (likely permission):`, fsErr.message);
-      // 特権エラーがあっても、メモリ上の解析結果はUIへ戻す
-    }
-
+    // 3. Firestoreへの保存はクライアントサイド(Service層)で行うため、ここでは行わない
     return { success: true, data: JSON.parse(JSON.stringify(jud)) };
   } catch (err: any) {
     console.error(`[Stock] Critical sync error for ${ticker}:`, err);
@@ -207,14 +196,8 @@ export async function getStockJudgmentsAction(userId: string, portfolioId: strin
 }
 
 export async function setStockSyncingAction(userId: string, portfolioId: string, ticker: string) {
-  if (!userId || !portfolioId) return { success: false };
-  try {
-    const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
-    const docRef = doc(db, path, ticker);
-    await setDoc(docRef, { syncStatus: "syncing", syncError: null, updatedAt: new Date().toISOString() }, { merge: true })
-      .catch(err => console.warn(`[Stock] setStockSyncingAction failed for ${ticker}:`, err.message));
-    return { success: true };
-  } catch (err) { return { success: false }; }
+  // サーバー側での書き込みは権限エラーのため廃止。クライアント側でのみ実行。
+  return { success: true };
 }
 
 export async function syncStockRealData(userId: string, portfolioId: string): Promise<{ success: boolean; count: number; data: StockJudgment[] }> {

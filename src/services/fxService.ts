@@ -66,13 +66,25 @@ export const FXService = {
 
   async syncRealData(userId: string, portfolioId: string): Promise<FXJudgment[]> {
     try {
-      const { syncFXRealData, getFXJudgmentsAction } = await import("@/lib/actions/fx");
-      await syncFXRealData(userId, portfolioId);
-      return await getFXJudgmentsAction(userId, portfolioId);
+      // サーバーサイドでの一括同期は権限の問題で Firestore に保存できないため、
+      // クライアント側で一括リクエストを行う形式に変更
+      const results: FXJudgment[] = [];
+      const CHUNK_SIZE = 3;
+      
+      for (let i = 0; i < SUPPORTED_PAIRS.length; i += CHUNK_SIZE) {
+        const chunk = SUPPORTED_PAIRS.slice(i, i + CHUNK_SIZE);
+        await Promise.all(chunk.map(async (pair) => {
+          const res = await FXService.syncPair(userId, portfolioId, pair.pairCode);
+          if (res.success && res.data) results.push(res.data);
+        }));
+        // 短い待機を入れてレート制限を回避
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      
+      return results;
     } catch (error) {
       console.error("Error syncing real FX data:", error);
-      const { generateFXDummyDataAction } = await import("@/lib/actions/fx");
-      return await generateFXDummyDataAction(userId, portfolioId).catch(() => []);
+      return [];
     }
   },
 
@@ -80,6 +92,13 @@ export const FXService = {
     try {
       const { syncSpecificPairAction } = await import("@/lib/actions/fx");
       const result = await syncSpecificPairAction(userId, portfolioId, pairCode);
+      
+      if (result.success && result.data) {
+        // クライアント側（認証済み）で保存を実行
+        const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
+        await setDoc(doc(db, path, pairCode.replace("/", "-")), result.data);
+      }
+      
       return result;
     } catch (error: any) {
       console.error(`Error syncing pair ${pairCode}:`, error);
@@ -89,6 +108,15 @@ export const FXService = {
 
   async setSyncing(userId: string, portfolioId: string, pairCode: string): Promise<boolean> {
     try {
+      // クライアント側で即座にフラグを立てる
+      if (userId && portfolioId) {
+        const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
+        await setDoc(doc(db, path, pairCode.replace("/", "-")), { 
+          syncStatus: "syncing", 
+          updatedAt: new Date().toISOString() 
+        }, { merge: true });
+      }
+
       const { setSyncingStatusAction } = await import("@/lib/actions/fx");
       await setSyncingStatusAction(userId, portfolioId, pairCode);
       return true;

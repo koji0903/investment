@@ -157,15 +157,7 @@ async function syncSpecificPair(userId: string, portfolioId: string, pair: FXPai
     } as any;
   }
 
-  // ユーザー別のパスへ保存
-  try {
-    if (judgment && userId && portfolioId) {
-      const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
-      await setDoc(doc(db, path, pair.pairCode.replace("/", "-")), judgment);
-    }
-  } catch (err) {
-    console.error(`[FX] User-specific save failed for ${pair.pairCode}:`, err);
-  }
+  // ユーザー別のパスへの保存はクライアントサイド(Service層)で行うため、ここでは行わない
   return judgment!;
 }
 
@@ -173,29 +165,8 @@ async function syncSpecificPair(userId: string, portfolioId: string, pair: FXPai
  * 同期開始フラグを立てる Server Action
  */
 export async function setSyncingStatusAction(userId: string, portfolioId: string, pairCode: string) {
-  if (!userId || !portfolioId) return { success: false };
-  try {
-    const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
-    const docRef = doc(db, path, pairCode.replace("/", "-"));
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-      await setDoc(docRef, { 
-        ...docSnap.data(), 
-        syncStatus: "syncing",
-        updatedAt: new Date().toISOString()
-      });
-    } else {
-      const [base, quote] = pairCode.split("/");
-      await setDoc(docRef, {
-        pairCode, baseCurrency: base, quoteCurrency: quote,
-        currentPrice: 0, syncStatus: "syncing", updatedAt: new Date().toISOString()
-      });
-    }
-    return { success: true };
-  } catch (err) {
-    return { success: false };
-  }
+  // サーバー側での書き込みは権限エラーのため廃止。クライアント側でのみ実行。
+  return { success: true };
 }
 
 /**

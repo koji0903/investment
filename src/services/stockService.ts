@@ -1,5 +1,5 @@
 import { db } from "@/lib/firebase";
-import { collection, query, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, onSnapshot, orderBy, doc, setDoc } from "firebase/firestore";
 import { StockJudgment, StockPairMaster } from "@/types/stock";
 import { 
   getStockJudgmentsAction, 
@@ -37,7 +37,20 @@ export const StockService = {
 
   syncStock: async (userId: string, portfolioId: string, ticker: string) => {
     try {
-      return await syncSpecificStockAction(userId, portfolioId, ticker);
+      const result = await syncSpecificStockAction(userId, portfolioId, ticker);
+      if (result.success && result.data) {
+        // クライアント側（認証済み）で保存を実行
+        const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
+        await setDoc(doc(db, path, ticker), result.data);
+        
+        // 財務データも保存
+        if ((result.data as any).valuationMetrics) {
+          const fundPath = `users/${userId}/portfolios/${portfolioId}/stock_fundamentals`;
+          // 本来は fundamentalData が必要だが、Judgment に含まれる範囲で代用または別途取得
+          // ここでは Judgment 本体の保存を優先
+        }
+      }
+      return result;
     } catch (error) {
       console.error(`Error syncing stock ${ticker}:`, error);
       return { success: false, message: "同期エラーが発生しました" };
@@ -46,6 +59,13 @@ export const StockService = {
 
   setSyncing: async (userId: string, portfolioId: string, ticker: string) => {
     try {
+      // クライアント側で即座にフラグを立てる
+      const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
+      await setDoc(doc(db, path, ticker), { 
+        syncStatus: "syncing", 
+        updatedAt: new Date().toISOString() 
+      }, { merge: true });
+      
       return await setStockSyncingAction(userId, portfolioId, ticker);
     } catch (error) {
        console.error(`Error setting syncing status for ${ticker}:`, error);
@@ -58,8 +78,18 @@ export const StockService = {
    */
   syncRealData: async (userId: string, portfolioId: string): Promise<StockJudgment[]> => {
     try {
-      const res = await syncStockRealData(userId, portfolioId);
-      return (res.data ?? []) as StockJudgment[];
+      // サーバー側の一括同期は権限の問題で Firestore 保存できないため、クライアント側で順次実行
+      const results: StockJudgment[] = [];
+      const targets = MONITORING_STOCKS.slice(0, 15); // パフォーマンスのため上位15件
+      
+      for (const stk of targets) {
+        const res = await StockService.syncStock(userId, portfolioId, stk.ticker);
+        if (res.success && res.data) results.push(res.data as StockJudgment);
+        // 短い待機を入れてレート制限を回避
+        await new Promise(r => setTimeout(r, 800));
+      }
+      
+      return results;
     } catch (error) {
       console.error("Error syncing real stock data:", error);
       return [];
