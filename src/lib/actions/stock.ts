@@ -83,10 +83,13 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
     try {
       // サーバー機能全体のタイムアウト対策として Promise.race をサーバー側でも実行
       const fetchPromise = Promise.all([
-        yf.chart(sym, { period1: start, period2: end, interval: "1d" }).catch(e => { throw new Error(`Chart: ${e.message}`); }),
+        yf.chart(sym, { period1: start, period2: end, interval: "1d" }).catch(e => { 
+          if (e.message.includes("No data found")) throw new Error("Chart: No data found (Symbol may be delisted)");
+          throw new Error(`Chart: ${e.message}`); 
+        }),
         yf.quoteSummary(sym, { modules: ["defaultKeyStatistics", "financialData", "summaryDetail"] }).catch(e => {
           console.warn(`[Sync] Summary fetch soft failure for ${ticker}:`, e.message);
-          syncError = `財務情報の取得に失敗しました(${e.message})。テクニカル判定のみ実行します。`;
+          syncError = `財務情報の取得に失敗しました(${e.message})`;
           return null;
         })
       ]);
@@ -100,7 +103,11 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
       summary = sResult;
     } catch (err: any) {
       console.error(`[Sync] Critical fetch error for ${ticker}:`, err.message);
-      return { success: false, message: `データ取得に失敗しました: ${err.message}` };
+      const isDelisted = err.message.includes("No data found");
+      return { 
+        success: false, 
+        message: isDelisted ? `銘柄データが見つかりません（上場廃止の可能性があります）: ${err.message}` : `データ取得に失敗しました: ${err.message}` 
+      };
     }
 
     if (!chartRes || !chartRes.quotes || chartRes.quotes.length < 5) {
@@ -157,6 +164,7 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
       date: new Date(q.date).toISOString().split('T')[0], 
       value: q.close as number 
     }));
+    jud.minPurchaseAmount = currentPrice * 100;
     jud.valuationMetrics = { 
       per: fundamentalData.per, 
       pbr: fundamentalData.pbr, 

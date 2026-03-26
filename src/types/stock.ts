@@ -22,6 +22,7 @@ export interface StockJudgment {
   companyName: string;
   sector: string;
   currentPrice: number;
+  minPurchaseAmount?: number; // 最低購入金額
   
   // テクニカル分析 (25%)
   technicalScore: number;

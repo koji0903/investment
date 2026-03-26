@@ -66,7 +66,6 @@ export const TSE_PRIME_MASTER: StockPairMaster[] = [
   { ticker: "4307", name: "野村総合研究所", sector: "情報・通信業" },
   { ticker: "4716", name: "日本オラクル", sector: "情報・通信業" },
   { ticker: "4732", name: "ユー・エス・エス", sector: "情報・通信業" },
-  { ticker: "4739", name: "伊藤忠テクノソリューションズ", sector: "情報・通信業" },
   { ticker: "4768", name: "大塚商会", sector: "情報・通信業" },
   { ticker: "9684", name: "スクウェア・エニックスHLD", sector: "情報・通信業" },
 

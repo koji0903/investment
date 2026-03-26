@@ -62,7 +62,12 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ judgment, on
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{judgment.sector}</span>
                   <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                  <span className="text-xl font-black text-indigo-500 tabular-nums">{judgment.currentPrice.toLocaleString()}円</span>
+                  <div className="flex flex-col">
+                    <span className="text-xl font-black text-indigo-500 tabular-nums">{judgment.currentPrice.toLocaleString()}円</span>
+                    {judgment.minPurchaseAmount && (
+                      <span className="text-[10px] font-bold text-slate-500">最低投資額：{judgment.minPurchaseAmount.toLocaleString()}円 (100株)</span>
+                    )}
+                  </div>
                   <SyncStatusIndicator status={judgment.syncStatus} />
                 </div>
               </div>

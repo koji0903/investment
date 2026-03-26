@@ -84,6 +84,7 @@ export const StockJudgmentDashboard = () => {
     shareholderReturnScore: 0, dividendProfile: "stable_dividend", holdSuitability: "neutral", shareholderReasons: [],
     totalScore: 0, signalLabel: "中立", certainty: 0, summaryComment: "現在データを同期しています...",
     updatedAt: new Date().toISOString(), syncStatus: "pending", chartData: [],
+    minPurchaseAmount: 0,
     valuationMetrics: { per: 0, pbr: 0, dividendYield: 0, roe: 0, equityRatio: 0 }
   });
 
@@ -158,6 +159,9 @@ export const StockJudgmentDashboard = () => {
         }
 
         if (targetTicker) {
+          // 2重処理防止: バックグラウンドキューから削除
+          backgroundQueueRef.current = backgroundQueueRef.current.filter(t => t !== targetTicker);
+          
           // 指定銘柄の同期を実行 (同期済みなら飛ばす)
           const stock = allJudgments.find(j => j.ticker === targetTicker);
           const isStale = stock ? (Date.now() - new Date(stock.updatedAt).getTime()) > 12 * 60 * 60 * 1000 : true;
@@ -263,6 +267,22 @@ export const StockJudgmentDashboard = () => {
     fetchData();
     return () => { isMountedRef.current = false; };
   }, []);
+
+  // フィルタやソートが変更された際、表示されている上位銘柄を優先同期
+  useEffect(() => {
+    if (loading || filteredItems.length === 0) return;
+    
+    const staleOnes = filteredItems.slice(0, 10).filter(d => {
+      const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 12 * 60 * 60 * 1000;
+      return d.syncStatus !== "completed" || isStale;
+    });
+
+    if (staleOnes.length > 0) {
+      // 既存のバックグラウンドキューを整理し、現在見えているものを最優先にする
+      const tickers = staleOnes.map(d => d.ticker);
+      tickers.reverse().forEach(t => addToPriorityQueue(t));
+    }
+  }, [filters, sort, loading]); // フィルタ・ソート変更時に発火
 
   // Infinite Scroll Implementation
   useEffect(() => {
@@ -434,7 +454,9 @@ export const StockJudgmentDashboard = () => {
                         <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 truncate">{s.name}</span>
                         <span className="text-[9px] font-bold text-slate-400 tracking-tighter">{s.ticker}</span>
                       </div>
-                      <p className="text-[9px] font-medium text-rose-500 truncate italic">"{s.error || "Network error"}"</p>
+                      <p className="text-[9px] font-medium text-rose-500 line-clamp-2 italic">
+                        "{s.error || "データ取得失敗"}"
+                      </p>
                     </div>
                   ))}
                 </div>

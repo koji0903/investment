@@ -78,9 +78,16 @@ const StockRow = React.memo(({ item, onSelect, onVisible }: { item: StockJudgmen
           </div>
           <div className="space-y-1">
             <div className="text-sm font-black text-slate-800 dark:text-white leading-tight">{item.companyName}</div>
-            <div className="flex items-center gap-3">
-               <span className="text-[11px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toLocaleString()}円</span>
-               <SyncStatusIndicator status={item.syncStatus} />
+            <div className="flex flex-col gap-0.5">
+               <div className="flex items-center gap-2">
+                 <span className="text-[11px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toLocaleString()}円</span>
+                 <SyncStatusIndicator status={item.syncStatus} />
+               </div>
+               {item.minPurchaseAmount && (
+                 <div className="text-[9px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md w-fit">
+                    最低：{(item.minPurchaseAmount / 10000).toFixed(1)}万円〜
+                 </div>
+               )}
             </div>
           </div>
         </div>
@@ -142,9 +149,16 @@ const StockCard = React.memo(({ item, onSelect, onVisible }: { item: StockJudgme
           </div>
           <div>
             <h3 className="text-sm font-black text-slate-800 dark:text-white leading-tight">{item.companyName}</h3>
-            <div className="flex items-center gap-2 mt-1">
-              <p className="text-[11px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toLocaleString()}円</p>
-              <SyncStatusIndicator status={item.syncStatus} />
+            <div className="flex flex-col gap-1 mt-1">
+              <div className="flex items-center gap-2">
+                <p className="text-[11px] font-bold text-slate-400 tabular-nums">{item.currentPrice.toLocaleString()}円</p>
+                <SyncStatusIndicator status={item.syncStatus} />
+              </div>
+              {item.minPurchaseAmount && (
+                <div className="text-[9px] font-black text-indigo-500/80 bg-indigo-50 dark:bg-indigo-500/5 px-2 py-0.5 rounded-lg w-fit">
+                   最低投資額：{(item.minPurchaseAmount / 10000).toFixed(1)}万円
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
-import { db } from "@/lib/firebase";
-import { collection, query, onSnapshot, orderBy, doc, setDoc } from "firebase/firestore";
+import { db, saveStockJudgment, updateStockSyncingStatus } from "@/lib/db";
+import { collection, query, onSnapshot, orderBy, doc } from "firebase/firestore";
 import { StockJudgment, StockPairMaster } from "@/types/stock";
 import { 
   getStockJudgmentsAction, 
@@ -39,9 +39,8 @@ export const StockService = {
     try {
       const result = await syncSpecificStockAction(userId, portfolioId, ticker);
       if (result.success && result.data) {
-        // クライアント側（認証済み）で保存を実行
-        const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
-        await setDoc(doc(db, path, ticker), result.data);
+        // クライアント側（認証済み、デモガード付き）で保存を実行
+        await saveStockJudgment(userId, portfolioId, ticker, result.data);
         
         // 財務データも保存
         if ((result.data as any).valuationMetrics) {
@@ -59,12 +58,8 @@ export const StockService = {
 
   setSyncing: async (userId: string, portfolioId: string, ticker: string) => {
     try {
-      // クライアント側で即座にフラグを立てる
-      const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
-      await setDoc(doc(db, path, ticker), { 
-        syncStatus: "syncing", 
-        updatedAt: new Date().toISOString() 
-      }, { merge: true });
+      // クライアント側で即座にフラグを立てる (デモガード付き)
+      await updateStockSyncingStatus(userId, portfolioId, ticker);
       
       return await setStockSyncingAction(userId, portfolioId, ticker);
     } catch (error) {

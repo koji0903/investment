@@ -15,6 +15,8 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
+export { db };
+
 import { 
   Asset, 
   Transaction, 
@@ -606,4 +608,20 @@ export const updateBrokerConnection = async (uid: string, connectionId: string, 
   if (uid === DEMO_USER_ID) return;
   const docRef = doc(db, "users", uid, "settings", "brokerConnections", "items", connectionId);
   await setDoc(docRef, update, { merge: true });
+};
+// --- Stock Judgments ---
+
+export const saveStockJudgment = async (uid: string, portfolioId: string, ticker: string, data: any) => {
+  if (uid === DEMO_USER_ID) return;
+  const docRef = doc(db, "users", uid, "portfolios", portfolioId, "stock_judgments", ticker);
+  return setDoc(docRef, data);
+};
+
+export const updateStockSyncingStatus = async (uid: string, portfolioId: string, ticker: string) => {
+  if (uid === DEMO_USER_ID) return;
+  const docRef = doc(db, "users", uid, "portfolios", portfolioId, "stock_judgments", ticker);
+  return setDoc(docRef, { 
+    syncStatus: "syncing", 
+    updatedAt: new Date().toISOString() 
+  }, { merge: true });
 };
