@@ -54,8 +54,8 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ judgment, on
         const result = await StockService.getFinancialAnalysis(user.uid, judgment.ticker);
         setFinancialAnalysis(result as FinancialAnalysisResult);
 
-        // 意思決定データも取得
-        const decisionRes = await StockService.getInvestmentDecision(user.uid, judgment.ticker);
+        // 意思決定データも取得 (未保存時は judgment から計算)
+        const decisionRes = await StockService.getInvestmentDecision(user.uid, judgment.ticker, judgment);
         if (decisionRes) {
           setInvestmentDecision(decisionRes as InvestmentDecision);
         }

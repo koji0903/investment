@@ -32,7 +32,7 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
     const fetchDecision = async () => {
       if (!user || !judgment) return;
       try {
-        const res = await FXService.getInvestmentDecision(user.uid, judgment.pairCode);
+        const res = await FXService.getInvestmentDecision(user.uid, judgment.pairCode, judgment);
         if (res) {
           setInvestmentDecision(res as InvestmentDecision);
         }

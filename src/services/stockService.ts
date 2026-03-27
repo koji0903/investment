@@ -121,18 +121,19 @@ export const StockService = {
   /**
    * 投資判断データを取得
    */
-  getInvestmentDecision: async (userId: string, ticker: string) => {
+  getInvestmentDecision: async (userId: string, ticker: string, currentJudgment?: any) => {
     try {
       if (!userId) return null;
       
       const { DEMO_USER_ID } = await import("@/lib/constants");
+      const { calculateDecision } = await import("@/utils/investment/decisionEngine");
+
+      // デモユーザー、または Firestore にデータがない場合のフォールバック
       if (userId === DEMO_USER_ID) {
-        // デモ用データの生成
-        const { calculateDecision } = await import("@/utils/investment/decisionEngine");
         return calculateDecision(ticker, {
           winRate: 0.58,
-          targetPrice: 1000 * 1.15, // ダミー
-          stopPrice: 1000 * 0.95,   // ダミー
+          targetPrice: 1000 * 1.15,
+          stopPrice: 1000 * 0.95,
           currentPrice: 1000,
           currentDrawdown: 0.8,
           sectorExposure: 12,
@@ -141,11 +142,31 @@ export const StockService = {
       }
 
       const { getInvestmentDecision } = await import("@/lib/db");
-      return await getInvestmentDecision(userId, ticker);
+      const saved = await getInvestmentDecision(userId, ticker);
+      if (saved) return saved;
+
+      // 保存データがない場合、現在の判断材料からリアルタイム算出
+      if (currentJudgment) {
+        const estimatedWinRate = currentJudgment.totalScore > 70 ? 0.65 : currentJudgment.totalScore > 50 ? 0.55 : 0.45;
+        const targetUpside = currentJudgment.valuationLabel === "undervalued" ? 1.25 : 1.15;
+        
+        return calculateDecision(ticker, {
+          winRate: estimatedWinRate,
+          targetPrice: currentJudgment.currentPrice * targetUpside,
+          stopPrice: currentJudgment.currentPrice * 0.93,
+          currentPrice: currentJudgment.currentPrice,
+          currentDrawdown: 1.2,
+          sectorExposure: 15,
+          trendStrength: currentJudgment.technicalScore
+        });
+      }
+
+      return null;
     } catch (error) {
       console.error(`Error fetching investment decision for ${ticker}:`, error);
       return null;
     }
   }
 };
+
 

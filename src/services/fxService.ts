@@ -144,18 +144,18 @@ export const FXService = {
     }
   },
 
-  async getInvestmentDecision(uid: string, pairCode: string) {
+  async getInvestmentDecision(uid: string, pairCode: string, currentJudgment?: any) {
     try {
       if (!uid) return null;
       
       const { DEMO_USER_ID } = await import("@/lib/constants");
+      const { calculateDecision } = await import("@/utils/investment/decisionEngine");
+
       if (uid === DEMO_USER_ID) {
-        // デモ用データの生成
-        const { calculateDecision } = await import("@/utils/investment/decisionEngine");
         return calculateDecision(pairCode, {
           winRate: 0.52,
-          targetPrice: 150 * 1.02, // ダミー
-          stopPrice: 150 * 0.99,   // ダミー
+          targetPrice: 150 * 1.02,
+          stopPrice: 150 * 0.99,
           currentPrice: 150,
           currentDrawdown: 1.2,
           sectorExposure: 10,
@@ -164,12 +164,32 @@ export const FXService = {
       }
 
       const { getInvestmentDecision } = await import("@/lib/db");
-      return await getInvestmentDecision(uid, pairCode);
+      const saved = await getInvestmentDecision(uid, pairCode);
+      if (saved) return saved;
+
+      // 保存データがない場合、現在の判断材料からリアルタイム算出
+      if (currentJudgment && currentJudgment.entryTimingAnalysis) {
+        const entry = currentJudgment.entryTimingAnalysis;
+        const estimatedWinRate = currentJudgment.totalScore > 70 ? 0.60 : currentJudgment.totalScore > 50 ? 0.52 : 0.45;
+        
+        return calculateDecision(pairCode, {
+          winRate: estimatedWinRate,
+          targetPrice: entry.targetPrice || (currentJudgment.currentPrice * 1.02),
+          stopPrice: entry.invalidationPrice || (currentJudgment.currentPrice * 0.99),
+          currentPrice: currentJudgment.currentPrice,
+          currentDrawdown: 1.2,
+          sectorExposure: 10,
+          trendStrength: currentJudgment.technicalScore
+        });
+      }
+
+      return null;
     } catch (error) {
       console.error(`Error fetching FX investment decision for ${pairCode}:`, error);
       return null;
     }
   },
+
 
 
   /**
