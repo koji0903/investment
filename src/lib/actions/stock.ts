@@ -155,15 +155,35 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
     if (quotes.length === 0) return { success: false, message: "有効な価格履歴がありません" };
     
     const prices = quotes.map((q: any) => q.close as number);
-    const currentPrice = prices[prices.length - 1];
-
-    if (!currentPrice || isNaN(currentPrice)) {
-        return { success: false, message: "現在の株価が取得できませんでした" };
-    }
+    const chartLastPrice = prices[prices.length - 1];
 
     const s = (summary?.defaultKeyStatistics || {}) as any;
     const f = (summary?.financialData || {}) as any;
     const d = (summary?.summaryDetail || {}) as any;
+    const p = (summary?.price || {}) as any;
+
+    // 現在の価格を summary (price/summaryDetail) から優先取得
+    // chart の最終値は週明けの分割後価格を先行して返している場合があるため
+    const rawCurrentPrice = p.regularMarketPrice?.raw || d.regularMarketPrice?.raw || chartLastPrice;
+    let currentPrice = rawCurrentPrice;
+    
+    // 株式分割の検知 (5倍程度の乖離がある場合)
+    let isSplitAdjusted = false;
+    let splitFactor = 1;
+    if (chartLastPrice && Math.abs(chartLastPrice / rawCurrentPrice - 0.2) < 0.05) {
+      // chart が分割後、rawCurrentPrice が分割前の場合 (7012.T の現状)
+      isSplitAdjusted = true;
+      splitFactor = 5;
+      console.log(`[Stock] Split detected for ${ticker}: chart=${chartLastPrice}, raw=${rawCurrentPrice}`);
+    } else if (chartLastPrice && Math.abs(chartLastPrice / rawCurrentPrice - 5) < 1.0) {
+      // 逆に chart が分割前、rawCurrentPrice が分割後の場合
+      isSplitAdjusted = true;
+      splitFactor = 0.2;
+    }
+
+    if (!currentPrice || isNaN(currentPrice)) {
+        return { success: false, message: "現在の株価が取得できませんでした" };
+    }
 
     const fundamentalData: StockFundamental = {
       ticker: stk.ticker, companyName: stk.name, sector: stk.sector,
@@ -189,18 +209,35 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
       updatedAt: new Date().toISOString()
     };
 
+    // テクニカル分析用の価格系列を現在の株価 (currentPrice) に合わせる
+    // 分割調整後の価格が chart の一部に混入している場合、該当するポイントのみ「分割前」に引き戻す
+    const adjustedPrices = quotes.map((q: any) => {
+      const val = q.close as number;
+      // currentPrice の 1/splitFactor に近い値（=調整済み）なら、個別に補正する
+      const isPointAdjusted = isSplitAdjusted && Math.abs(val / currentPrice - (1/splitFactor)) < 0.2;
+      return isPointAdjusted ? val * splitFactor : val;
+    });
+
     const jud = calculateStockTotalJudgment(
       stk.ticker, stk.name, stk.sector, currentPrice,
-      analyzeStockTechnical(prices, currentPrice),
+      analyzeStockTechnical(adjustedPrices, currentPrice),
       analyzeStockFundamental(fundamentalData),
       analyzeStockValuation(fundamentalData),
       analyzeStockShareholderReturn(fundamentalData)
     );
 
-    jud.chartData = quotes.slice(-180).map((q: any) => ({ 
-      date: new Date(q.date).toISOString().split('T')[0], 
-      value: q.close as number 
-    }));
+    jud.isSplitAdjusted = isSplitAdjusted;
+    jud.splitFactor = splitFactor;
+    jud.chartData = quotes.slice(-180).map((q: any, idx: number) => {
+      // slice(-180) しているので、adjustedPrices も対応する範囲から取得する必要がある
+      // または単純に上記と同様のロジックを再適用
+      const val = q.close as number;
+      const isPointAdjusted = isSplitAdjusted && Math.abs(val / currentPrice - (1/splitFactor)) < 0.2;
+      return { 
+        date: new Date(q.date).toISOString().split('T')[0], 
+        value: isPointAdjusted ? val * splitFactor : val
+      };
+    });
     jud.minPurchaseAmount = currentPrice * 100;
     jud.valuationMetrics = { 
       per: fundamentalData.per, 
@@ -209,8 +246,8 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
       roe: fundamentalData.roe, 
       equityRatio: fundamentalData.equityRatio 
     };
-    jud.syncStatus = "completed";
-    jud.syncError = syncError;
+    jud.syncStatus = isSplitAdjusted ? "warning" : "completed";
+    jud.syncError = isSplitAdjusted ? `株式分割を検知しました (${splitFactor}倍)。表示価格を権利落前の価格に調整して表示しています。` : syncError;
     jud.updatedAt = new Date().toISOString();
 
     // 4. 財務諸表判定エンジンの実行

@@ -57,6 +57,8 @@ export interface StockJudgment {
   
   // 詳細データ (UI表示用)
   chartData?: { date: string; value: number }[];
+  isSplitAdjusted?: boolean;   // 株式分割等の調整が行われたか
+  splitFactor?: number;        // 分割比率（例: 5倍）
   valuationMetrics?: {
     per: number;
     pbr: number;
