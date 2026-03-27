@@ -7,7 +7,8 @@ import {
   ConfidenceIndicator, 
   HoldingStyleBadge,
   TradingSuitabilityBadge,
-  SyncStatusBadge
+  SyncStatusBadge,
+  ScoreBadge
 } from "./FXUIComponents";
 import { ChevronRight, Zap, Target, ShieldCheck, ShieldAlert } from "lucide-react";
 import { motion } from "framer-motion";
@@ -61,8 +62,8 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
               <th className="px-6 py-4">エネルギー</th>
               <th className="px-6 py-4">推奨サイズ</th>
               <th className="px-6 py-4">RR比・目標</th>
-              <th className="px-6 py-4">総合・適正</th>
-              <th className="px-6 py-4">信頼度</th>
+              <th className="px-6 py-4">総合判断</th>
+              <th className="px-6 py-4">適正・信頼度</th>
               <th className="px-6 py-4 text-right"></th>
             </tr>
           </thead>
@@ -161,25 +162,46 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                   ) : "-"}
                 </td>
                 <td className="px-6 py-5">
-                  <div className="flex flex-col gap-2 items-start">
+                  <div className="flex flex-col gap-2.5 items-start">
                     {item.syncStatus === "failed" ? (
                       <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-2 py-1 rounded-lg border border-rose-100 dark:border-rose-500/20 max-w-[150px] leading-tight">
                         {item.summaryComment || "同期失敗"}
                       </span>
                     ) : (
                       <>
-                        <SignalBadge label={item.signalLabel} />
-                        <TradingSuitabilityBadge suitability={item.suitability} />
+                        <div className="flex items-center gap-2">
+                          <SignalBadge label={item.signalLabel} />
+                          <span className={cn(
+                            "text-xs font-black tabular-nums",
+                            (item.totalScore || 0) >= 60 ? "text-emerald-500" : (item.totalScore || 0) <= -60 ? "text-rose-500" : "text-slate-500"
+                          )}>
+                             {Math.abs(item.totalScore || 0)}点
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 pl-0.5">
+                          <ScoreBadge score={item.technicalScore} label="T" />
+                          <ScoreBadge score={item.fundamentalScore} label="F" />
+                          <ScoreBadge score={item.swapScore} label="S" />
+                        </div>
                       </>
                     )}
                   </div>
                 </td>
                 <td className="px-6 py-5">
-                  <div className="flex flex-col gap-1">
-                    <ConfidenceIndicator level={item.confidence} />
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-[9px] font-black text-indigo-600 dark:text-indigo-400 w-fit">
-                      <ShieldCheck size={10} />
-                      <span>精度 {item.certainty}%</span>
+                  <div className="flex flex-col gap-2.5">
+                    <div className="flex flex-col gap-1">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter opacity-60">売買適正</p>
+                      <TradingSuitabilityBadge suitability={item.suitability} />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-tighter opacity-60">信頼度・精度</p>
+                      <div className="flex items-center gap-2">
+                        <ConfidenceIndicator level={item.confidence} />
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-[9px] font-black text-slate-500 dark:text-slate-400 w-fit">
+                          <ShieldCheck size={10} />
+                          <span>精度 {item.certainty}%</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </td>
@@ -202,13 +224,28 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
             className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] shadow-sm space-y-4"
           >
               {item.syncStatus === "failed" ? (
-                 <div className="flex items-center gap-2 px-3 py-1 bg-rose-50 dark:bg-rose-500/10 text-rose-500 border border-rose-100 dark:border-rose-500/20 rounded-full">
-                   <ShieldAlert size={12} />
-                   <span className="text-[10px] font-black">エラー発生</span>
-                 </div>
-              ) : (
-                <SignalBadge label={item.signalLabel} />
-              )}
+               <div className="flex items-center gap-2 px-3 py-1 bg-rose-50 dark:bg-rose-500/10 text-rose-500 border border-rose-100 dark:border-rose-500/20 rounded-full">
+                 <ShieldAlert size={12} />
+                 <span className="text-[10px] font-black">エラー発生</span>
+               </div>
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <SignalBadge label={item.signalLabel} />
+                  <span className={cn(
+                    "text-sm font-black tabular-nums",
+                    (item.totalScore || 0) >= 60 ? "text-emerald-500" : (item.totalScore || 0) <= -60 ? "text-rose-500" : "text-slate-500"
+                  )}>
+                     {Math.abs(item.totalScore || 0)}点
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <ScoreBadge score={item.technicalScore} label="T" />
+                  <ScoreBadge score={item.fundamentalScore} label="F" />
+                  <ScoreBadge score={item.swapScore} label="S" />
+                </div>
+              </div>
+            )}
             
             {item.syncStatus === "failed" && (
               <div className="p-3 bg-rose-50 dark:bg-rose-500/5 rounded-2xl border border-rose-100/50 dark:border-rose-500/10 mt-2">

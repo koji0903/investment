@@ -17,6 +17,7 @@ import {
   Coins, 
   ChevronRight, 
   BarChart, 
+  Search,
   ShieldCheck, 
   Target,
   Plus,
