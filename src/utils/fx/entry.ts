@@ -184,6 +184,23 @@ export const calculateEntryTiming = (
   }
 
   const decimals = pairCode.includes("JPY") ? 3 : 5;
+  const switchConditions: string[] = [];
+  
+  if (shouldWait) {
+    if (phase === "pullback_waiting") {
+      switchConditions.push(`${suggestedEntryPrice.toFixed(decimals)}円 付近への押し・戻りを確認`);
+    } else if (phase === "extended_move") {
+      switchConditions.push(`過熱感(RSI ${isUp ? "70" : "30"}以下)の解消と${suggestedEntryPrice.toFixed(decimals)}円への回帰`);
+    } else if (phase === "pre_consolidation") {
+      switchConditions.push(`${recentHigh.toFixed(decimals)}円 の上抜け、または ${recentLow.toFixed(decimals)}円 の下抜け`);
+    } else if (phase === "possible_fakeout") {
+      switchConditions.push(`${isUp ? recentHigh.toFixed(decimals) : recentLow.toFixed(decimals)}円 ${isUp ? "以上" : "以下"}での価格の定着を確認`);
+    } else if (phase === "consolidating") {
+      switchConditions.push("方向感の確定（レンジブレイク）を待機");
+    }
+  } else {
+    switchConditions.push("現在の価格でエントリー検討可能");
+  }
 
   return {
     structurePhase: phase,
@@ -201,6 +218,7 @@ export const calculateEntryTiming = (
     stopComment,
     targetComment,
     dataProgress,
+    switchConditions,
     certainty: Math.min(100, Math.round(
       (dataProgress * 0.6) + // データ量 (max 60)
       (rrRatio >= 1.5 ? 20 : 0) + // RR比の妥当性 (max 20)

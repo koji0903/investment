@@ -109,6 +109,14 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                       <span className="text-[9px] font-bold text-slate-400 mt-1 max-w-[140px] truncate" title={item.entryTimingAnalysis.waitReasons?.[0] || ""}>
                         {item.entryTimingAnalysis.shouldWait ? `待機: ${item.entryTimingAnalysis.waitReasons?.[0] || "---"}` : "エントリー推奨"}
                       </span>
+                      {item.entryTimingAnalysis.shouldWait && item.entryTimingAnalysis.switchConditions?.[0] && (
+                        <div className="flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 w-fit">
+                          <Zap size={8} className="text-amber-500" />
+                          <span className="text-[8px] font-black text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                            条件: {item.entryTimingAnalysis.switchConditions[0]}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ) : "-"}
                 </td>
@@ -289,6 +297,14 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                      item.entryTimingAnalysis.entryLabel.includes("売り") ? <TrendingDown size={14} /> : <Minus size={14} />}
                     <span>{item.entryTimingAnalysis.entryLabel}</span>
                   </div>
+                  {item.entryTimingAnalysis.shouldWait && item.entryTimingAnalysis.switchConditions?.[0] && (
+                    <div className="flex items-center gap-1 mt-2 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10">
+                      <Zap size={10} className="text-amber-500 animate-pulse" />
+                      <span className="text-[9px] font-black text-amber-600 dark:text-amber-400">
+                        判定切替の条件: {item.entryTimingAnalysis.switchConditions[0]}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-black text-slate-400 uppercase mb-1">RR比</p>

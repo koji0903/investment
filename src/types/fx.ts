@@ -161,6 +161,7 @@ export interface EntryTimingAnalysis {
   targetComment: string;
   dataProgress: number;          // 0-100 (%)
   certainty: number;             // 0-100 (%) 分析の確からしさ
+  switchConditions?: string[];   // 次の判断へ切り替わるための具体的な条件
 }
 
 /**
