@@ -79,7 +79,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ judgment, on
           initial={{ opacity: 0, scale: 0.95, y: 30 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 30 }}
-          className="relative w-full max-w-5xl bg-white dark:bg-slate-950 rounded-[48px] shadow-2xl overflow-hidden border border-white/20 dark:border-slate-800"
+          className="relative w-full max-w-6xl bg-white dark:bg-slate-950 rounded-[48px] shadow-2xl overflow-hidden border border-white/20 dark:border-slate-800"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-8 md:p-10 border-b border-slate-100 dark:border-slate-800/50 bg-slate-50/50 dark:bg-slate-900/50">
@@ -113,7 +113,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ judgment, on
             </button>
           </div>
 
-          <div className="p-8 md:p-10 space-y-10 max-h-[75vh] overflow-y-auto custom-scrollbar">
+          <div className="p-8 md:p-10 space-y-10 max-h-[85vh] overflow-y-auto custom-scrollbar">
             
             {/* Analysis Summary Bento */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
