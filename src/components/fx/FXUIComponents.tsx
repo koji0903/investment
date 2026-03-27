@@ -69,7 +69,7 @@ export const ConfidenceIndicator = ({ level }: { level: ConfidenceLevel }) => {
           />
         ))}
       </div>
-      <span className={cn("text-[10px] font-black ml-1", colors[level as keyof typeof colors] || colors["低"])}>{level}</span>
+      <span className={cn("text-xs font-black ml-1", colors[level as keyof typeof colors] || colors["低"])}>{level}</span>
     </div>
   );
 };
@@ -89,7 +89,7 @@ export const HoldingStyleBadge = ({ style }: { style: HoldingStyle }) => {
   const item = config[style as keyof typeof config] || config.short_term_only;
 
   return (
-    <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold", item.color)}>
+    <span className={cn("px-2 py-0.5 rounded text-xs font-bold", item.color)}>
       {item.label}
     </span>
   );
@@ -108,7 +108,7 @@ export const TradingSuitabilityBadge = ({ suitability }: { suitability: TradingS
   };
 
   return (
-    <div className={cn("px-2.5 py-1 rounded-lg text-[10px] font-black", styles[suitability as keyof typeof styles] || styles["様子見推奨"])}>
+    <div className={cn("px-2.5 py-1 rounded-lg text-xs font-black", styles[suitability as keyof typeof styles] || styles["様子見推奨"])}>
       {suitability}
     </div>
   );
@@ -129,7 +129,7 @@ export const SyncStatusBadge = ({ status }: { status?: "pending" | "syncing" | "
   const { label, color } = config[status as keyof typeof config] || config.pending;
 
   return (
-    <div className={cn("px-2 py-0.5 rounded-full text-[9px] font-black flex items-center gap-1 border border-current opacity-80", color)}>
+    <div className={cn("px-2 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1 border border-current opacity-80", color)}>
       <RefreshCw size={10} className={status === "syncing" ? "animate-spin" : ""} />
       <span>{label}</span>
     </div>
@@ -148,8 +148,8 @@ export const ScoreBadge = ({ score, label }: { score: number, label: string }) =
                 "text-slate-400 border-slate-100 bg-slate-50 dark:bg-slate-800/50 dark:border-slate-800";
   
   return (
-    <div className={cn("inline-flex flex-col items-center justify-center w-7 h-7 rounded-lg border font-black text-[8px]", color)}>
-      <span className="opacity-40 leading-none mb-0.5">{label}</span>
+    <div className={cn("inline-flex flex-col items-center justify-center w-9 h-9 rounded-lg border font-black text-[11px]", color)}>
+      <span className="opacity-40 leading-none mb-0.5 text-[9px]">{label}</span>
       <span className="leading-none">{score > 0 ? `+${score}` : score}</span>
     </div>
   );
