@@ -20,6 +20,9 @@ import {
   orderBy 
 } from "firebase/firestore";
 import { isConfigValid } from "@/lib/firebase";
+import { saveFinancialAnalysis } from "@/lib/db";
+import { performFinancialAnalysis } from "@/utils/stock/financialAnalysis";
+import { PLData, BSData, CFData, FinancialStatementPayload } from "@/types/financial";
 
 // 主要銘柄マスターを使用
 const STKS = TSE_PRIME_MASTER;
@@ -87,7 +90,16 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
           if (e.message.includes("No data found")) throw new Error("Chart: No data found (Symbol may be delisted)");
           throw new Error(`Chart: ${e.message}`); 
         }),
-        yf.quoteSummary(sym, { modules: ["defaultKeyStatistics", "financialData", "summaryDetail"] }).catch(e => {
+        yf.quoteSummary(sym, { 
+          modules: [
+            "defaultKeyStatistics", 
+            "financialData", 
+            "summaryDetail",
+            "incomeStatementHistory",
+            "balanceSheetHistory",
+            "cashflowStatementHistory"
+          ] 
+        }).catch(e => {
           console.warn(`[Sync] Summary fetch soft failure for ${ticker}:`, e.message);
           syncError = `財務情報の取得に失敗しました(${e.message})`;
           return null;
@@ -199,6 +211,63 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
     jud.syncStatus = "completed";
     jud.syncError = syncError;
     jud.updatedAt = new Date().toISOString();
+
+    // 4. 財務諸表判定エンジンの実行
+    try {
+      if (summary) {
+        const plHistory = (summary.incomeStatementHistory?.incomeStatementHistory || []) as any[];
+        const bsHistory = (summary.balanceSheetHistory?.balanceSheetHistory || []) as any[];
+        const cfHistory = (summary.cashflowStatementHistory?.cashflowStatementHistory || []) as any[];
+
+        const mappedPL: PLData[] = plHistory.map(h => ({
+          revenue: h.totalRevenue?.raw || 0,
+          grossProfit: h.grossProfit?.raw || 0,
+          operatingProfit: h.operatingIncome?.raw || 0,
+          ordinaryProfit: h.operatingIncome?.raw || 0, // 簡易
+          netIncome: h.netIncome?.raw || 0,
+          eps: (h.netIncome?.raw || 0) / (summary.defaultKeyStatistics?.sharesOutstanding?.raw || 1),
+          operatingMargin: ((h.operatingIncome?.raw || 0) / (h.totalRevenue?.raw || 1)) * 100,
+          netMargin: ((h.netIncome?.raw || 0) / (h.totalRevenue?.raw || 1)) * 100,
+          updatedAt: h.endDate?.fmt || new Date().toISOString()
+        }));
+
+        const mappedBS: BSData[] = bsHistory.map(h => ({
+          totalAssets: h.totalAssets?.raw || 0,
+          netAssets: h.totalStockholderEquity?.raw || 0,
+          equity: h.totalStockholderEquity?.raw || 0,
+          equityRatio: ((h.totalStockholderEquity?.raw || 0) / (h.totalAssets?.raw || 1)) * 100,
+          retainedEarnings: h.retainedEarnings?.raw || 0,
+          cashAndDeposits: h.cash?.raw || 0,
+          interestBearingDebt: (h.shortLongTermDebt?.raw || 0) + (h.longTermDebt?.raw || 0),
+          currentAssets: h.totalCurrentAssets?.raw || 0,
+          currentLiabilities: h.totalCurrentLiabilities?.raw || 0,
+          fixedLiabilities: (h.totalAssets?.raw || 0) - (h.totalCurrentAssets?.raw || 0), // 簡易計算
+          updatedAt: h.endDate?.fmt || new Date().toISOString()
+        }));
+
+        const mappedCF: CFData[] = cfHistory.map(h => ({
+          operatingCF: h.totalCashFromOperatingActivities?.raw || 0,
+          investingCF: h.totalCashflowsFromInvestingActivities?.raw || 0,
+          financingCF: h.totalCashflowsFromFinancingActivities?.raw || 0,
+          freeCF: (h.totalCashFromOperatingActivities?.raw || 0) + (h.capitalExpenditures?.raw || 0),
+          depreciation: h.depreciation?.raw || 0,
+          updatedAt: h.endDate?.fmt || new Date().toISOString()
+        }));
+
+        const financialResult = performFinancialAnalysis(stk.ticker, stk.name, {
+          pl: mappedPL,
+          bs: mappedBS,
+          cf: mappedCF
+        });
+
+        // 保存（Firestoreに保存、Server Action から呼び出し可能）
+        if (userId) {
+          await saveFinancialAnalysis(userId, stk.ticker, financialResult).catch(e => console.error("FI Analysis save failed", e));
+        }
+      }
+    } catch (fiErr) {
+      console.warn(`[Sync] Financial statement analysis failed for ${ticker}:`, fiErr);
+    }
 
     // 3. Firestoreへの保存はクライアントサイド(Service層)で行うため、ここでは行わない
     return { success: true, data: JSON.parse(JSON.stringify(jud)) };

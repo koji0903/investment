@@ -18,7 +18,7 @@ import {
 } from "@/types/fx";
 import { analyzeTechnical } from "@/utils/fx/technical";
 import { analyzeFundamental } from "@/utils/fx/fundamental";
-import { DEMO_USER_ID } from "@/context/AuthContext";
+import { DEMO_USER_ID } from "@/lib/constants";
 import { evaluateSwap, calculateTotalJudgment } from "@/utils/fx/scoring";
 import { 
   getFXJudgmentsAction, 

@@ -32,7 +32,7 @@ import {
 } from "@/types";
 import { AlertRule } from "@/types/alert";
 
-import { DEMO_USER_ID } from "@/context/AuthContext";
+import { DEMO_USER_ID } from "./constants";
 
 /**
  * ユーザーごとの詳細なコレクションパスを取得
@@ -632,3 +632,19 @@ export const getStockJudgment = async (uid: string, portfolioId: string, ticker:
   const snap = await getDoc(docRef);
   return snap.exists() ? snap.data() : null;
 };
+
+// --- Financial Statement Analysis ---
+
+export const saveFinancialAnalysis = async (uid: string, ticker: string, data: any) => {
+  if (!uid || uid === DEMO_USER_ID) return;
+  const docRef = doc(db, "users", uid, "japanese_stock_financial_analysis", ticker);
+  return setDoc(docRef, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+};
+
+export const getFinancialAnalysis = async (uid: string, ticker: string) => {
+  if (!uid) return null;
+  const docRef = doc(db, "users", uid, "japanese_stock_financial_analysis", ticker);
+  const snap = await getDoc(docRef);
+  return snap.exists() ? snap.data() : null;
+};
+

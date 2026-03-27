@@ -1,7 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { StockJudgment, TradingSuitability, FinancialHealth } from "@/types/stock";
+import { FinancialAnalysisResult } from "@/types/financial";
+import { useAuth } from "@/context/AuthContext";
+import { StockService } from "@/services/stockService";
+import { FinancialStatementCard } from "./FinancialStatementCard";
 import { 
   X, 
   Zap, 
@@ -35,6 +39,26 @@ interface StockDetailModalProps {
 }
 
 export const StockDetailModal: React.FC<StockDetailModalProps> = ({ judgment, onClose }) => {
+  const { user } = useAuth();
+  const [financialAnalysis, setFinancialAnalysis] = useState<FinancialAnalysisResult | null>(null);
+  const [loadingFinancial, setLoadingFinancial] = useState(false);
+
+  useEffect(() => {
+    const fetchFinancial = async () => {
+      if (!user || !judgment) return;
+      setLoadingFinancial(true);
+      try {
+        const result = await StockService.getFinancialAnalysis(user.uid, judgment.ticker);
+        setFinancialAnalysis(result as FinancialAnalysisResult);
+      } catch (err) {
+        console.error("Failed to fetch financial analysis", err);
+      } finally {
+        setLoadingFinancial(false);
+      }
+    };
+    fetchFinancial();
+  }, [user, judgment]);
+
   if (!judgment) return null;
 
   const chartColor = judgment.technicalTrend === "bullish" ? "#10b981" : judgment.technicalTrend === "bearish" ? "#f43f5e" : "#6366f1";
@@ -181,10 +205,21 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ judgment, on
                         />
                      </AreaChart>
                   </ResponsiveContainer>
-               </div>
-            </div>
+                </div>
+             </div>
+ 
+             {/* 財務三表判定カード */}
+             {financialAnalysis && (
+               <motion.div
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 transition={{ delay: 0.2 }}
+               >
+                 <FinancialStatementCard analysis={financialAnalysis} />
+               </motion.div>
+             )}
 
-            {/* Detailed Analysis Grid */}
+             {/* Detailed Analysis Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <DetailedSection title="テクニカル / 需給" icon={<Zap className="text-indigo-500" />} score={judgment.technicalScore} reasons={judgment.technicalReasons} />
               <DetailedSection title="ファンダメンタル / 成長性" icon={<BarChart className="text-emerald-500" />} score={judgment.fundamentalScore} reasons={judgment.fundamentalReasons} />

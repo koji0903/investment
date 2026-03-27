@@ -7,6 +7,7 @@ import {
   signOut as firebaseSignOut 
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { DEMO_USER_ID } from "@/lib/constants";
 
 interface AuthContextType {
   user: User | null;
@@ -15,7 +16,6 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-export const DEMO_USER_ID = "demo-user-stable-id";
 
 const AuthContext = createContext<AuthContextType>({
   user: null,

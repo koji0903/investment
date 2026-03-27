@@ -1,7 +1,7 @@
 import { db, saveStockJudgment, updateStockSyncingStatus } from "@/lib/db";
 import { collection, query, onSnapshot, orderBy, doc, getDoc } from "firebase/firestore";
 import { StockJudgment, StockPairMaster } from "@/types/stock";
-import { DEMO_USER_ID } from "@/context/AuthContext";
+import { DEMO_USER_ID } from "@/lib/constants";
 import { 
   getStockJudgmentsAction, 
   syncSpecificStockAction, 
@@ -102,5 +102,20 @@ export const StockService = {
       console.error("Error syncing real stock data:", error);
       return [];
     }
+  },
+
+  /**
+   * 財務諸表分析データを取得
+   */
+  getFinancialAnalysis: async (userId: string, ticker: string) => {
+    try {
+      if (!userId) return null;
+      const { getFinancialAnalysis } = await import("@/lib/db");
+      return await getFinancialAnalysis(userId, ticker);
+    } catch (error) {
+      console.error(`Error fetching financial analysis for ${ticker}:`, error);
+      return null;
+    }
   }
 };
+
