@@ -169,11 +169,12 @@ export const calculateEntryTiming = (
 
   const entryScore = Math.max(0, Math.min(100, Math.round(entryScoreRaw)));
 
+  const direction = isUp ? "買い" : "売り";
   let entryLabel = "";
-  if (entryScore >= 80) entryLabel = "エントリー好機";
-  else if (entryScore >= 65) entryLabel = "慎重に検討可能";
-  else if (entryScore >= 45) entryLabel = "待機を推奨";
-  else entryLabel = "見送り";
+  if (entryScore >= 80) entryLabel = `${direction}のエントリー好機`;
+  else if (entryScore >= 65) entryLabel = `${direction}で慎重に検討`;
+  else if (entryScore >= 45) entryLabel = `${direction}の待機を推奨`;
+  else entryLabel = `${direction}の見送り`;
 
   if (waitReasons.length > 0 || entryScore < 65) shouldWait = true;
   

@@ -10,7 +10,7 @@ import {
   SyncStatusBadge,
   ScoreBadge
 } from "./FXUIComponents";
-import { ChevronRight, Zap, Target, ShieldCheck, ShieldAlert } from "lucide-react";
+import { ChevronRight, Zap, Target, ShieldCheck, ShieldAlert, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ResponsiveContainer, AreaChart, Area, YAxis } from "recharts";
@@ -97,13 +97,15 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                 <td className="px-6 py-5">
                   {item.entryTimingAnalysis ? (
                     <div className="flex flex-col">
-                      <span className={cn("text-xs font-black", 
-                        item.entryTimingAnalysis.entryScore >= 85 ? "text-emerald-500" : 
-                        item.entryTimingAnalysis.entryScore >= 70 ? "text-indigo-500" : 
-                        item.entryTimingAnalysis.entryScore >= 50 ? "text-orange-500" : "text-rose-500"
+                      <div className={cn("flex items-center gap-1.5 text-xs font-black", 
+                        item.entryTimingAnalysis.entryLabel.includes("買い") ? "text-emerald-500" : 
+                        item.entryTimingAnalysis.entryLabel.includes("売り") ? "text-rose-500" : "text-slate-500"
                       )}>
-                        {item.entryTimingAnalysis.entryLabel} ({item.entryTimingAnalysis.entryScore || 0})
-                      </span>
+                        {item.entryTimingAnalysis.entryLabel.includes("買い") ? <TrendingUp size={14} /> : 
+                         item.entryTimingAnalysis.entryLabel.includes("売り") ? <TrendingDown size={14} /> : <Minus size={14} />}
+                        <span>{item.entryTimingAnalysis.entryLabel}</span>
+                        <span className="opacity-60 text-[10px]">({item.entryTimingAnalysis.entryScore || 0})</span>
+                      </div>
                       <span className="text-[9px] font-bold text-slate-400 mt-1 max-w-[140px] truncate" title={item.entryTimingAnalysis.waitReasons?.[0] || ""}>
                         {item.entryTimingAnalysis.shouldWait ? `待機: ${item.entryTimingAnalysis.waitReasons?.[0] || "---"}` : "エントリー推奨"}
                       </span>
@@ -276,16 +278,17 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
             )}
 
             {item.entryTimingAnalysis && (
-              <div className="flex items-center justify-between py-2">
+              <div className="flex items-center justify-between py-2 border-t border-slate-50 dark:border-slate-800/50 pt-4">
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase mb-1">エントリー判断</p>
-                  <span className={cn("text-xs font-black", 
-                    item.entryTimingAnalysis.entryScore >= 85 ? "text-emerald-500" : 
-                    item.entryTimingAnalysis.entryScore >= 70 ? "text-indigo-500" : 
-                    item.entryTimingAnalysis.entryScore >= 50 ? "text-orange-500" : "text-rose-500"
+                  <div className={cn("flex items-center gap-1.5 text-xs font-black", 
+                    item.entryTimingAnalysis.entryLabel.includes("買い") ? "text-emerald-500" : 
+                    item.entryTimingAnalysis.entryLabel.includes("売り") ? "text-rose-500" : "text-slate-500"
                   )}>
-                    {item.entryTimingAnalysis.entryLabel} ({item.entryTimingAnalysis.entryScore}pts)
-                  </span>
+                    {item.entryTimingAnalysis.entryLabel.includes("買い") ? <TrendingUp size={14} /> : 
+                     item.entryTimingAnalysis.entryLabel.includes("売り") ? <TrendingDown size={14} /> : <Minus size={14} />}
+                    <span>{item.entryTimingAnalysis.entryLabel}</span>
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-black text-slate-400 uppercase mb-1">RR比</p>

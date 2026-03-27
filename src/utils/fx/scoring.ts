@@ -189,13 +189,24 @@ export function consolidateJudgments(
     finalLabel = "買い優勢"; // または銘柄に合わせた方向
     if (energy.breakoutDirection === "down") finalLabel = "売り優勢";
     finalComment = `【判断統合】トレンドの初動とエントリ条件が完全に一致しました。非常に優位性の高い局面です。目標価格 ${entry.targetPrice} を目指した積極的な戦略が検討できます。`;
-  } else if (entry.entryLabel === "エントリー好機") {
-    finalLabel = "買い優勢";
-    if (initial.totalScore < 0) finalLabel = "売り優勢";
+  } else if (entry.entryLabel.includes("エントリー好機")) {
+    finalLabel = entry.entryLabel.includes("買い") ? "買い優勢" : "売り優勢";
     finalComment = `【判断統合】構造的に非常に有利なポイントに到達しました。${entry.structureComment}`;
   } else if (energy.fakeFlag || entry.structurePhase === "possible_fakeout") {
     finalLabel = "中立";
     finalComment = "【判断統合】ブレイクアウトの兆候がありますが、だましのリスクが極めて高い波形です。無理な参加は避け、底堅さ/上値の重さを再確認するまで静観を推奨します。";
+  }
+
+  // 1.5 方向性の不一致による調整 (Safety Guard)
+  // 総合判断(initial.signalLabel)とエントリー判断(entry.entryLabel)の方向を確認
+  const isTotalBuy = initial.signalLabel.includes("買い") || initial.signalLabel === "押し目待ち";
+  const isTotalSell = initial.signalLabel.includes("売り") || initial.signalLabel === "戻り売り待ち";
+  const isEntryBuy = entry.entryLabel.includes("買い");
+  const isEntrySell = entry.entryLabel.includes("売り");
+
+  if ((isTotalBuy && isEntrySell) || (isTotalSell && isEntryBuy)) {
+    finalLabel = "中立";
+    finalComment = `【警告】長期バイアス(${isTotalBuy ? "強気" : "弱気"})と短期エントリー方向(${isEntryBuy ? "買い" : "売り"})が逆転しています。判断が分かれる局面であるため、無理なエントリーは控え、方向感が一致するまで待機を推奨します。`;
   }
 
   // 2. 信頼度の調整
