@@ -242,27 +242,53 @@ export const StockJudgmentDashboard = () => {
   const sectors = useMemo(() => ["all", ...Array.from(new Set(allJudgments.map(j => j.sector)))].sort(), [allJudgments]);
 
   const filteredItems = useMemo(() => {
-    let result = [...allJudgments];
+    // 1. まず検索ワードとセクターで絞り込む（これは pending 銘柄にも適用）
+    let base = [...allJudgments];
     if (filters.search) {
       const s = filters.search.toLowerCase();
-      result = result.filter(j => j.companyName.includes(s) || j.ticker.includes(s));
+      base = base.filter(j => j.companyName.includes(s) || j.ticker.includes(s));
     }
-    if (filters.label !== "all") {
-      if (filters.label === "high_dividend") result = result.filter(j => (j.valuationMetrics?.dividendYield || 0) >= 3.5);
-      else if (filters.label === "undervalued") result = result.filter(j => j.valuationLabel === "undervalued");
-      else if (filters.label === "growth") result = result.filter(j => j.growthProfile === "growth");
-      else result = result.filter(j => j.signalLabel === filters.label);
+    if (filters.sector !== "all") {
+      base = base.filter(j => j.sector === filters.sector);
     }
-    if (filters.sector !== "all") result = result.filter(j => j.sector === filters.sector);
-    result.sort((a,b) => {
+
+    // 2. ラベルフィルタ（テクニカル・ファンダメンタル指標）の適用
+    if (filters.label === "all") return base;
+
+    // 確定済みの銘柄で条件に合うもの
+    const matched = base.filter(j => {
+      if (j.syncStatus !== "completed" && j.syncStatus !== "warning") return false;
+      
+      if (filters.label === "high_dividend") return (j.valuationMetrics?.dividendYield || 0) >= 3.5;
+      if (filters.label === "undervalued") return j.valuationLabel === "undervalued";
+      if (filters.label === "growth") return j.growthProfile === "growth";
+      return j.signalLabel === filters.label;
+    });
+
+    // 解析候補：まだ結果が出ていない銘柄を一定数混ぜる
+    // これにより、フィルタ適用中もこれらが表示され、優先同期（useEffect経由）が走る
+    const candidates = base.filter(j => j.syncStatus === "pending" || j.syncStatus === "syncing");
+    
+    // 確定済み銘柄を優先し、枠が余っていれば候補を追加（最大20件程度に制限してノイズを抑える）
+    const combined = [...matched, ...candidates.slice(0, Math.max(0, 20 - matched.length))];
+
+    // ソート適用
+    combined.sort((a,b) => {
       const aV = (a as any)[sort.key] || 0;
       const bV = (b as any)[sort.key] || 0;
       return sort.order === "desc" ? bV - aV : aV - bV;
     });
-    return result;
+    
+    return combined;
   }, [allJudgments, filters, sort]);
 
   const displayedItems = useMemo(() => filteredItems.slice(0, displayLimit), [filteredItems, displayLimit]);
+
+  const isScanning = useMemo(() => {
+    return filters.label !== "all" && 
+           syncStats.progress < 100 &&
+           filteredItems.some(j => j.syncStatus === "pending" || j.syncStatus === "syncing");
+  }, [filters.label, syncStats.progress, filteredItems]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -545,6 +571,30 @@ export const StockJudgmentDashboard = () => {
           </div>
         ) : (
           <div className="space-y-12">
+            {isScanning && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}
+                className="p-6 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-[32px] border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between gap-6 overflow-hidden relative group"
+              >
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  <Zap size={60} className="animate-pulse" />
+                </div>
+                <div className="flex items-center gap-4 relative z-10">
+                  <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-600/20">
+                    <Search size={20} className="animate-pulse" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight">
+                      「{filters.label === "high_dividend" ? "高配当" : filters.label === "undervalued" ? "割安" : filters.label === "growth" ? "成長" : filters.label}」銘柄をスキャン中...
+                    </p>
+                    <p className="text-[10px] font-bold text-slate-400">市場の全銘柄から条件に合致する対象を順次抽出しています</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-900 rounded-xl border border-indigo-100 dark:border-indigo-800 shadow-sm relative z-10">
+                   <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full animate-ping" />
+                   <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest leading-none">Scanning Engine Active</span>
+                </div>
+              </motion.div>
+            )}
             <div className="relative">
               <StockList items={displayedItems} onSelect={setSelectedStock} onVisible={addToPriorityQueue} />
             </div>

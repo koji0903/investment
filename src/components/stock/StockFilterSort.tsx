@@ -24,6 +24,12 @@ export const StockFilterSort: React.FC<StockFilterSortProps> = ({
   const [sortKey, setSortKey] = useState("totalScore");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
+  // Props からのフィルタ変更を検知して内部状態を更新
+  React.useEffect(() => {
+    setSearch(filters.search || "");
+    setActiveFilter(filters.label || "all");
+  }, [filters.search, filters.label]);
+
   const handleSearch = (val: string) => {
     setSearch(val);
     onFilterChange({ ...filters, search: val });
