@@ -20,9 +20,10 @@ import {
   orderBy 
 } from "firebase/firestore";
 import { isConfigValid } from "@/lib/firebase";
-import { saveFinancialAnalysis } from "@/lib/db";
 import { performFinancialAnalysis } from "@/utils/stock/financialAnalysis";
+import { calculateDecision } from "@/utils/investment/decisionEngine"; // 追加
 import { PLData, BSData, CFData, FinancialStatementPayload } from "@/types/financial";
+import { saveFinancialAnalysis, saveInvestmentDecision } from "@/lib/db"; // 追加
 
 // 主要銘柄マスターを使用
 const STKS = TSE_PRIME_MASTER;
@@ -260,9 +261,28 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
           cf: mappedCF
         });
 
-        // 保存（Firestoreに保存、Server Action から呼び出し可能）
         if (userId) {
           await saveFinancialAnalysis(userId, stk.ticker, financialResult).catch(e => console.error("FI Analysis save failed", e));
+        }
+
+        // --- 7. 意思決定エンジンの実行 & 保存 (プロ投資家レベル) ---
+        // 既存の判断結果からパラメータを推定
+        const estimatedWinRate = jud.totalScore > 70 ? 0.65 : jud.totalScore > 50 ? 0.55 : 0.45;
+        const targetUpside = jud.valuationLabel === "undervalued" ? 1.25 : 1.15;
+        const stopDownside = 0.93; // 7% stop loss as default for pro
+
+        const decision = calculateDecision(stk.ticker, {
+          winRate: estimatedWinRate,
+          targetPrice: jud.currentPrice * targetUpside,
+          stopPrice: jud.currentPrice * stopDownside,
+          currentPrice: jud.currentPrice,
+          currentDrawdown: 1.2, // 本来はポートフォリオ全体から取得するが、ここではデモ値
+          sectorExposure: 15,    // 本来はポートフォリオ全体から取得するが、ここではデモ値
+          trendStrength: jud.technicalScore
+        });
+
+        if (userId) {
+          await saveInvestmentDecision(userId, stk.ticker, decision).catch(e => console.error("Investment Decision save failed", e));
         }
       }
     } catch (fiErr) {
@@ -270,6 +290,7 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
     }
 
     // 3. Firestoreへの保存はクライアントサイド(Service層)で行うため、ここでは行わない
+
     return { success: true, data: JSON.parse(JSON.stringify(jud)) };
   } catch (err: any) {
     console.error(`[Stock] Critical sync error for ${ticker}:`, err);

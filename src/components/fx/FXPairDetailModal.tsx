@@ -1,7 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { FXJudgment } from "@/types/fx";
+import { InvestmentDecision } from "@/types/decision";
+import { useAuth } from "@/context/AuthContext";
+import { FXService } from "@/services/fxService";
+import { DecisionEngineCard } from "../stock/DecisionEngineCard";
 import { 
   SignalBadge, 
   ConfidenceIndicator, 
@@ -21,6 +25,24 @@ interface FXPairDetailModalProps {
 }
 
 export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, onClose }) => {
+  const { user } = useAuth();
+  const [investmentDecision, setInvestmentDecision] = useState<InvestmentDecision | null>(null);
+
+  useEffect(() => {
+    const fetchDecision = async () => {
+      if (!user || !judgment) return;
+      try {
+        const res = await FXService.getInvestmentDecision(user.uid, judgment.pairCode);
+        if (res) {
+          setInvestmentDecision(res as InvestmentDecision);
+        }
+      } catch (err) {
+        console.error("Failed to fetch FX investment decision", err);
+      }
+    };
+    fetchDecision();
+  }, [user, judgment]);
+
   if (!judgment) return null;
 
   return (
@@ -104,7 +126,19 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
                   </div>
                 </div>
             </div>
-
+ 
+            {/* 投資意思決定エンジンプロトコル */}
+            {investmentDecision && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mt-2"
+              >
+                <DecisionEngineCard decision={investmentDecision} />
+              </motion.div>
+            )}
+ 
             {/* Price Detail Chart */}
             {judgment.chartData && judgment.chartData.length > 0 && (
               <div className="space-y-4">

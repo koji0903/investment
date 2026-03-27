@@ -116,6 +116,36 @@ export const StockService = {
       console.error(`Error fetching financial analysis for ${ticker}:`, error);
       return null;
     }
+  },
+
+  /**
+   * 投資判断データを取得
+   */
+  getInvestmentDecision: async (userId: string, ticker: string) => {
+    try {
+      if (!userId) return null;
+      
+      const { DEMO_USER_ID } = await import("@/lib/constants");
+      if (userId === DEMO_USER_ID) {
+        // デモ用データの生成
+        const { calculateDecision } = await import("@/utils/investment/decisionEngine");
+        return calculateDecision(ticker, {
+          winRate: 0.58,
+          targetPrice: 1000 * 1.15, // ダミー
+          stopPrice: 1000 * 0.95,   // ダミー
+          currentPrice: 1000,
+          currentDrawdown: 0.8,
+          sectorExposure: 12,
+          trendStrength: 65
+        });
+      }
+
+      const { getInvestmentDecision } = await import("@/lib/db");
+      return await getInvestmentDecision(userId, ticker);
+    } catch (error) {
+      console.error(`Error fetching investment decision for ${ticker}:`, error);
+      return null;
+    }
   }
 };
 

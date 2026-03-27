@@ -144,8 +144,37 @@ export const FXService = {
     }
   },
 
+  async getInvestmentDecision(uid: string, pairCode: string) {
+    try {
+      if (!uid) return null;
+      
+      const { DEMO_USER_ID } = await import("@/lib/constants");
+      if (uid === DEMO_USER_ID) {
+        // デモ用データの生成
+        const { calculateDecision } = await import("@/utils/investment/decisionEngine");
+        return calculateDecision(pairCode, {
+          winRate: 0.52,
+          targetPrice: 150 * 1.02, // ダミー
+          stopPrice: 150 * 0.99,   // ダミー
+          currentPrice: 150,
+          currentDrawdown: 1.2,
+          sectorExposure: 10,
+          trendStrength: 45
+        });
+      }
+
+      const { getInvestmentDecision } = await import("@/lib/db");
+      return await getInvestmentDecision(uid, pairCode);
+    } catch (error) {
+      console.error(`Error fetching FX investment decision for ${pairCode}:`, error);
+      return null;
+    }
+  },
+
+
   /**
    * ダミーデータを生成して Firestore に保存 (初期化/テスト用)
+
    */
   async generateAndSaveDummyData(): Promise<FXJudgment[]> {
     const fundamentals = FXService.generateDummyFundamentals();

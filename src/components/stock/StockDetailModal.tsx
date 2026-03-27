@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { StockJudgment, TradingSuitability, FinancialHealth } from "@/types/stock";
 import { FinancialAnalysisResult } from "@/types/financial";
+import { InvestmentDecision } from "@/types/decision";
 import { useAuth } from "@/context/AuthContext";
 import { StockService } from "@/services/stockService";
 import { FinancialStatementCard } from "./FinancialStatementCard";
+import { DecisionEngineCard } from "./DecisionEngineCard";
 import { 
   X, 
   Zap, 
@@ -41,6 +43,7 @@ interface StockDetailModalProps {
 export const StockDetailModal: React.FC<StockDetailModalProps> = ({ judgment, onClose }) => {
   const { user } = useAuth();
   const [financialAnalysis, setFinancialAnalysis] = useState<FinancialAnalysisResult | null>(null);
+  const [investmentDecision, setInvestmentDecision] = useState<InvestmentDecision | null>(null);
   const [loadingFinancial, setLoadingFinancial] = useState(false);
 
   useEffect(() => {
@@ -50,8 +53,14 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ judgment, on
       try {
         const result = await StockService.getFinancialAnalysis(user.uid, judgment.ticker);
         setFinancialAnalysis(result as FinancialAnalysisResult);
+
+        // 意思決定データも取得
+        const decisionRes = await StockService.getInvestmentDecision(user.uid, judgment.ticker);
+        if (decisionRes) {
+          setInvestmentDecision(decisionRes as InvestmentDecision);
+        }
       } catch (err) {
-        console.error("Failed to fetch financial analysis", err);
+        console.error("Failed to fetch financial analysis/decision", err);
       } finally {
         setLoadingFinancial(false);
       }
@@ -214,8 +223,21 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ judgment, on
                  initial={{ opacity: 0, y: 20 }}
                  animate={{ opacity: 1, y: 0 }}
                  transition={{ delay: 0.2 }}
+                 className="mt-8"
                >
                  <FinancialStatementCard analysis={financialAnalysis} />
+               </motion.div>
+             )}
+
+             {/* 意思決定エンジンカード */}
+             {investmentDecision && (
+               <motion.div
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 transition={{ delay: 0.3 }}
+                 className="mt-8"
+               >
+                 <DecisionEngineCard decision={investmentDecision} />
                </motion.div>
              )}
 

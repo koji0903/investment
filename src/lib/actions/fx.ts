@@ -16,6 +16,8 @@ import { calculateEntryTiming } from "@/utils/fx/entry";
 import { calculatePositionSizing } from "@/utils/fx/position";
 import { calculateATR, calculatePivotPoints } from "@/lib/technicalAnalysis";
 import { consolidateJudgments } from "@/utils/fx/scoring";
+import { calculateDecision } from "@/utils/investment/decisionEngine";
+import { saveInvestmentDecision } from "@/lib/db";
 
 // マスタ情報の定義は types/fx.ts に移動
 
@@ -139,6 +141,28 @@ async function syncSpecificPair(userId: string, portfolioId: string, pair: FXPai
       judgment.syncStatus = "completed";
       judgment.lastSyncAt = new Date().toISOString();
       judgment.updatedAt = new Date().toISOString();
+
+      // --- 投資意思決定エンジンの統合 ---
+      try {
+        if (userId && judgment.entryTimingAnalysis) {
+          const entry = judgment.entryTimingAnalysis;
+          const estimatedWinRate = judgment.totalScore > 70 ? 0.60 : judgment.totalScore > 50 ? 0.52 : 0.45;
+          
+          const decision = calculateDecision(pair.pairCode, {
+            winRate: estimatedWinRate,
+            targetPrice: entry.targetPrice || (currentPrice * 1.02),
+            stopPrice: entry.invalidationPrice || (currentPrice * 0.99),
+            currentPrice: currentPrice,
+            currentDrawdown: 1.2, // デモ値
+            sectorExposure: 10,    // デモ値（FXの場合は通貨露出として扱う）
+            trendStrength: judgment.technicalScore
+          });
+
+          await saveInvestmentDecision(userId, pair.pairCode, decision);
+        }
+      } catch (decErr) {
+        console.error(`[Decision] Decision engine failed for ${pair.pairCode}:`, decErr);
+      }
     } else {
       throw new Error(`Data not found for ${pair.pairCode}`);
     }

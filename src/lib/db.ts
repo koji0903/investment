@@ -648,3 +648,19 @@ export const getFinancialAnalysis = async (uid: string, ticker: string) => {
   return snap.exists() ? snap.data() : null;
 };
 
+// --- Investment Decision Engine ---
+
+export const saveInvestmentDecision = async (uid: string, ticker: string, data: any) => {
+  if (!uid || uid === DEMO_USER_ID) return;
+  const docRef = doc(db, "users", uid, "investment_decision_engine", ticker);
+  return setDoc(docRef, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+};
+
+export const getInvestmentDecision = async (uid: string, ticker: string) => {
+  if (!uid) return null;
+  const docRef = doc(db, "users", uid, "investment_decision_engine", ticker);
+  const snap = await getDoc(docRef);
+  return snap.exists() ? snap.data() : null;
+};
+
+
