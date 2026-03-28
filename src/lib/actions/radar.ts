@@ -18,7 +18,8 @@ const yf = new YahooFinance();
 const MAJOR_TICKERS = [
   "7203", "8306", "9984", "9432", "8058", "4063", "6758", "2914", "1605", "4502",
   "6501", "8031", "6954", "6367", "6098", "6178", "7751", "6752", "4568", "8316",
-  "9022", "9101", "8801", "8267", "6981", "6861", "4519", "7011", "9020", "8001"
+  "9022", "9101", "8801", "8267", "6981", "6861", "4519", "7011", "9020", "8001",
+  "4503", "6301", "7267", "6902", "8053", "8308", "8309", "8766", "8802", "9433"
 ];
 
 export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardData> {
@@ -27,6 +28,7 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
   const start = new Date();
   start.setDate(end.getDate() - 150);
 
+  // 1. 限定された対象を手動スキャン (リアルタイム性を担保)
   const fetchTasks = MAJOR_TICKERS.map(async (ticker) => {
     try {
       const sym = ticker + ".T";
@@ -50,9 +52,9 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
       const stockData = {
         ticker,
         companyName: tick.longName || tick.shortName || ticker,
-        sector: "主要銘柄",
+        sector: tick.sector || "主要銘柄",
         currentPrice: tick.regularMarketPrice,
-        marketCap: (tick.marketCap || 0) / 1000000000000, // 兆円
+        marketCap: (tick.marketCap || 0) / 1000000000000, 
         volume: tick.regularMarketVolume || 0,
         per: tick.trailingPE || tick.forwardPE || 15,
         pbr: tick.priceToBook || 1.1,
@@ -64,13 +66,9 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
         updatedAt: new Date().toISOString()
       };
 
-      // Filter check
-      if (stockData.marketCap < (filter.minMarketCap / 1000)) return null; // Filter is in 億円? No, let's assume filter is in 兆円 for radar if it's 500? Wait.
-      // The default filter has minMarketCap: 500. If that's 億円, then 500億円 = 0.05兆円.
-      // Let's adjust filter logic to handle 億円.
-      const marketCapInOkuyen = stockData.marketCap * 10000;
-      if (marketCapInOkuyen < filter.minMarketCap) return null;
-      if (stockData.per < filter.perRange[0] || stockData.per > filter.perRange[1]) return null;
+      // 基本的なスクリーニング
+      const capInOkuyen = stockData.marketCap * 10000;
+      if (capInOkuyen < filter.minMarketCap) return null;
 
       const prices = hist.map(h => h.close).filter(p => typeof p === "number");
       const tech = analyzeStockTechnical(prices, stockData.currentPrice);
@@ -86,7 +84,14 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
       const tags = categorizeStock({ ...stockData, ...tech, totalScore: judgment.totalScore } as any);
       const comm = generateRadarComment(tags, judgment.totalScore);
 
-      return { ...judgment, ...stockData, categoryTags: tags, summaryComment: comm };
+      return { 
+        ...judgment, 
+        ...stockData, 
+        categoryTags: tags, 
+        summaryComment: comm,
+        technicalScore: judgment.technicalScore || 0,
+        fundamentalScore: judgment.fundamentalScore || 0
+      } as RadarResult;
     } catch (e) {
       return null;
     }
@@ -95,16 +100,49 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
   const allFetched = await Promise.all(fetchTasks);
   const screened = allFetched.filter(r => r !== null) as RadarResult[];
 
-  const saveTasks = screened.slice(0, 10).map(async (res) => {
-    const docId = res.ticker + "_" + new Date().toISOString().split('T')[0];
-    await (setDoc as any)(doc(db, "market_scans", docId), {
-      ...res,
-      updatedAt: new Date().toISOString()
-    });
+  // 2. セクター別の集計計算
+  const sectorMap: Record<string, { totalReturn: number; count: number; marketCap: number }> = {};
+  screened.forEach(s => {
+    const sec = s.sector || "その他";
+    if (!sectorMap[sec]) sectorMap[sec] = { totalReturn: 0, count: 0, marketCap: 0 };
+    sectorMap[sec].totalReturn += s.totalScore;
+    sectorMap[sec].count += 1;
+    sectorMap[sec].marketCap += s.marketCap;
   });
-  await Promise.all(saveTasks);
 
-  const getCat = (cat: RadarCategory) => screened.filter(r => r.categoryTags.includes(cat)).slice(0, 4);
+  const sectors = Object.entries(sectorMap).map(([name, data]) => ({
+    name,
+    avgReturn: data.totalReturn / data.count,
+    count: data.count,
+    marketCap: data.marketCap
+  })).sort((a, b) => b.marketCap - a.marketCap);
+
+  // 3. マーケットセンチメントの算出
+  const totalScoreAvg = screened.reduce((sum, r) => sum + r.totalScore, 0) / (screened.length || 1);
+  const bullishCount = screened.filter(r => r.totalScore > 20).length;
+  const bearishCount = screened.filter(r => r.totalScore < -20).length;
+  const neutralCount = screened.length - bullishCount - bearishCount;
+  
+  const sentimentScore = Math.min(100, Math.max(0, 50 + (totalScoreAvg * 1.5)));
+  const sentimentLabel = sentimentScore > 70 ? "強気" : sentimentScore > 40 ? "中立" : "弱気";
+
+  // 結果の保存 (最新スキャンとして保存) - 権限エラーで全体が止まらないようtry-catch
+  try {
+    if (screened.length > 0) {
+      const latestDoc = doc(db, "market_radar", "latest");
+      await (setDoc as any)(latestDoc, {
+        screenedCount: screened.length,
+        sentiment: { score: sentimentScore, label: sentimentLabel, bullishCount, bearishCount, neutralCount },
+        sectors,
+        lastScannedAt: new Date().toISOString()
+      }, { merge: true });
+    }
+  } catch (err) {
+    console.warn("[Radar] Failed to save latest summary to Firestore:", err);
+  }
+
+  const getCat = (cat: RadarCategory) => screened.filter(r => r.categoryTags.includes(cat)).slice(0, 6);
+
   return {
     recommendations: { growth: getCat("growth"), value: getCat("value"), dividend: getCat("dividend"), trend: getCat("trend"), rebound: getCat("rebound") },
     rankings: {
@@ -114,6 +152,13 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
       dividend: [...screened].sort((a, b) => b.dividendYield - a.dividendYield).slice(0, 5),
       trend: [...screened].sort((a, b) => b.technicalScore - a.technicalScore).slice(0, 5),
     },
-    todayFocus: screened.sort((a, b) => b.totalScore - a.totalScore).slice(0, 3)
+    todayFocus: screened.sort((a, b) => b.totalScore - a.totalScore).slice(0, 3),
+    marketOverview: {
+      sentiment: { score: sentimentScore, label: sentimentLabel, bullishCount, bearishCount, neutralCount },
+      sectors,
+      topGainers: [...screened].sort((a, b) => b.totalScore - a.totalScore).slice(0, 5),
+      topVolume: [...screened].sort((a, b) => b.volume - a.volume).slice(0, 5),
+    },
+    lastScannedAt: new Date().toISOString()
   };
 }

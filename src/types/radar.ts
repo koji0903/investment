@@ -25,6 +25,21 @@ export interface RadarResult extends StockJudgment {
   dividendYield: number;
 }
 
+export interface SectorPerformance {
+  name: string;
+  avgReturn: number;
+  count: number;
+  marketCap: number; // 兆円
+}
+
+export interface MarketSentiment {
+  score: number; // 0-100
+  label: string;
+  bullishCount: number;
+  bearishCount: number;
+  neutralCount: number;
+}
+
 export interface RadarDashboardData {
   recommendations: Record<RadarCategory, RadarResult[]>;
   rankings: {
@@ -35,4 +50,11 @@ export interface RadarDashboardData {
     trend: RadarResult[];
   };
   todayFocus: RadarResult[];
+  marketOverview: {
+    sentiment: MarketSentiment;
+    sectors: SectorPerformance[];
+    topGainers: RadarResult[];
+    topVolume: RadarResult[];
+  };
+  lastScannedAt: string;
 }
