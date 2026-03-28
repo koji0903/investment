@@ -12,6 +12,8 @@ import {
   calculateStockTotalJudgment 
 } from "@/utils/stock/stock_utils_bridge";
 
+import { TSE_PRIME_MASTER } from "@/data/tse_prime_master";
+
 import YahooFinance from "yahoo-finance2";
 const yf = new YahooFinance();
 
@@ -32,6 +34,10 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
   const fetchTasks = MAJOR_TICKERS.map(async (ticker) => {
     try {
       const sym = ticker + ".T";
+      
+      // 日本語名の取得先を確認
+      const masterInfo = TSE_PRIME_MASTER.find(m => m.ticker === ticker);
+      
       const tick: any = await yf.quote(sym).catch(() => null);
       if (!tick) return null;
 
@@ -51,8 +57,8 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
 
       const stockData = {
         ticker,
-        companyName: tick.longName || tick.shortName || ticker,
-        sector: tick.sector || "主要銘柄",
+        companyName: masterInfo?.name || tick.longName || tick.shortName || ticker,
+        sector: masterInfo?.sector || tick.sector || "主要銘柄",
         currentPrice: tick.regularMarketPrice,
         marketCap: (tick.marketCap || 0) / 1000000000000, 
         volume: tick.regularMarketVolume || 0,
