@@ -25,7 +25,7 @@ import { calculateDecision } from "@/utils/investment/decisionEngine"; // 追加
 import { PLData, BSData, CFData, FinancialStatementPayload } from "@/types/financial";
 import { saveFinancialAnalysis, saveInvestmentDecision } from "@/lib/db"; // 追加
 
-// 主要銘柄マスターを使用
+// 主要銘柄マスターを使用 (互換性のために残すが、Firestoreマスタを優先する)
 const STKS = TSE_PRIME_MASTER;
 
 export async function getStockBasicInfoAction(ticker: string): Promise<{ success: boolean; data?: StockPairMaster; message?: string }> {
@@ -48,15 +48,28 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
   try {
     const sym = ticker.endsWith(".T") ? ticker : ticker + ".T";
     const plainTicker = ticker.replace(".T", "");
+    const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
+    const docRef = doc(db, path, plainTicker);
+    
+    // 0. 銘柄マスタを Firestore から取得 (STKSにない場合)
     let stk = STKS.find(s => s.ticker === plainTicker);
+    if (!stk) {
+      try {
+        const masterRef = doc(db, "stock_master", plainTicker);
+        const masterSnap = await getDoc(masterRef);
+        if (masterSnap.exists()) {
+          stk = masterSnap.data() as StockPairMaster;
+        }
+      } catch (e) {
+        console.warn(`[Sync] Master fetch failed for ${plainTicker}`);
+      }
+    }
+
     if (!stk) {
       const basic = await getStockBasicInfoAction(plainTicker);
       if (!basic.success || !basic.data) return { success: false, message: "銘柄情報が取得できません" };
       stk = basic.data;
     }
-
-    const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
-    const docRef = doc(db, path, plainTicker);
     
     // キャッシュチェック (Soft Fail: 権限エラーでも解析へ進む)
     let docSnap = null;

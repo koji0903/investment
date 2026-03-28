@@ -10,11 +10,52 @@ import {
   getStockBasicInfoAction
 } from "@/lib/actions/stock";
 
+import { getStockMasterAction } from "@/lib/actions/stockMaster";
 import { TSE_PRIME_MASTER } from "@/data/tse_prime_master";
 
 export const MONITORING_STOCKS: StockPairMaster[] = TSE_PRIME_MASTER;
 
 export const StockService = {
+  /**
+   * 銘柄マスタ一覧を取得（Firestore + localStorageキャッシュ）
+   */
+  getMasterList: async (forceRefresh = false): Promise<StockPairMaster[]> => {
+    try {
+      const CACHE_KEY = "stock_master_cache";
+      const CACHE_TIME_KEY = "stock_master_cache_time";
+      const CACHE_TTL = 24 * 60 * 60 * 1000; // 24時間
+
+      if (!forceRefresh && typeof window !== 'undefined') {
+        const cached = localStorage.getItem(CACHE_KEY);
+        const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+        
+        if (cached && cachedTime) {
+          const time = parseInt(cachedTime);
+          if (Date.now() - time < CACHE_TTL) {
+            console.log("Loading stock master from cache");
+            return JSON.parse(cached);
+          }
+        }
+      }
+
+      console.log("Fetching stock master from Firestore...");
+      const result = await getStockMasterAction();
+      if (result.success && result.data) {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(result.data));
+          localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+        }
+        return result.data;
+      }
+
+      // 失敗時は静的なマスターをフォールバックとして返す
+      return MONITORING_STOCKS;
+    } catch (error) {
+      console.error("Error in getMasterList:", error);
+      return MONITORING_STOCKS;
+    }
+  },
+
   getJudgments: async (userId: string, portfolioId: string): Promise<StockJudgment[]> => {
     try {
       return await getStockJudgmentsAction(userId, portfolioId);
@@ -84,11 +125,12 @@ export const StockService = {
   /**
    * 全銘柄のリアルデータ同期
    */
-  syncRealData: async (userId: string, portfolioId: string): Promise<StockJudgment[]> => {
+  syncRealData: async (userId: string, portfolioId: string, customTargets?: StockPairMaster[]): Promise<StockJudgment[]> => {
     try {
       // サーバー側の一括同期は権限の問題で Firestore 保存できないため、クライアント側で順次実行
       const results: StockJudgment[] = [];
-      const targets = MONITORING_STOCKS.slice(0, 15); // パフォーマンスのため上位15件
+      // ターゲットが指定されていなければデフォルト（以前のロジック用）を使用
+      const targets = customTargets || MONITORING_STOCKS.slice(0, 15);
       
       for (const stk of targets) {
         const res = await StockService.syncStock(userId, portfolioId, stk.ticker);
