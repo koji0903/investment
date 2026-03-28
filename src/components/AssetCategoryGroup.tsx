@@ -27,8 +27,14 @@ export const AssetCategoryGroup = ({ category, assets }: AssetCategoryGroupProps
   
   const totalValue = assets.reduce((sum, a) => sum + a.evaluatedValue, 0);
   const totalProfit = assets.reduce((sum, a) => sum + a.profitAndLoss, 0);
+  const totalDailyChange = assets.reduce((sum, a) => sum + (a.dailyChange || 0), 0);
+  
   const profitPercentage = assets.reduce((sum, a) => sum + (a.averageCost * a.quantity), 0) > 0 
     ? (totalProfit / assets.reduce((sum, a) => sum + (a.averageCost * a.quantity), 0)) * 100 
+    : 0;
+
+  const totalDailyChangePercentage = (totalValue - totalDailyChange) > 0 
+    ? (totalDailyChange / (totalValue - totalDailyChange)) * 100 
     : 0;
 
   return (
@@ -46,17 +52,30 @@ export const AssetCategoryGroup = ({ category, assets }: AssetCategoryGroupProps
                 {assets.length}銘柄
               </span>
             </h3>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
-                {formatCurrency(totalValue)}
-              </span>
-              <span className={cn(
-                "text-sm font-bold flex items-center gap-1",
-                totalProfit >= 0 ? "text-emerald-500" : "text-rose-500"
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 mt-1">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl font-black text-slate-900 dark:text-white tabular-nums">
+                  {formatCurrency(totalValue)}
+                </span>
+                <span className={cn(
+                  "text-sm font-bold flex items-center gap-1",
+                  totalProfit >= 0 ? "text-emerald-500" : "text-rose-500"
+                )}>
+                  通算: {totalProfit >= 0 ? "+" : ""}{formatCurrency(totalProfit)} 
+                  ({totalProfit >= 0 ? "+" : ""}{profitPercentage.toFixed(2)}%)
+                </span>
+              </div>
+              
+              <div className={cn(
+                "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800",
+                totalDailyChange >= 0 ? "text-emerald-500" : "text-rose-500"
               )}>
-                {totalProfit >= 0 ? "+" : ""}{formatCurrency(totalProfit)} 
-                ({totalProfit >= 0 ? "+" : ""}{profitPercentage.toFixed(2)}%)
-              </span>
+                <span className="opacity-60 text-[10px] uppercase tracking-tighter">本日:</span>
+                <span>{totalDailyChange >= 0 ? "+" : ""}{formatCurrency(totalDailyChange)}</span>
+                <span className="opacity-80">
+                  ({totalDailyChange >= 0 ? "+" : ""}{totalDailyChangePercentage.toFixed(2)}%)
+                </span>
+              </div>
             </div>
           </div>
         </div>

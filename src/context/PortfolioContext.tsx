@@ -55,6 +55,7 @@ interface PortfolioContextType {
   deleteAsset: (assetId: string) => Promise<void>;
   syncExternalData?: (providerType: 'stock' | 'crypto' | 'fx') => Promise<void>;
   prices: Record<string, number>;
+  dailyChanges: Record<string, number>;
   lastUpdated: string | null;
   isFetching: boolean;
   fetchError: string | null;
@@ -70,6 +71,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   const [portfolioId, setPortfolioId] = useState("default");
   const [assets, setAssets] = useState<Asset[]>([]);
   const [prices, setPrices] = useState<Record<string, number>>({});
+  const [dailyChanges, setDailyChanges] = useState<Record<string, number>>({});
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisSummary | null>(null);
   const [behavior, setBehavior] = useState<any>(null);
@@ -166,6 +168,9 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
 
       if (data.prices) {
         setPrices(prev => ({ ...prev, ...data.prices }));
+        if (data.dailyChanges) {
+          setDailyChanges(prev => ({ ...prev, ...data.dailyChanges }));
+        }
         if (data.timestamp) setLastUpdated(data.timestamp);
         
         // オプティミスティックにFirestoreの最新価格も更新 (バックグラウンド)
@@ -323,9 +328,9 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
       const latestPrice = asset.isManual && !asset.symbol 
         ? asset.currentPrice 
         : (prices[asset.symbol] || asset.currentPrice);
-      return calculateAssetValues({ ...asset, currentPrice: latestPrice }, prices);
+      return calculateAssetValues({ ...asset, currentPrice: latestPrice }, prices, dailyChanges);
     });
-  }, [assets, prices]);
+  }, [assets, prices, dailyChanges]);
 
   const totalAssetsValue = useMemo(() => {
     return calculatedAssets.reduce((total, asset) => total + asset.evaluatedValue, 0);
@@ -426,6 +431,7 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         deleteAsset,
         syncExternalData,
         prices,
+        dailyChanges,
         lastUpdated,
         isFetching,
         fetchError,

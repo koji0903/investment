@@ -202,6 +202,21 @@ export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
                 {isProfit ? "+" : ""}{(asset.profitPercentage || 0).toFixed(2)}%
               </span>
             </div>
+
+            {/* 本日の損益 (前日比) */}
+            <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/50 flex items-center justify-between">
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-wider">本日の損益</span>
+              <div className={cn(
+                "flex items-center gap-1.5 text-xs font-black",
+                (asset.dailyChange || 0) >= 0 ? "text-emerald-500" : "text-rose-500"
+              )}>
+                <span>{(asset.dailyChange || 0) >= 0 ? "+" : ""}{formatCurrency(asset.dailyChange || 0)}</span>
+                <span className="opacity-80">
+                  ({(asset.dailyChangePercentage || 0) >= 0 ? "+" : ""}{(asset.dailyChangePercentage || 0).toFixed(2)}%)
+                </span>
+              </div>
+            </div>
+
             {asset.depositMargin !== undefined && asset.depositMargin !== 0 && (
               <div className="mt-1 flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-slate-400">
                 <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 uppercase tracking-tighter">Deposit</span>

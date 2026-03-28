@@ -160,8 +160,18 @@ async function getMarketData(requestedSymbols: string[] = []) {
       };
     });
 
+    // 騰落率マップの作成
+    const dailyChangeMap: Record<string, number> = {};
+    symbolMap.forEach((normalized, original) => {
+      const res = quoteResults.find(r => r.symbol === normalized);
+      if (res) {
+        dailyChangeMap[original] = res.changePercent;
+      }
+    });
+
     return { 
       prices: priceMap, 
+      dailyChanges: dailyChangeMap,
       macro: macroData,
       fxAnalysis: fxAnalysis,
       timestamp: new Date().toISOString() 

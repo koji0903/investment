@@ -9,7 +9,11 @@ export const dummyAssets: Asset[] = [
   { id: "5", symbol: "EMAXIS-SLIM", name: "eMAXIS Slim 全世界株式", category: "投資信託", currentPrice: 25000, quantity: 150, averageCost: 20000, currency: "JPY" },
 ];
 
-export const calculateAssetValues = (asset: Asset, prices: Record<string, number> = {}): AssetCalculated => {
+export const calculateAssetValues = (
+  asset: Asset, 
+  prices: Record<string, number> = {},
+  dailyChanges: Record<string, number> = {}
+): AssetCalculated => {
   // 対円レート取得
   const usdJpyRate = prices["JPY=X"] || prices["USDJPY=X"] || 151.2;
   
@@ -70,9 +74,15 @@ export const calculateAssetValues = (asset: Asset, prices: Record<string, number
     
   const profitPercentage = marginForDenominator > 0 ? (profitAndLoss / marginForDenominator) * 100 : 0;
 
-  // デモ用に前日比をシミュレーション
-  const seed = (asset.id || asset.symbol || asset.name).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-  const dailyChangePercentage = ((seed % 50) / 10) - 2.5; 
+  // 前日比の決定: 実データがあればそれを使用、なければシミュレーション
+  let dailyChangePercentage = dailyChanges[asset.symbol];
+  
+  if (dailyChangePercentage === undefined) {
+    // デモ用に前日比をシミュレーション
+    const seed = (asset.id || asset.symbol || asset.name).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    dailyChangePercentage = ((seed % 50) / 10) - 2.5; 
+  }
+
   const dailyChange = Math.abs(evaluatedValue) * (dailyChangePercentage / 100);
 
   return {
