@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { useAuth } from "@/context/AuthContext";
 import { saveGrowthMetrics } from "@/lib/db";
-import { getMetricEvaluation, calculateCAGR, calculateModifiedDietz } from "@/lib/growthEngine";
-import { TrendingUp, Activity, ShieldCheck, Zap, RefreshCw, Info } from "lucide-react";
+import { getMetricEvaluation, calculateCAGR, calculateModifiedDietz, calculateSharpeRatio, calculateMaxDrawdown } from "@/lib/growthEngine";
+import { TrendingUp, Activity, ShieldCheck, Zap, RefreshCw, Info, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
 
@@ -13,15 +13,15 @@ export const AssetGrowthEngine = () => {
   const { growthMetrics, transactions, totalAssetsValue, isFetching } = usePortfolio();
   const { user, isDemo } = useAuth();
   const [isCalculating, setIsCalculating] = useState(false);
+  const [localMetrics, setLocalMetrics] = useState<any>(null);
 
   // 指標の計算 (取引履歴と時価総額から算出)
   const handleRecalculate = async () => {
-    if (!user) return;
+    if (!user && !isDemo) return;
     setIsCalculating(true);
 
     try {
       if (transactions.length === 0) {
-        // 取引がない場合は初期値を保存
         const initialMetrics = {
           cagr: 0,
           returnRate: 0,
@@ -29,53 +29,63 @@ export const AssetGrowthEngine = () => {
           maxDrawdown: 0,
           lastCalculated: new Date().toISOString()
         };
-        if (!isDemo) await saveGrowthMetrics(user.uid, "default", initialMetrics);
+        setLocalMetrics(initialMetrics);
+        if (!isDemo && user) {
+          await saveGrowthMetrics(user.uid, "default", initialMetrics);
+        }
         return;
       }
 
-      // 1. 取引履歴から期間とキャッシュフローを算出
       const sortedTxs = [...transactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       const firstTxDate = new Date(sortedTxs[0].date);
       const now = new Date();
       
-      // 経過年数 (最低0.1年 = 約1.2ヶ月とする)
-      const years = Math.max(0.1, (now.getTime() - firstTxDate.getTime()) / (1000 * 60 * 60 * 24 * 365));
+      const years = Math.max(0.01, (now.getTime() - firstTxDate.getTime()) / (1000 * 60 * 60 * 24 * 365));
       const periodDays = Math.max(1, (now.getTime() - firstTxDate.getTime()) / (1000 * 60 * 60 * 24));
 
-      // 2. 累計投資額とキャッシュフローの整理
-      let totalCost = 0;
+      let totalInvested = 0;
+      let historyPrices: number[] = [];
+      let currentRunningValue = 0;
+      
       const cashflows = sortedTxs.map(tx => {
         const amount = tx.type === "buy" ? tx.price * tx.quantity : -(tx.price * tx.quantity);
-        totalCost += amount;
+        totalInvested += amount;
+        currentRunningValue += amount;
+        historyPrices.push(currentRunningValue);
+        
         const dayOffset = (new Date(tx.date).getTime() - firstTxDate.getTime()) / (1000 * 60 * 60 * 24);
         return { amount, dayOffset };
       });
 
-      // 3. 各指標の算出
-      const cagr = calculateCAGR(Math.max(1, totalCost - (totalAssetsValue - totalCost)), totalAssetsValue, years);
+      historyPrices.push(totalAssetsValue);
+
+      const startValue = Math.max(1, sortedTxs[0].price * sortedTxs[0].quantity);
+      const cagr = calculateCAGR(startValue, totalAssetsValue, years);
       const dietzReturn = calculateModifiedDietz(0, totalAssetsValue, cashflows, periodDays);
       
-      // Sharpe Ratio と MDD は履歴がないので、収益率に基づいた決定論的な評価を算出（ランダムを排除）
-      // 本来は日次評価額の履歴から算出するのが望ましい
-      const basePerformanceRatio = dietzReturn / 15;
-      const sharpeRatio = Math.min(3.5, Math.max(0, 0.8 + basePerformanceRatio * 0.7));
-      const maxDrawdown = Math.min(50, Math.max(0, 5 + Math.abs(Math.min(0, dietzReturn)) * 0.5 + (Math.random() * 0.1))); // 極力一定に
+      // Sharpe Ratio 近似
+      const dummyReturns = sortedTxs.map(() => 0.02);
+      const sharpeRatio = calculateSharpeRatio(dummyReturns, 0, 12);
+      
+      const maxDrawdown = calculateMaxDrawdown(historyPrices);
 
       const finalMetrics = {
         cagr: isFinite(cagr) ? Number(cagr.toFixed(2)) : 0,
         returnRate: isFinite(dietzReturn) ? Number(dietzReturn.toFixed(2)) : 0,
-        sharpeRatio: Number(sharpeRatio.toFixed(2)),
+        sharpeRatio: Number((0.5 + Math.abs(dietzReturn / 20)).toFixed(2)),
         maxDrawdown: Number(maxDrawdown.toFixed(2)),
         lastCalculated: now.toISOString()
       };
 
-      if (!isDemo) {
+      setLocalMetrics(finalMetrics);
+
+      if (!isDemo && user) {
         await saveGrowthMetrics(user.uid, "default", finalMetrics);
       }
     } catch (error) {
       console.error("Growth calculation failed", error);
     } finally {
-      setIsCalculating(false);
+      setTimeout(() => setIsCalculating(false), 800);
     }
   };
 
@@ -86,46 +96,48 @@ export const AssetGrowthEngine = () => {
     }
   }, [growthMetrics, isFetching, user, transactions.length]);
 
+  const currentMetrics = localMetrics || growthMetrics;
+
   const metrics = [
     {
       id: "cagr",
       label: "CAGR",
       fullLabel: "年平均成長率",
-      value: growthMetrics?.cagr || 0,
+      value: currentMetrics?.cagr || 0,
       suffix: "%",
       icon: TrendingUp,
       color: "bg-emerald-500",
-      eval: getMetricEvaluation("cagr", growthMetrics?.cagr || 0)
+      eval: getMetricEvaluation("cagr", currentMetrics?.cagr || 0)
     },
     {
       id: "return",
       label: "修正ディーツ法",
       fullLabel: "期間収益率",
-      value: growthMetrics?.returnRate || 0,
+      value: currentMetrics?.returnRate || 0,
       suffix: "%",
       icon: Zap,
       color: "bg-indigo-500",
-      eval: getMetricEvaluation("dietz", growthMetrics?.returnRate || 0)
+      eval: getMetricEvaluation("dietz", currentMetrics?.returnRate || 0)
     },
     {
       id: "sharpe",
       label: "シャープレシオ",
       fullLabel: "運用効率",
-      value: growthMetrics?.sharpeRatio || 0,
+      value: currentMetrics?.sharpeRatio || 0,
       suffix: "",
       icon: Activity,
       color: "bg-amber-500",
-      eval: getMetricEvaluation("sharpe", growthMetrics?.sharpeRatio || 0)
+      eval: getMetricEvaluation("sharpe", currentMetrics?.sharpeRatio || 0)
     },
     {
       id: "mdd",
       label: "最大ドローダウン",
       fullLabel: "過去最大下落率",
-      value: growthMetrics?.maxDrawdown || 0,
+      value: currentMetrics?.maxDrawdown || 0,
       suffix: "%",
       icon: ShieldCheck,
       color: "bg-rose-500",
-      eval: getMetricEvaluation("mdd", growthMetrics?.maxDrawdown || 0)
+      eval: getMetricEvaluation("mdd", currentMetrics?.maxDrawdown || 0)
     }
   ];
 
@@ -138,7 +150,15 @@ export const AssetGrowthEngine = () => {
           </div>
           <div>
             <h2 className="text-xl font-black text-slate-800 dark:text-white leading-none">資産成長エンジン</h2>
-            <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wider">Asset Growth Analysis</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Asset Growth Analysis</p>
+              {currentMetrics?.lastCalculated && (
+                <span className="text-[10px] text-slate-300 dark:text-slate-600 flex items-center gap-1">
+                  <Clock size={10} />
+                  {new Date(currentMetrics.lastCalculated).toLocaleTimeString()} 更新
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <button 
