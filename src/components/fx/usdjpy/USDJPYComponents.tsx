@@ -10,7 +10,13 @@ import {
   Activity, 
   BrainCircuit, 
   ArrowRightCircle,
-  Clock
+  Clock,
+  ShieldCheck,
+  ShieldAlert,
+  Search,
+  CheckCircle2,
+  XCircle,
+  Timer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { USDJPYDecisionResult } from "@/utils/fx/usdjpyDecision";
@@ -57,9 +63,9 @@ export const USDJPYPriceBoard = ({ quote }: { quote: any }) => {
 };
 
 /**
- * マルチ時間足トレンドモニター
+ * マルチ時間足トレンドモニター (勝率70%版)
  */
-export const USDJPYTrendMonitor = ({ trends }: { trends: any }) => {
+export const USDJPYTrendMonitor = ({ trends, alignmentLevel }: { trends: any, alignmentLevel?: string }) => {
   if (!trends) return null;
   
   const intervals = ["1m", "5m", "15m", "1h"];
@@ -71,11 +77,16 @@ export const USDJPYTrendMonitor = ({ trends }: { trends: any }) => {
            <div className="p-1.5 bg-indigo-500 rounded-lg text-white">
              <Clock size={14} />
            </div>
-           <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Multi-Timeframe</h3>
+           <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Trend Alignment</h3>
         </div>
-        <span className="text-[10px] font-black text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-500/20">
-          Sync {trends.alignment}%
-        </span>
+        <div className={cn(
+          "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border",
+          alignmentLevel === "strong" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" :
+          alignmentLevel === "mid" ? "bg-amber-500/10 text-amber-500 border-amber-500/30" :
+          "bg-slate-800 text-slate-500 border-slate-700"
+        )}>
+           {alignmentLevel || "Weak"}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -100,77 +111,134 @@ export const USDJPYTrendMonitor = ({ trends }: { trends: any }) => {
 };
 
 /**
- * 判断エンジンモニター
+ * 環境フィルター・時間帯情報
+ */
+export const USDJPYFilterStatus = ({ decision }: { decision: USDJPYDecisionResult | null }) => {
+  if (!decision) return null;
+
+  const filters = [
+    { label: "Trend", status: decision.filters.trend, icon: TrendingUp },
+    { label: "Vol", status: decision.filters.vol, icon: Activity },
+    { label: "Session", status: decision.filters.time, icon: Timer },
+    { label: "Stability", status: decision.filters.fakeout, icon: ShieldCheck },
+    { label: "Pullback", status: decision.filters.pullback, icon: Search },
+  ];
+
+  return (
+    <div className="p-6 bg-slate-900/50 border border-slate-900 rounded-[32px] space-y-4">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Neural Filters</h3>
+        <span className={cn(
+          "text-[9px] font-black px-2 py-0.5 rounded flex items-center gap-1",
+          decision.isEnvironmentOk ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+        )}>
+          {decision.isEnvironmentOk ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
+          ENV {decision.isEnvironmentOk ? "OK" : "NG"}
+        </span>
+      </div>
+      
+      <div className="grid grid-cols-5 gap-2">
+        {filters.map((f, i) => (
+          <div key={i} className="flex flex-col items-center gap-2">
+             <div className={cn(
+               "w-10 h-10 rounded-xl flex items-center justify-center border",
+               f.status ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-slate-950 text-slate-700 border-slate-800"
+             )}>
+                <f.icon size={18} />
+             </div>
+             <span className="text-[8px] font-bold text-slate-500 uppercase">{f.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center">
+         <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Current Session</span>
+         <span className={cn(
+           "text-[10px] font-black px-2 py-1 rounded bg-slate-950 border border-slate-800",
+           decision.session.isOk ? "text-indigo-400" : "text-slate-600"
+         )}>
+           {decision.session.name.toUpperCase()}
+         </span>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * 判断エンジンモニター (巨大な判定表示)
  */
 export const USDJPYDecisionMonitor = ({ decision }: { decision: USDJPYDecisionResult | null }) => {
   if (!decision) return null;
 
-  const isBuy = decision.signal === "buy";
-  const isSell = decision.signal === "sell";
-  const isWait = decision.signal === "wait";
+  const isBuy = decision.isEntryAllowed && decision.signal === "buy";
+  const isSell = decision.isEntryAllowed && decision.signal === "sell";
+  const isWait = !decision.isEntryAllowed;
 
   return (
-    <div className="p-8 bg-slate-900/50 border border-slate-900 rounded-[48px] overflow-hidden relative group">
+    <div className="p-10 bg-slate-900/50 border-2 border-slate-800 rounded-[56px] overflow-hidden relative group">
       {/* Background Neural Network Pulse */}
       <div className="absolute inset-0 opacity-10 pointer-events-none overflow-hidden">
         <svg className="w-full h-full" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="0.1" className="text-indigo-500 opacity-20" />
           <motion.circle 
-            animate={{ scale: [1, 1.5, 1], opacity: [0.1, 0.3, 0.1] }}
-            transition={{ repeat: Infinity, duration: 4 }}
-            cx="50" cy="50" r="40" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-indigo-500" 
+            animate={{ scale: [1, 1.3, 1], opacity: [0.05, 0.2, 0.05] }}
+            transition={{ repeat: Infinity, duration: 3 }}
+            cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-indigo-400" 
           />
         </svg>
       </div>
 
-      <div className="relative z-10 flex flex-col md:flex-row gap-8 items-center">
-        {/* Score Ring */}
-        <div className="relative w-40 h-40 flex items-center justify-center shrink-0">
-          <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-            <circle cx="50" cy="50" r="45" fill="none" stroke="#1e293b" strokeWidth="8" />
-            <motion.circle 
-              initial={{ strokeDasharray: "0 283" }}
-              animate={{ strokeDasharray: `${(decision.score / 100) * 283} 283` }}
-              transition={{ duration: 1.5, ease: "easeOut" }}
-              cx="50" cy="50" r="45" fill="none" 
-              stroke={isBuy ? "#10b981" : isSell ? "#f43f5e" : "#6366f1"} 
-              strokeWidth="8" strokeLinecap="round" 
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-             <span className="text-3xl font-black tabular-nums">{decision.score.toFixed(0)}</span>
-             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Score</span>
-          </div>
+      <div className="relative z-10 flex flex-col items-center text-center gap-8">
+        
+        {/* Main Status Badge */}
+        <motion.div 
+          initial={{ scale: 0.9 }}
+          animate={{ scale: 1 }}
+          className={cn(
+            "px-6 py-2 rounded-2xl border flex items-center gap-2",
+            isBuy ? "bg-emerald-500 text-white border-emerald-400" : 
+            isSell ? "bg-rose-500 text-white border-rose-400" : 
+            "bg-slate-800 text-slate-400 border-slate-700"
+          )}
+        >
+          {isWait ? <ShieldAlert size={16} /> : <ShieldCheck size={16} />}
+          <span className="text-xs font-black uppercase tracking-[0.2em]">Decision Status</span>
+        </motion.div>
+
+        {/* Huge Decision Text */}
+        <div className="space-y-2">
+           <motion.h2 
+             key={decision.signal + decision.isEntryAllowed}
+             initial={{ y: 20, opacity: 0 }}
+             animate={{ y: 0, opacity: 1 }}
+             className={cn(
+              "text-7xl md:text-8xl font-black tracking-tighter uppercase tabular-nums",
+              isBuy ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]" : 
+              isSell ? "text-rose-400 drop-shadow-[0_0_20px_rgba(244,63,94,0.3)]" : 
+              "text-slate-600"
+            )}
+           >
+             {isWait ? "WAITING" : isBuy ? "BUY NOW" : "SELL NOW"}
+           </motion.h2>
+           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
+             {decision.reasons[0] || "分析エンジンが市場環境を常時監視中..."}
+           </p>
         </div>
 
-        <div className="flex-1 space-y-6">
-          <div className="flex items-center gap-3">
-             <div className={cn(
-               "p-3 rounded-2xl",
-               isBuy ? "bg-emerald-500 text-white" : 
-               isSell ? "bg-rose-500 text-white" : "bg-slate-700 text-slate-300"
-             )}>
-                <BrainCircuit size={24} />
-             </div>
-             <div>
-                <h3 className="text-2xl font-black tracking-tight uppercase">
-                  {isBuy ? "Strong Buy" : isSell ? "Strong Sell" : "Neutral / Wait"}
-                </h3>
-                <div className="flex items-center gap-2">
-                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Neural Logic: Confidence {decision.confidence}%</span>
-                </div>
-             </div>
-          </div>
+        {/* Score & Reasons Grid */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+           <div className="p-6 bg-slate-950/80 rounded-[32px] border border-slate-900 flex flex-col items-center justify-center gap-2">
+              <span className="text-[10px] font-black text-slate-500 uppercase">Neural Confidence</span>
+              <div className="text-4xl font-black text-indigo-400">{decision.confidence}%</div>
+           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {decision.reasons.map((reason, idx) => (
-              <div key={idx} className="flex items-start gap-2 bg-slate-950/80 p-3 rounded-xl border border-slate-900/50">
-                 <ArrowRightCircle size={14} className="mt-0.5 text-indigo-500" />
-                 <span className="text-xs font-bold text-slate-400 break-all">{reason}</span>
-              </div>
-            ))}
-          </div>
+           <div className="flex flex-col gap-2 text-left justify-center">
+             {decision.reasons.slice(1, 4).map((r, i) => (
+                <div key={i} className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
+                   <div className="w-1 h-1 rounded-full bg-indigo-500" />
+                   {r}
+                </div>
+             ))}
+           </div>
         </div>
       </div>
     </div>

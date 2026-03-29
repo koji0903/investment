@@ -7,7 +7,8 @@ import { calculateUSDJPYDecision } from "@/utils/fx/usdjpyDecision";
 import { 
   USDJPYPriceBoard, 
   USDJPYTrendMonitor, 
-  USDJPYDecisionMonitor 
+  USDJPYDecisionMonitor,
+  USDJPYFilterStatus
 } from "@/components/fx/usdjpy/USDJPYComponents";
 import { USDJPYSimulationPanel } from "@/components/fx/usdjpy/USDJPYSimulationPanel";
 import { FXLearningService } from "@/services/fxLearningService";
@@ -30,6 +31,7 @@ export default function USDJPYDashboardPage() {
   const [activeTab, setActiveTab] = React.useState("analysis");
   const [metrics, setMetrics] = React.useState<LearningMetric[]>([]);
   const [showEntryModal, setShowEntryModal] = React.useState(false);
+  const [isHighProbMode, setIsHighProbMode] = React.useState(true);
 
   // 1. 学習データの取得
   React.useEffect(() => {
@@ -41,8 +43,8 @@ export default function USDJPYDashboardPage() {
   // 2. 意思決定データの算出
   const decision = useMemo(() => {
     if (!ohlcData["1m"].length) return null;
-    return calculateUSDJPYDecision(ohlcData, metrics);
-  }, [ohlcData, metrics]);
+    return calculateUSDJPYDecision(ohlcData, metrics, isHighProbMode);
+  }, [ohlcData, metrics, isHighProbMode]);
 
   if (isLoading && !quote) {
     return (
@@ -86,6 +88,27 @@ export default function USDJPYDashboardPage() {
                 {quote.price.toFixed(3)}
               </span>
             </div>
+            
+            <div className="h-10 w-px bg-slate-900 mx-2" />
+
+            <div className="flex items-center gap-3">
+               <span className={cn(
+                 "text-[9px] font-black uppercase tracking-widest",
+                 isHighProbMode ? "text-indigo-400" : "text-slate-600"
+               )}>Win Rate Focus</span>
+               <button 
+                onClick={() => setIsHighProbMode(!isHighProbMode)}
+                className={cn(
+                  "w-12 h-6 rounded-full relative transition-colors duration-300 border",
+                  isHighProbMode ? "bg-indigo-500 border-indigo-400" : "bg-slate-800 border-slate-700"
+                )}>
+                  <motion.div 
+                    animate={{ x: isHighProbMode ? 24 : 0 }}
+                    className="absolute top-0.5 left-0.5 w-[18px] h-[18px] bg-white rounded-full shadow-lg"
+                  />
+               </button>
+            </div>
+
             <button className="p-2.5 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 transition-all">
               <Settings2 size={18} className="text-slate-400" />
             </button>
@@ -98,7 +121,8 @@ export default function USDJPYDashboardPage() {
         {/* Left Column: Market pulse & Trends (Col 3) */}
         <div className="xl:col-span-3 space-y-6">
           <USDJPYPriceBoard quote={quote} />
-          <USDJPYTrendMonitor trends={decision?.trends} />
+          <USDJPYTrendMonitor trends={decision?.trends} alignmentLevel={decision?.alignmentLevel} />
+          <USDJPYFilterStatus decision={decision} />
           
           <div className="p-6 bg-slate-900/50 border border-slate-900 rounded-[32px] space-y-4">
              <div className="flex items-center gap-2 mb-2">
@@ -168,10 +192,11 @@ export default function USDJPYDashboardPage() {
                  <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
                    <Target size={20} />
                  </div>
-                 <h3 className="text-lg font-black tracking-tight">自己学習エンジン</h3>
+                 <h3 className="text-lg font-black tracking-tight">AI 意思決定モデル</h3>
                </div>
                <p className="text-[11px] font-bold text-white/70 leading-relaxed">
-                 シミュレーション結果を解析し、パターンの勝率を算出。現在の判定スコアに補正を加えています。
+                 {isHighProbMode ? "高確度（勝率70%目標）モード稼働中。" : "標準モード稼働中。"}
+                 過去のトレードデータを分析し、現在のセットアップの信頼度を自動補正しています。
                </p>
                <div className="pt-2">
                  <button 
