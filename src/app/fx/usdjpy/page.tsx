@@ -11,8 +11,16 @@ import {
   USDJPYFilterStatus
 } from "@/components/fx/usdjpy/USDJPYComponents";
 import { USDJPYSimulationPanel } from "@/components/fx/usdjpy/USDJPYSimulationPanel";
+import { USDJPYRiskMonitor } from "@/components/fx/usdjpy/USDJPYRiskMonitor";
+import { USDJPYAIInsights } from "@/components/fx/usdjpy/USDJPYAIInsights";
+import { USDJPYRegimeMonitor } from "@/components/fx/usdjpy/USDJPYRegimeMonitor";
+import { USDJPYStrategyLab } from "@/components/fx/usdjpy/USDJPYStrategyLab";
 import { FXLearningService } from "@/services/fxLearningService";
-import { LearningMetric } from "@/types/fx";
+import { FXSimulationService } from "@/services/fxSimulationService";
+import { LearningMetric, FXRiskMetrics, FXWeightProfile } from "@/types/fx";
+import { checkTradePermission } from "@/utils/fx/tradeGovernance";
+import { FXPatternAnalyzer, AnalysisResult } from "@/utils/fx/FXPatternAnalyzer";
+import { FXWeightOptimizer } from "@/utils/fx/FXWeightOptimizer";
 import { 
   Activity, 
   Zap, 
@@ -20,7 +28,8 @@ import {
   LineChart as ChartIcon, 
   BrainCircuit, 
   Settings2,
-  AlertCircle
+  AlertCircle,
+  MessageSquare
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -32,19 +41,78 @@ export default function USDJPYDashboardPage() {
   const [metrics, setMetrics] = React.useState<LearningMetric[]>([]);
   const [showEntryModal, setShowEntryModal] = React.useState(false);
   const [isHighProbMode, setIsHighProbMode] = React.useState(true);
+  const [riskMetrics, setRiskMetrics] = React.useState<FXRiskMetrics | null>(null);
+  const [weightProfile, setWeightProfile] = React.useState<FXWeightProfile | null>(null);
+  const [analysisResult, setAnalysisResult] = React.useState<AnalysisResult | null>(null);
+  const [customParams, setCustomParams] = React.useState<any>(null);
 
-  // 1. 学習データの取得
-  React.useEffect(() => {
-    if (user) {
-      FXLearningService.getAllMetrics(user.uid).then(setMetrics);
+  // 1. 学習データ・AIモデル・リスクメトリクスの取得
+  const fetchEssentialData = React.useCallback(async () => {
+    if (!user) return;
+    try {
+      const [m, r, w, a] = await Promise.all([
+        FXLearningService.getAllMetrics(user.uid),
+        FXSimulationService.getRiskMetrics(user.uid),
+        FXLearningService.getWeightProfile(user.uid),
+        FXPatternAnalyzer.analyzeTradePatterns(user.uid)
+      ]);
+      setMetrics(m);
+      setRiskMetrics(r);
+      setWeightProfile(w);
+      setAnalysisResult(a);
+    } catch (e) {
+      console.error("Failed to fetch essential data", e);
     }
   }, [user]);
+
+  // 定期的な自己最適化の実行 (例: 5分ごと)
+  const runAutoOptimization = React.useCallback(async () => {
+    if (!user || !weightProfile || !analysisResult) return;
+    try {
+      const { profile } = await FXWeightOptimizer.optimizeWeights(user.uid, analysisResult, weightProfile);
+      setWeightProfile(profile);
+    } catch (e) {
+      console.error("Optimization skip/fail", e);
+    }
+  }, [user, weightProfile, analysisResult]);
+
+  React.useEffect(() => {
+    fetchEssentialData();
+    const interval = setInterval(fetchEssentialData, 10000); // 10秒おき
+    const optInterval = setInterval(runAutoOptimization, 300000); // 5分おき
+    return () => {
+      clearInterval(interval);
+      clearInterval(optInterval);
+    };
+  }, [fetchEssentialData, runAutoOptimization]);
 
   // 2. 意思決定データの算出
   const decision = useMemo(() => {
     if (!ohlcData["1m"].length) return null;
-    return calculateUSDJPYDecision(ohlcData, metrics, isHighProbMode);
-  }, [ohlcData, metrics, isHighProbMode]);
+    let res = calculateUSDJPYDecision(ohlcData, metrics, isHighProbMode, weightProfile);
+    
+    // カスタムパラメータが適用されている場合は補正
+    if (customParams && res) {
+      if (res.confidence < customParams.confidenceThreshold && res.isEntryAllowed) {
+        res.isEntryAllowed = false;
+        res.reasons.push(`AI Optimization: Below custom threshold (${customParams.confidenceThreshold}%)`);
+      }
+    }
+    return res;
+  }, [ohlcData, metrics, isHighProbMode, weightProfile, customParams]);
+
+  // 3. 運用許可の判定
+  const permission = useMemo(() => {
+    if (!riskMetrics) return null;
+    return checkTradePermission(riskMetrics, decision, false); // hasActivePositionはPanel側で別途評価
+  }, [riskMetrics, decision]);
+
+  // 4. ポジションの自動管理（オートクローズ、トレーリングストップ）
+  React.useEffect(() => {
+    if (user && quote && quote.price) {
+      FXSimulationService.manageOpenPositions(user.uid, quote.price);
+    }
+  }, [user, quote?.price]);
 
   if (isLoading && !quote) {
     return (
@@ -121,6 +189,9 @@ export default function USDJPYDashboardPage() {
         {/* Left Column: Market pulse & Trends (Col 3) */}
         <div className="xl:col-span-3 space-y-6">
           <USDJPYPriceBoard quote={quote} />
+          <USDJPYRegimeMonitor regime={decision?.regime || null} />
+          <USDJPYRiskMonitor metrics={riskMetrics} permission={permission} />
+          {weightProfile && <USDJPYAIInsights analysis={analysisResult} weightProfile={weightProfile} />}
           <USDJPYTrendMonitor trends={decision?.trends} alignmentLevel={decision?.alignmentLevel} />
           <USDJPYFilterStatus decision={decision} />
           
@@ -134,21 +205,21 @@ export default function USDJPYDashboardPage() {
              <div className="space-y-4">
                 <div className="flex justify-between items-end">
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">ATR (15M)</span>
-                  <span className="text-lg font-black tabular-nums text-slate-200">{decision?.volatility.atr.toFixed(3)}</span>
+                   <span className="text-lg font-black tabular-nums text-slate-200">{decision?.volatilityATR.toFixed(3)}</span>
                 </div>
                 <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                   <motion.div 
                     initial={{ width: 0 }}
-                    animate={{ width: `${Math.min((decision?.volatility.atr || 0) * 500, 100)}%` }}
+                     animate={{ width: `${Math.min((decision?.volatilityATR || 0) * 500, 100)}%` }}
                     className={cn(
                       "h-full rounded-full transition-all duration-1000",
-                      decision?.volatility.status === "high" ? "bg-rose-500" : 
-                      decision?.volatility.status === "low" ? "bg-blue-500" : "bg-indigo-500"
+                       decision?.regime.metrics.volatilityStatus === "high" ? "bg-rose-500" : 
+                       decision?.regime.metrics.volatilityStatus === "low" ? "bg-blue-500" : "bg-indigo-500"
                     )}
                   />
                 </div>
                 <p className="text-[10px] font-bold text-slate-500 text-center uppercase tracking-widest">
-                  Status: <span className="text-slate-300">{decision?.volatility.status}</span>
+                   Status: <span className="text-slate-300">{decision?.regime.metrics.volatilityStatus}</span>
                 </p>
              </div>
           </div>
@@ -175,13 +246,24 @@ export default function USDJPYDashboardPage() {
           <div className="h-[500px] p-8 bg-slate-900/50 border border-slate-900 rounded-[40px] shadow-2xl overflow-hidden relative group">
              {quote && (
                <USDJPYSimulationPanel 
-                 currentPrice={quote.price} 
+                 currentPrice={quote?.ask || 0} 
                  decision={decision} 
                  showEntryForm={showEntryModal}
                  setShowEntryForm={setShowEntryModal}
+                 riskMetrics={riskMetrics}
                />
              )}
           </div>
+          
+          <div className="p-8 bg-slate-900/50 border border-slate-900 rounded-[48px] shadow-2xl">
+             <USDJPYStrategyLab 
+                userId={user?.uid || ""} 
+                ohlcData={ohlcData} 
+                onApplyParameters={(p) => setCustomParams(p)}
+             />
+          </div>
+          
+          <USDJPYNeuralMessage permission={permission} />
 
           <div className="bg-indigo-500 rounded-[32px] p-8 text-white shadow-2xl shadow-indigo-500/20 relative overflow-hidden group">
             <div className="absolute right-0 top-0 opacity-10 group-hover:scale-110 transition-transform duration-700">
@@ -257,5 +339,48 @@ export default function USDJPYDashboardPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+/**
+ * 心理誘導メッセージ・ガイダンス
+ */
+function USDJPYNeuralMessage({ permission }: { permission: any }) {
+  const messages = [
+    "「待つこと」は、エントリーすることと同じくらい重要なトレード技術です。",
+    "マーケットは逃げません。条件が整うまで虎視眈々と待ちましょう。",
+    "規律を守ることは、手法よりもはるかに大きな資産を守ります。",
+    "1回の負けに感情を支配されてはいけません。それは統計の一部に過ぎません。",
+    "プロのトレーダーは、自分の感情ではなく、自分のルールに従います。"
+  ];
+
+  const [index, setIndex] = React.useState(0);
+  React.useEffect(() => {
+    const interval = setInterval(() => setIndex(i => (i + 1) % messages.length), 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn(
+        "p-6 rounded-[32px] border flex items-center gap-4",
+        permission?.status === "stop" ? "bg-rose-500/10 border-rose-500/20" : "bg-slate-900 border-slate-900"
+      )}
+    >
+      <div className={cn(
+        "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0",
+        permission?.status === "stop" ? "bg-rose-500 text-white" : "bg-indigo-500 text-white"
+      )}>
+        <MessageSquare size={24} />
+      </div>
+      <div>
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Neural Guidance</p>
+        <p className="text-xs font-bold text-slate-300 leading-relaxed italic">
+           {permission?.status === "stop" ? permission.reason : `"${messages[index]}"`}
+        </p>
+      </div>
+    </motion.div>
   );
 }

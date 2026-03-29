@@ -20,34 +20,75 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency, cn } from "@/lib/utils";
 import { USDJPYDecisionResult } from "@/utils/fx/usdjpyDecision";
+import { calculateAdjustedLot } from "@/utils/fx/lotCalculator";
+import { checkTradePermission, TradePermissionResult } from "@/utils/fx/tradeGovernance";
+import { FXRiskMetrics } from "@/types/fx";
+import { Settings2, Calculator, Info, ShieldX, MessageSquare } from "lucide-react";
 
 /**
  * USD/JPY シミュレーション（仮想トレード）パネル
  */
 export const USDJPYSimulationPanel = ({ 
-  currentPrice, 
+  currentPrice,
   decision,
   showEntryForm,
-  setShowEntryForm
+  setShowEntryForm,
+  riskMetrics
 }: { 
   currentPrice: number; 
   decision: USDJPYDecisionResult | null;
   showEntryForm: boolean;
   setShowEntryForm: (show: boolean) => void;
+  riskMetrics: FXRiskMetrics | null;
 }) => {
   const { user } = useAuth();
   const [activeSims, setActiveSims] = useState<FXSimulation[]>([]);
   const [history, setHistory] = useState<FXSimulation[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [useAutoLot, setUseAutoLot] = useState(true);
 
   // 入力フォームの状態
   const [side, setSide] = useState<"buy" | "sell">("buy");
-  const [riskAmount, setRiskAmount] = useState(10000); // 1万円リスク
-  const [stopPips, setStopPips] = useState(20); // 20 pips 損切り
-  const [tpPips, setTpPips] = useState(40); // 40 pips 利確 (RR 1:2)
+  const [riskPercent, setRiskPercent] = useState(1.0); // 1.0% リスク
+  const [stopPips, setStopPips] = useState(20); 
+  const [tpPips, setTpPips] = useState(40);
+  const [manualLot, setManualLot] = useState(0.1);
 
-  // ロット計算 (1ロット = 1万通貨想定)
-  const lotSize = (riskAmount / (stopPips * 0.01 * 10000)).toFixed(2);
+  // 統合ロット計算の実行
+  const lotResult = React.useMemo(() => {
+    if (!riskMetrics || !decision) return null;
+    return calculateAdjustedLot(
+      riskMetrics,
+      riskPercent,
+      stopPips,
+      decision.score,
+      decision.isEnvironmentOk
+    );
+  }, [riskMetrics, riskPercent, stopPips, decision]);
+
+  const finalLot = useAutoLot ? (lotResult?.adjustedLot || 0.01) : manualLot;
+
+  // 物理トレード許可の判定
+  const permission: TradePermissionResult = React.useMemo(() => {
+    return checkTradePermission(
+      riskMetrics || { 
+        userId: user?.uid || "", 
+        currentBalance: 1000000, 
+        maxBalance: 1000000, 
+        drawdownPercent: 0, 
+        consecutiveLosses: 0, 
+        winRate: 0, 
+        totalFinishedTrades: 0, 
+        dailyTradeCount: 0,
+        dailyPnlPercent: 0,
+        lastEntryTimestamp: new Date(0).toISOString(),
+        lastExitTimestamp: new Date(0).toISOString(),
+        lastTradeTimestamp: new Date().toISOString() 
+      },
+      decision,
+      activeSims.length > 0
+    );
+  }, [riskMetrics, decision, activeSims, user]);
 
   const fetchSims = async () => {
     if (!user) return;
@@ -76,20 +117,37 @@ export const USDJPYSimulationPanel = ({
         entryTimestamp: new Date().toISOString(),
         takeProfit: tpPrice,
         stopLoss: stopPrice,
-        quantity: parseFloat(lotSize),
-        entryReason: decision.reasons.join(", "),
+        quantity: finalLot,
+        entryReason: decision.reasons.join(", ") + (useAutoLot ? ` [Auto-Lot Reason: ${lotResult?.reason}]` : ""),
         status: "open",
         context: {
-          trend1m: decision.trends["1m"],
-          trend5m: decision.trends["5m"],
-          trend15m: decision.trends["15m"],
-          trend1h: decision.trends["1h"],
-          rsi15m: 50, // 簡易
-          volatilityATR: decision.volatility.atr,
-          isBreakout: false,
-          structuralPhase: "consolidating",
-          totalScore: decision.score
-        }
+          timestamp: new Date().toISOString(),
+          timezone: decision.session.name,
+          price: currentPrice,
+          trends: {
+            "1m": decision.trends["1m"],
+            "5m": decision.trends["5m"],
+            "15m": decision.trends["15m"],
+            "1h": decision.trends["1h"],
+            alignment: decision.alignmentLevel
+          },
+          volatility: {
+            atr: decision.volatilityATR,
+            status: decision.volatilityATR > 0.15 ? "high" : decision.volatilityATR < 0.05 ? "low" : "normal"
+          },
+          levels: {
+            distToSupport: decision.supportResistance?.support ? (currentPrice - decision.supportResistance.support) * 100 : 0,
+            distToResistance: decision.supportResistance?.resistance ? (decision.supportResistance.resistance - currentPrice) * 100 : 0,
+            isBreakout: decision.isBreakout,
+            isFakeoutSuspected: decision.isFakeoutSuspicion
+          },
+          setup: {
+            isPerfectOrder: decision.envDetails.isPerfectOrder,
+            isPullback: decision.reasons.some(r => r.includes("Pullback")),
+            score: decision.score
+          },
+          environment: decision.regime.type
+        },
       });
       fetchSims();
       setShowEntryForm(false);
@@ -244,54 +302,134 @@ export const USDJPYSimulationPanel = ({
                  </div>
 
                  <div className="space-y-6">
-                    <div className="space-y-3">
-                       <div className="flex justify-between text-[11px] font-black uppercase text-slate-500">
-                          <span>Risk Amount (JPY)</span>
-                          <span className="text-slate-300">¥{riskAmount.toLocaleString()}</span>
+                    <div className="flex items-center justify-between">
+                       <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                          <Settings2 size={12} /> Risk Parameters
+                       </h4>
+                       <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+                          <button 
+                            onClick={() => setUseAutoLot(true)}
+                            className={cn("px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all", useAutoLot ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/10" : "text-slate-500 hover:text-slate-300")}>
+                            Auto
+                          </button>
+                          <button 
+                            onClick={() => setUseAutoLot(false)}
+                            className={cn("px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all", !useAutoLot ? "bg-amber-500 text-white shadow-lg shadow-amber-500/10" : "text-slate-500 hover:text-slate-300")}>
+                            Manual
+                          </button>
                        </div>
-                       <input 
-                        type="range" min="1000" max="100000" step="1000"
-                        value={riskAmount} onChange={(e) => setRiskAmount(parseInt(e.target.value))}
-                        className="w-full h-1.5 bg-slate-800 rounded-full appearance-none accent-indigo-500"
-                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                       <div className="flex justify-between text-[10px] font-black uppercase text-slate-500">
+                          <span>Account Risk per Trade (%)</span>
+                          <span className="text-indigo-400 font-black">{riskPercent.toFixed(1)}%</span>
+                       </div>
+                       <input 
+                        type="range" min="0.1" max="2.0" step="0.1"
+                        value={riskPercent} onChange={(e) => setRiskPercent(parseFloat(e.target.value))}
+                        className="w-full h-1.5 bg-slate-800 rounded-full appearance-none accent-indigo-500"
+                       />
+                       <div className="flex justify-between text-[9px] text-slate-600 font-bold">
+                          <span>Conservative (0.1%)</span>
+                          <span>Max Limit (2.0%)</span>
+                       </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6 pb-2">
                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Stop Loss (Pips)</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                             <Calculator size={10} /> Stop Loss (Pips)
+                          </label>
                           <input 
                             type="number" value={stopPips} onChange={(e) => setStopPips(parseInt(e.target.value))}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm font-black focus:border-indigo-500 outline-none"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-black focus:border-indigo-500 outline-none tabular-nums"
                           />
                        </div>
                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Take Profit (Pips)</label>
+                          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                             <TrendingUp size={10} /> Target (Pips)
+                          </label>
                           <input 
                             type="number" value={tpPips} onChange={(e) => setTpPips(parseInt(e.target.value))}
-                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm font-black focus:border-indigo-500 outline-none"
+                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-black focus:border-indigo-500 outline-none tabular-nums"
                           />
                        </div>
                     </div>
                  </div>
 
-                 <div className="p-6 bg-slate-950 rounded-3xl border border-slate-800 flex items-center justify-between">
-                    <div className="space-y-1">
-                       <span className="text-[10px] font-black text-slate-500 uppercase">Calculated Lot</span>
-                       <div className="text-2xl font-black text-indigo-400">{lotSize} <span className="text-sm opacity-50">Lots</span></div>
-                    </div>
-                    <div className={cn(
-                      "p-3 rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
-                    )}>
-                       <ShieldCheck size={28} />
-                    </div>
+                 <div className={cn(
+                    "p-6 rounded-[32px] border transition-all duration-300",
+                    !permission.isAllowed ? "bg-rose-500/5 border-rose-500/20" :
+                    useAutoLot ? "bg-indigo-500/5 border-indigo-500/20" : "bg-slate-950 border-slate-800"
+                 )}>
+                    {!permission.isAllowed ? (
+                       <div className="space-y-4">
+                          <div className="flex items-center gap-3 text-rose-500">
+                             <ShieldX size={24} />
+                             <span className="text-sm font-black uppercase tracking-widest">Trade Forbidden</span>
+                          </div>
+                          <div className="p-4 bg-rose-500/10 rounded-2xl border border-rose-500/20">
+                             <p className="text-[11px] font-bold text-rose-400 leading-tight">
+                                {permission.reason}
+                             </p>
+                          </div>
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 italic">
+                             <MessageSquare size={12} />
+                             {permission.status === "stop" ? "「規律を守ることが、長期的な利益への唯一の道です」" : "「焦りは禁物です。条件が整うまで待つのがプロの仕事です」"}
+                          </div>
+                       </div>
+                    ) : !useAutoLot ? (
+                       <div className="space-y-3">
+                          <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Manual Lot Execution</label>
+                          <input 
+                            type="number" step="0.01" value={manualLot} onChange={(e) => setManualLot(parseFloat(e.target.value))}
+                            className="w-full bg-slate-900 border border-amber-500/20 rounded-2xl px-5 py-4 text-2xl font-black text-amber-500 outline-none tabular-nums"
+                          />
+                       </div>
+                    ) : (
+                       <div className="space-y-4">
+                          <div className="flex items-start justify-between">
+                             <div className="space-y-1">
+                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">AI Suggested Lot</span>
+                                <div className="text-4xl font-black text-white tabular-nums tracking-tighter">
+                                   {lotResult?.adjustedLot} <span className="text-sm text-indigo-400/50 uppercase ml-1">Lots</span>
+                                </div>
+                             </div>
+                             <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-400 border border-indigo-500/20">
+                                <ShieldCheck size={28} />
+                             </div>
+                          </div>
+                          
+                          <div className="p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50 space-y-2">
+                             <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-tighter">
+                                <Info size={12} className="text-indigo-500" /> Sizing Logic
+                             </div>
+                             <p className="text-[11px] font-bold text-slate-300 leading-tight">
+                                {lotResult?.reason}
+                             </p>
+                          </div>
+                          
+                          <div className="flex justify-between items-center px-2">
+                             <span className="text-[10px] font-black text-slate-500 uppercase">Est. Max Loss</span>
+                             <span className="text-sm font-black text-rose-400 tabular-nums">-{formatCurrency(lotResult?.maxLossAmount || 0)}</span>
+                          </div>
+                       </div>
+                    )}
                  </div>
 
                  <button 
-                  disabled={isSubmitting || !decision}
+                  disabled={isSubmitting || !decision || !permission.isAllowed || (useAutoLot && !lotResult?.isExecutionAllowed)}
                   onClick={handleEntry}
-                  className="w-full py-5 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white rounded-3xl font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-indigo-500/20 active:scale-[0.98] transition-all"
+                  className={cn(
+                    "w-full py-5 rounded-[24px] font-black text-sm uppercase tracking-[0.2em] shadow-2xl active:scale-[0.98] transition-all",
+                    !permission.isAllowed ? "bg-slate-800 text-slate-500 cursor-not-allowed" :
+                    useAutoLot ? "bg-indigo-500 hover:bg-indigo-600 text-white shadow-indigo-500/20" : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20"
+                  )}
                  >
-                   {isSubmitting ? "Processing..." : "Confirm Execution"}
+                   {!decision ? "Analyzing..." : 
+                    isSubmitting ? "Executing..." : 
+                    !permission.isAllowed ? "Governance Blocked" : "Confirm Execution"}
                  </button>
               </div>
             </motion.div>

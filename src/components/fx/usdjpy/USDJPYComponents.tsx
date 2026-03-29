@@ -65,7 +65,7 @@ export const USDJPYPriceBoard = ({ quote }: { quote: any }) => {
 /**
  * マルチ時間足トレンドモニター (勝率70%版)
  */
-export const USDJPYTrendMonitor = ({ trends, alignmentLevel }: { trends: any, alignmentLevel?: string }) => {
+export const USDJPYTrendMonitor = ({ trends, alignmentLevel }: { trends: any, alignmentLevel?: number }) => {
   if (!trends) return null;
   
   const intervals = ["1m", "5m", "15m", "1h"];
@@ -81,11 +81,11 @@ export const USDJPYTrendMonitor = ({ trends, alignmentLevel }: { trends: any, al
         </div>
         <div className={cn(
           "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border",
-          alignmentLevel === "strong" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" :
-          alignmentLevel === "mid" ? "bg-amber-500/10 text-amber-500 border-amber-500/30" :
+          alignmentLevel === 100 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/30" :
+          alignmentLevel && alignmentLevel >= 66 ? "bg-amber-500/10 text-amber-500 border-amber-500/30" :
           "bg-slate-800 text-slate-500 border-slate-700"
         )}>
-           {alignmentLevel || "Weak"}
+           {alignmentLevel === 100 ? "Strong" : alignmentLevel && alignmentLevel >= 66 ? "Mid" : "Weak"}
         </div>
       </div>
 
@@ -117,11 +117,11 @@ export const USDJPYFilterStatus = ({ decision }: { decision: USDJPYDecisionResul
   if (!decision) return null;
 
   const filters = [
-    { label: "Trend", status: decision.filters.trend, icon: TrendingUp },
-    { label: "Vol", status: decision.filters.vol, icon: Activity },
-    { label: "Session", status: decision.filters.time, icon: Timer },
-    { label: "Stability", status: decision.filters.fakeout, icon: ShieldCheck },
-    { label: "Pullback", status: decision.filters.pullback, icon: Search },
+    { label: "Trend", status: decision.alignmentLevel >= 66, icon: TrendingUp },
+    { label: "Vol", status: decision.volatilityATR > 0.08, icon: Activity },
+    { label: "Session", status: decision.session.isOk, icon: Timer },
+    { label: "Stability", status: !decision.isFakeoutSuspicion, icon: ShieldCheck },
+    { label: "Perfect", status: decision.envDetails.isPerfectOrder, icon: Search },
   ];
 
   return (

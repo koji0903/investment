@@ -265,19 +265,115 @@ export interface FXSimulation {
   pnlPercentage: number;
   entryReason: string;
   exitReason?: string;
-  // エントリー時の市場コンディション (学習用)
-  context: {
-    trend1m: TechnicalTrend;
-    trend5m: TechnicalTrend;
-    trend15m: TechnicalTrend;
-    trend1h: TechnicalTrend;
-    rsi15m: number;
-    volatilityATR: number;
-    isBreakout: boolean;
-    structuralPhase: StructurePhase;
-    totalScore: number;
+  // エントリー時の市場詳細コンテキスト (高度学習用)
+  context: FXTradeContext;
+  aiReview?: {
+    score: number;
+    compliance: string;
+    feedback: string;
+    suggestion: string;
   };
   updatedAt: string;
+}
+
+/**
+ * 高度学習用トレードコンテキスト
+ */
+export interface FXTradeContext {
+  timestamp: string;
+  timezone: string;           // "TOKYO" | "LONDON" | "NEWYORK"
+  price: number;
+  trends: {
+    "1m": TechnicalTrend;
+    "5m": TechnicalTrend;
+    "15m": TechnicalTrend;
+    "1h": TechnicalTrend;
+    alignment: number;
+  };
+  volatility: {
+    atr: number;
+    status: "low" | "normal" | "high";
+  };
+  levels: {
+    distToSupport: number;    // pips
+    distToResistance: number; // pips
+    isBreakout: boolean;
+    isFakeoutSuspected: boolean;
+  };
+  setup: {
+    isPerfectOrder: boolean;
+    isPullback: boolean;
+    score: number;
+  };
+  environment: string;        // "TREND_UP" | "RANGE" | "VOLATILE" etc.
+}
+
+/**
+ * 環境別の最適化重みプロファイル
+ */
+export interface FXWeightProfile {
+  id: string;                 // "DEFAULT" | "LONDON_TREND" etc.
+  name: string;
+  weights: {
+    trendAlignment: number;   // 標準 1.0
+    volatility: number;
+    supportResistance: number;
+    timeOfDay: number;
+    indicatorSignal: number;  // RSI等
+  };
+  bias: number;               // 全体的な感度補正
+  lastOptimizedAt: string;
+  sampleCount: number;        // 学習に使われたデータ数
+  regime?: string;            // このプロファイルが対象とするレジーム
+}
+
+/**
+ * 相場レジーム判定結果
+ */
+export type MarketRegimeType = 
+  | "TREND_UP" 
+  | "TREND_DOWN" 
+  | "RANGE" 
+  | "HIGH_VOLATILITY" 
+  | "LOW_VOLATILITY" 
+  | "INSTABILITY";
+
+export interface FXMarketRegime {
+  type: MarketRegimeType;
+  name: string;
+  confidence: number;         // 0-100%
+  reason: string;
+  timestamp: string;
+  metrics: {
+    maSlope: number;
+    atrLevel: number;
+    bbWidth: number;
+    volatilityStatus: "low" | "normal" | "high";
+  };
+}
+
+/**
+ * バックテスト実行結果
+ */
+export interface FXBacktestResult {
+  id: string;
+  userId: string;
+  parameters: {
+    maPeriod: number;
+    confidenceThreshold: number;
+    tpPips: number;
+    slPips: number;
+  };
+  metrics: {
+    totalTrades: number;
+    winRate: number;
+    profitFactor: number;
+    maxDrawdown: number;
+    expectedValue: number;    // pips
+    netProfit: number;
+  };
+  regimePerformance: Record<MarketRegimeType, number>; // レジーム別の勝率/期待値
+  executedAt: string;
 }
 
 /**
@@ -311,4 +407,39 @@ export interface USDJPYDashboardState {
   };
   learningWeights: Record<string, number>; // パターンID -> 重み
   updatedAt: string;
+}
+
+/**
+ * リスク管理・ロット計算用のメトリクス
+ */
+export interface FXRiskMetrics {
+  userId: string;
+  currentBalance: number;
+  maxBalance: number;       // ドローダウン計算用 (ピーク資産)
+  drawdownPercent: number;
+  consecutiveLosses: number;
+  winRate: number;
+  totalFinishedTrades: number;
+  dailyTradeCount: number;     // 本日のトレード回数
+  dailyPnlPercent: number;    // 本日の損益率 (%)
+  lastEntryTimestamp: string; // クールダウン計算用
+  lastExitTimestamp: string;  // クールダウン計算用
+  lastTradeTimestamp: string;
+}
+
+/**
+ * ロット計算の最終結果
+ */
+export interface LotCalculationResult {
+  baseLot: number;          // 資金とリスク率からの基本ロット
+  adjustedLot: number;      // 全ての補正後の最終ロット
+  maxLossAmount: number;    // このトレードでの最大想定損失額
+  multipliers: {
+    confidence: number;     // 信頼度による補正倍率
+    consecutiveLoss: number; // 連敗による補正倍率
+    drawdown: number;       // ドローダウンによる補正倍率
+    environment: number;    // 市場環境による補正倍率
+  };
+  reason: string;           // ロット決定の主要な理由
+  isExecutionAllowed: boolean; // 取引許可（DD酷い場合などはfalse）
 }
