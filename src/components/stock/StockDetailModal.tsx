@@ -175,7 +175,7 @@ export const StockDetailModal: React.FC<StockDetailModalProps> = ({ judgment, on
                </div>
                
                <div className="h-[300px] w-full bg-slate-50 dark:bg-slate-900/50 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800/50 overflow-hidden">
-                   <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                   <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                      <AreaChart data={judgment.chartData}>
                         <defs>
                           <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">

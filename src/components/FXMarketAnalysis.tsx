@@ -89,7 +89,7 @@ export const FXMarketAnalysis = () => {
             </div>
             
             <div className="h-[280px] w-full bg-slate-50/50 dark:bg-slate-800/30 rounded-[28px] p-5 border border-slate-100 dark:border-slate-800 transition-colors hover:border-indigo-500/20">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                 <BarChart
                   data={strengths}
                   layout="vertical"

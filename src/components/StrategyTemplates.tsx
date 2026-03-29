@@ -120,7 +120,7 @@ export const StrategyTemplates = () => {
             {/* Chart Column */}
             <div className="space-y-6">
               <div className="h-64 relative">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                   <PieChart>
                     <Pie
                       data={comparison}

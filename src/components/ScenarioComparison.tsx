@@ -179,7 +179,7 @@ export const ScenarioComparison = () => {
 
         {/* Multi-line Chart */}
         <div className="xl:col-span-2 h-[450px] w-full bg-slate-50/50 dark:bg-slate-800/20 rounded-[32px] p-6 border border-slate-100 dark:border-slate-800">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <LineChart data={comparisonData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#888888" strokeOpacity={0.1} />
               <XAxis 

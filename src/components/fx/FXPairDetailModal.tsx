@@ -149,7 +149,7 @@ export const FXPairDetailModal: React.FC<FXPairDetailModalProps> = ({ judgment, 
                   <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">直近30日の価格推移</h3>
                 </div>
                 <div className="h-[200px] w-full bg-slate-50 dark:bg-slate-800/50 rounded-[28px] p-4 border border-slate-100 dark:border-slate-800 overflow-hidden">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                     <AreaChart data={judgment.chartData}>
                       <defs>
                         <linearGradient id="detailGradient" x1="0" y1="0" x2="0" y2="1">

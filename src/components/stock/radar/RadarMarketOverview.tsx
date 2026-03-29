@@ -79,7 +79,7 @@ export const RadarMarketOverview: React.FC<RadarMarketOverviewProps> = ({ data }
             </div>
           </div>
           <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <Treemap
                 data={treemapData}
                 dataKey="size"

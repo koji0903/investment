@@ -72,7 +72,7 @@ export const RiskDecomposition = () => {
           </div>
 
           <div className="h-[300px] w-full bg-slate-50/50 dark:bg-slate-800/20 rounded-3xl p-4 border border-slate-100 dark:border-slate-800">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={chartData} layout="vertical" margin={{ left: -10, right: 30 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#888888" strokeOpacity={0.05} />
                 <XAxis type="number" hide />

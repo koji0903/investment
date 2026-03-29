@@ -286,7 +286,7 @@ export const BacktestSimulator = () => {
                     <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 bg-slate-400 border-dashed border inline-block rounded" />初期投資額</span>
                   </div>
                 </div>
-                <ResponsiveContainer width="100%" height={240}>
+                <ResponsiveContainer width="100%" height={240} minWidth={0} minHeight={0}>
                   <LineChart data={result.dailyResults} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.2)" />
                     <XAxis

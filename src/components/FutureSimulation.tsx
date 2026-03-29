@@ -121,7 +121,7 @@ export const FutureSimulation = () => {
 
         {/* Chart */}
         <div className="lg:col-span-2 h-[350px] w-full bg-slate-50/50 dark:bg-slate-800/20 rounded-[32px] p-4 border border-slate-100 dark:border-slate-800">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <AreaChart data={projection.data} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
