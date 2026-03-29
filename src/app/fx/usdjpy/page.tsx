@@ -29,6 +29,7 @@ export default function USDJPYDashboardPage() {
   const { quote, ohlcData, isLoading, error } = useUSDJPYData(3000); // 3秒間隔
   const [activeTab, setActiveTab] = React.useState("analysis");
   const [metrics, setMetrics] = React.useState<LearningMetric[]>([]);
+  const [showEntryModal, setShowEntryModal] = React.useState(false);
 
   // 1. 学習データの取得
   React.useEffect(() => {
@@ -148,7 +149,14 @@ export default function USDJPYDashboardPage() {
         {/* Right Column: Sim & Risk & Scenarios (Col 3) */}
         <div className="xl:col-span-3 space-y-6 flex flex-col">
           <div className="h-[500px] p-8 bg-slate-900/50 border border-slate-900 rounded-[40px] shadow-2xl overflow-hidden relative group">
-             {quote && <USDJPYSimulationPanel currentPrice={quote.price} decision={decision} />}
+             {quote && (
+               <USDJPYSimulationPanel 
+                 currentPrice={quote.price} 
+                 decision={decision} 
+                 showEntryForm={showEntryModal}
+                 setShowEntryForm={setShowEntryModal}
+               />
+             )}
           </div>
 
           <div className="bg-indigo-500 rounded-[32px] p-8 text-white shadow-2xl shadow-indigo-500/20 relative overflow-hidden group">
@@ -167,7 +175,7 @@ export default function USDJPYDashboardPage() {
                </p>
                <div className="pt-2">
                  <button 
-                  onClick={() => alert("Simulation module is coming next!")}
+                  onClick={() => setShowEntryModal(true)}
                   className="w-full py-3 bg-white text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-slate-950/10 hover:scale-[1.02] transition-transform active:scale-95">
                    シミュレーションを開始
                  </button>

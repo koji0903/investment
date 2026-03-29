@@ -26,15 +26,18 @@ import { USDJPYDecisionResult } from "@/utils/fx/usdjpyDecision";
  */
 export const USDJPYSimulationPanel = ({ 
   currentPrice, 
-  decision 
+  decision,
+  showEntryForm,
+  setShowEntryForm
 }: { 
   currentPrice: number; 
-  decision: USDJPYDecisionResult | null 
+  decision: USDJPYDecisionResult | null;
+  showEntryForm: boolean;
+  setShowEntryForm: (show: boolean) => void;
 }) => {
   const { user } = useAuth();
   const [activeSims, setActiveSims] = useState<FXSimulation[]>([]);
   const [history, setHistory] = useState<FXSimulation[]>([]);
-  const [showEntryForm, setShowEntryForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 入力フォームの状態
