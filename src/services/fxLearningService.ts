@@ -25,7 +25,7 @@ export const FXLearningService = {
    */
   async recordTradeHistory(userId: string, simulation: FXSimulation): Promise<void> {
     try {
-      await addDoc(collection(db, `users/${userId}/usdjpy/learning_history`), {
+      await addDoc(collection(db, `users/${userId}/fx_usdjpy_learning_history`), {
         ...simulation,
         recordedAt: serverTimestamp()
       });
@@ -46,7 +46,7 @@ export const FXLearningService = {
       const patterns = this.identifyPatterns(simulation);
       
       for (const patternId of patterns) {
-        const docRef = doc(db, `users/${userId}/usdjpy/learning_metrics`, patternId);
+        const docRef = doc(db, `users/${userId}/fx_usdjpy_learning_metrics`, patternId);
         const snap = await getDoc(docRef);
         
         if (!snap.exists()) {
@@ -139,7 +139,7 @@ export const FXLearningService = {
    */
   async getWeightProfile(userId: string, profileId: string = "DEFAULT"): Promise<FXWeightProfile | null> {
     try {
-      const docRef = doc(db, `users/${userId}/usdjpy/weight_profiles`, profileId);
+      const docRef = doc(db, `users/${userId}/fx_usdjpy_weight_profiles`, profileId);
       const snap = await getDoc(docRef);
       if (snap.exists()) return snap.data() as FXWeightProfile;
       
@@ -165,7 +165,7 @@ export const FXLearningService = {
 
   async getAllMetrics(userId: string): Promise<LearningMetric[]> {
     try {
-      const q = query(collection(db, `users/${userId}/usdjpy/learning_metrics`));
+      const q = query(collection(db, `users/${userId}/fx_usdjpy_learning_metrics`));
       const snap = await getDocs(q);
       return snap.docs.map(d => d.data() as LearningMetric);
     } catch (error) {

@@ -31,7 +31,7 @@ export const FXTuningService = {
    */
   async getTuningConfig(userId: string): Promise<FXTuningConfig> {
     try {
-      const docRef = doc(db, `users/${userId}/usdjpy/tuning_config`);
+      const docRef = doc(db, `users/${userId}/fx_usdjpy_tuning_config`);
       const snap = await getDoc(docRef);
       
       if (snap.exists()) {
@@ -72,10 +72,10 @@ export const FXTuningService = {
       const current = await this.getTuningConfig(userId);
       const updated = { ...current, ...updates, updatedAt: new Date().toISOString() };
       
-      await setDoc(doc(db, `users/${userId}/usdjpy/tuning_config`), updated);
+      await setDoc(doc(db, `users/${userId}/fx_usdjpy_tuning_config`), updated);
       
       // ログの記録
-      await addDoc(collection(db, `users/${userId}/usdjpy/tuning_logs`), {
+      await addDoc(collection(db, `users/${userId}/fx_usdjpy_tuning_logs`), {
         userId,
         changeReason: reason,
         oldConfig: current,
@@ -154,7 +154,7 @@ export const FXTuningService = {
         updatedAt: new Date().toISOString()
       };
 
-      await setDoc(doc(db, `users/${userId}/usdjpy/drift_analysis`), analysis);
+      await setDoc(doc(db, `users/${userId}/fx_usdjpy_drift_analysis`), analysis);
       return analysis;
     } catch (error) {
       console.error("Error analyzing drift:", error);
@@ -202,7 +202,7 @@ export const FXTuningService = {
   async getTuningLogs(userId: string): Promise<FXTuningLog[]> {
     try {
       const q = query(
-        collection(db, `users/${userId}/usdjpy/tuning_logs`),
+        collection(db, `users/${userId}/fx_usdjpy_tuning_logs`),
         orderBy("appliedAt", "desc"),
         limit(10)
       );

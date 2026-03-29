@@ -42,7 +42,7 @@ export const FXSimulationService = {
       const slipAmount = slippagePips / 100; // pips to currency units
       const realizedEntryPrice = data.side === "buy" ? data.entryPrice + slipAmount : data.entryPrice - slipAmount;
 
-      const docRef = await addDoc(collection(db, `users/${userId}/usdjpy/simulations`), {
+      const docRef = await addDoc(collection(db, `users/${userId}/fx_usdjpy_simulations`), {
         ...data,
         execution: {
           slippagePips,
@@ -58,7 +58,7 @@ export const FXSimulationService = {
       
       // 直近エントリー時刻の更新
       const metrics = await this.getRiskMetrics(userId);
-      await setDoc(doc(db, `users/${userId}/usdjpy/risk_metrics`), {
+      await setDoc(doc(db, `users/${userId}/fx_usdjpy_risk_metrics`), {
         ...metrics,
         lastEntryTimestamp: new Date().toISOString()
       });
@@ -75,7 +75,7 @@ export const FXSimulationService = {
    */
   async closeSimulation(userId: string, id: string, exitPrice: number, exitReason: string): Promise<void> {
     try {
-      const docRef = doc(db, `users/${userId}/usdjpy/simulations`, id);
+      const docRef = doc(db, `users/${userId}/fx_usdjpy_simulations`, id);
       const snap = await getDoc(docRef);
       if (!snap.exists()) throw new Error("Simulation not found");
       
@@ -132,7 +132,7 @@ export const FXSimulationService = {
           if (pos.stopLoss && currentPrice > pos.entryPrice + 0.1) { // 10pips以上の含み益
             const newSL = currentPrice - 0.2; // 20pips下に追従
             if (newSL > pos.stopLoss) {
-              await updateDoc(doc(db, `users/${userId}/usdjpy/simulations`, pos.id), {
+              await updateDoc(doc(db, `users/${userId}/fx_usdjpy_simulations`, pos.id), {
                 stopLoss: newSL,
                 updatedAt: serverTimestamp()
               });
@@ -151,7 +151,7 @@ export const FXSimulationService = {
           if (pos.stopLoss && currentPrice < pos.entryPrice - 0.1) {
             const newSL = currentPrice + 0.2;
             if (newSL < pos.stopLoss) {
-              await updateDoc(doc(db, `users/${userId}/usdjpy/simulations`, pos.id), {
+              await updateDoc(doc(db, `users/${userId}/fx_usdjpy_simulations`, pos.id), {
                 stopLoss: newSL,
                 updatedAt: serverTimestamp()
               });
@@ -174,7 +174,7 @@ export const FXSimulationService = {
   async getActiveSimulations(userId: string): Promise<FXSimulation[]> {
     try {
       const q = query(
-        collection(db, `users/${userId}/usdjpy/simulations`),
+        collection(db, `users/${userId}/fx_usdjpy_simulations`),
         where("status", "==", "open"),
         orderBy("entryTimestamp", "desc")
       );
@@ -192,7 +192,7 @@ export const FXSimulationService = {
   async getSimulationHistory(userId: string, limitCount: number = 20): Promise<FXSimulation[]> {
     try {
       const q = query(
-        collection(db, `users/${userId}/usdjpy/simulations`),
+        collection(db, `users/${userId}/fx_usdjpy_simulations`),
         where("status", "==", "closed"),
         orderBy("exitTimestamp", "desc"),
         // リミットは後で実装
@@ -211,7 +211,7 @@ export const FXSimulationService = {
   async getSimulationsByDateRange(userId: string, start: string, end: string): Promise<FXSimulation[]> {
     try {
       const q = query(
-        collection(db, `users/${userId}/usdjpy/simulations`),
+        collection(db, `users/${userId}/fx_usdjpy_simulations`),
         where("exitTimestamp", ">=", start),
         where("exitTimestamp", "<=", end),
         orderBy("exitTimestamp", "asc")
@@ -229,7 +229,7 @@ export const FXSimulationService = {
    */
   async getRiskMetrics(userId: string): Promise<FXRiskMetrics> {
     try {
-      const docRef = doc(db, `users/${userId}/usdjpy/risk_metrics`);
+      const docRef = doc(db, `users/${userId}/fx_usdjpy_risk_metrics`);
       const snap = await getDoc(docRef);
       
       if (snap.exists()) {
@@ -269,7 +269,7 @@ export const FXSimulationService = {
     allTime: { pips: number, yen: number, count: number, winRate: number }
   }> {
     try {
-      const db_ref = collection(db, `users/${userId}/usdjpy/simulations`);
+      const db_ref = collection(db, `users/${userId}/fx_usdjpy_simulations`);
       const q = query(
         db_ref,
         where("status", "==", "closed"),
@@ -361,7 +361,7 @@ export const FXSimulationService = {
       const winRate = totalTradesCount > 0 ? wins / totalTradesCount : 0;
 
       // 違反ログの取得
-      const violationsSnap = await getDocs(collection(db, `users/${userId}/usdjpy/violations`));
+      const violationsSnap = await getDocs(collection(db, `users/${userId}/fx_usdjpy_violations`));
       const violationCount = violationsSnap.size;
       const ruleComplianceRate = metrics.totalFinishedTrades > 0 
         ? Math.max(0, 100 - (violationCount / metrics.totalFinishedTrades * 100)) 
@@ -391,7 +391,7 @@ export const FXSimulationService = {
         lastTradeTimestamp: new Date().toISOString()
       };
 
-      await setDoc(doc(db, `users/${userId}/usdjpy/risk_metrics`), updatedMetrics);
+      await setDoc(doc(db, `users/${userId}/fx_usdjpy_risk_metrics`), updatedMetrics);
     } catch (error) {
       console.error("Error updating risk metrics:", error);
     }
@@ -402,7 +402,7 @@ export const FXSimulationService = {
    */
   async logViolation(userId: string, reason: string, context: any): Promise<void> {
     try {
-      await addDoc(collection(db, `users/${userId}/usdjpy/violations`), {
+      await addDoc(collection(db, `users/${userId}/fx_usdjpy_violations`), {
         reason,
         context,
         timestamp: serverTimestamp(),
@@ -418,7 +418,7 @@ export const FXSimulationService = {
   async getConditionAnalysis(userId: string): Promise<FXConditionAnalysis> {
     try {
       const q = query(
-        collection(db, `users/${userId}/usdjpy/simulations`),
+        collection(db, `users/${userId}/fx_usdjpy_simulations`),
         where("status", "==", "closed"),
         orderBy("exitTimestamp", "desc")
       );
@@ -481,7 +481,7 @@ export const FXSimulationService = {
   async getViolationLogs(userId: string): Promise<any[]> {
     try {
       const q = query(
-        collection(db, `users/${userId}/usdjpy/violations`),
+        collection(db, `users/${userId}/fx_usdjpy_violations`),
         orderBy("timestamp", "desc")
       );
       const snap = await getDocs(q);
@@ -497,7 +497,7 @@ export const FXSimulationService = {
    */
   async generateTradeReview(userId: string, simulationId: string): Promise<void> {
     try {
-      const docRef = doc(db, `users/${userId}/usdjpy/simulations`, simulationId);
+      const docRef = doc(db, `users/${userId}/fx_usdjpy_simulations`, simulationId);
       const snap = await getDoc(docRef);
       if (!snap.exists()) return;
       

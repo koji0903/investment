@@ -197,8 +197,8 @@ export const IntegratedCommandCenter = () => {
                    </div>
                    <div className="flex justify-between items-center text-[11px] font-black text-slate-500 uppercase tracking-widest">
                       <span>本日損益 (円)</span>
-                      <span className={cn("text-xl font-black", performance.today.yen >= 0 ? "text-emerald-400" : "text-rose-400")}>
-                         {performance.today.yen.toLocaleString()}円
+                      <span className={cn("text-xl font-black", (performance?.today?.yen || 0) >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                         {(performance?.today?.yen || 0).toLocaleString()}円
                       </span>
                    </div>
                 </div>

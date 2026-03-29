@@ -45,7 +45,7 @@ export async function generateFXReviewAction(
 
     // Firestore に保存
     const reviewId = `${period}-${startISO.split('T')[0]}`;
-    const docRef = doc(db, `users/${userId}/usdjpy/reviews`, reviewId);
+    const docRef = doc(db, `users/${userId}/fx_usdjpy_reviews`, reviewId);
     await setDoc(docRef, {
       ...review,
       updatedAt: new Date().toISOString()
@@ -67,7 +67,7 @@ export async function getFXReviewsAction(
 ): Promise<FXTradingReview[]> {
   try {
     const q = query(
-      collection(db, `users/${userId}/usdjpy/reviews`),
+      collection(db, `users/${userId}/fx_usdjpy_reviews`),
       orderBy("startDate", "desc")
     );
     const snap = await getDocs(q);

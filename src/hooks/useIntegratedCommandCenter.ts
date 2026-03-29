@@ -65,7 +65,7 @@ export function useIntegratedCommandCenter() {
     try {
       const [
         s, r, rm, ap, perf, wp, inst, cond, btest, logs, evts,
-        tConfig, drift, tLogs
+        tConfig, tLogs
       ] = await Promise.all([
         getMarketSentimentAction(),
         getFXReviewsAction(user.uid),
@@ -79,7 +79,6 @@ export function useIntegratedCommandCenter() {
         FXSimulationService.getViolationLogs(user.uid),
         FXIndicatorService.getUpcomingEvents(),
         FXTuningService.getTuningConfig(user.uid),
-        FXTuningService.analyzeDrift(user.uid),
         FXTuningService.getTuningLogs(user.uid)
       ]);
 
@@ -95,7 +94,6 @@ export function useIntegratedCommandCenter() {
       setViolationLogs(logs);
       setUpcomingEvents(evts);
       setTuningConfig(tConfig);
-      setDriftAnalysis(drift);
       setTuningLogs(tLogs);
     } catch (e) {
       console.error("Error fetching integrated data", e);
@@ -106,9 +104,18 @@ export function useIntegratedCommandCenter() {
 
   useEffect(() => {
     refreshData();
-    const interval = setInterval(refreshData, 10000); // 10秒おきに最新化
+    const interval = setInterval(refreshData, 60000); // 60秒おきに最新化（クォータ節約）
     return () => clearInterval(interval);
   }, [refreshData]);
+
+  // 初期ロード時のみ Drift 分析を実行 (書き込みクォータ節約のため)
+  useEffect(() => {
+    if (user) {
+      FXTuningService.analyzeDrift(user.uid)
+        .then(setDriftAnalysis)
+        .catch(e => console.error("Initial drift analysis failed", e));
+    }
+  }, [user]);
 
   // Real-time calculation based on market data
   const derivedData = useMemo(() => {
