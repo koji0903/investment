@@ -207,7 +207,7 @@ const MiniChart = ({ data, trend }: { data?: any[], trend: string }) => {
   const color = trend === "bullish" ? "#10b981" : trend === "bearish" ? "#f43f5e" : "#64748b";
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
+    <ResponsiveContainer width="100%" height="100%" minWidth={0}>
       <LineChart data={recentData}>
         <YAxis hide domain={['auto', 'auto']} />
         <Line 

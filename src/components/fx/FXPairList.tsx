@@ -25,7 +25,7 @@ const MiniChart = ({ data, color }: { data: any[], color: string }) => {
   
   return (
     <div className="h-10 w-24">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <AreaChart data={data}>
           <defs>
             <linearGradient id={`gradient-${color}`} x1="0" y1="0" x2="0" y2="1">
@@ -268,7 +268,7 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
             {/* Mobile Mini Chart */}
             {item.chartData && item.chartData.length > 0 && (
               <div className="w-full h-16 opacity-80 pt-1">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <AreaChart data={item.chartData.slice(-30)}>
                     <YAxis hide domain={['auto', 'auto']} />
                     <Area 
