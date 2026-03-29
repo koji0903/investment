@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { FXJudgment, SignalLabel } from "@/types/fx";
+import { FXJudgment, SignalLabel, SUPPORTED_PAIRS } from "@/types/fx";
 import { FXService } from "@/services/fxService";
 import { FXPairList } from "./FXPairList";
 import { FXPairDetailModal } from "./FXPairDetailModal";
@@ -103,13 +103,17 @@ export const FXJudgmentDashboard = () => {
       try {
         const data = await FXService.getPairs(user.uid, portfolioId);
         if (isMounted.current) {
-          setAllJudgments(data);
+          // サポート対象の銘柄のみに制限
+          const supportedPairCodes = new Set(SUPPORTED_PAIRS.map(p => p.pairCode));
+          const validData = data.filter(d => d.pairCode && supportedPairCodes.has(d.pairCode));
+          
+          setAllJudgments(validData);
           setLoading(false);
           
           // 初回データ取得後、未完了または古いデータがある場合に一度だけ同期を開始
-          if (!initialSyncTriggered.current && data.length > 0) {
+          if (!initialSyncTriggered.current && validData.length > 0) {
             initialSyncTriggered.current = true;
-            const toSync = data.filter(d => {
+            const toSync = validData.filter(d => {
               const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 24 * 60 * 60 * 1000;
               return d.syncStatus !== "completed" || isStale;
             }).map(d => d.pairCode);
@@ -135,14 +139,21 @@ export const FXJudgmentDashboard = () => {
       if (!isMounted.current) return;
       
       setAllJudgments(prev => {
+        const supportedPairCodes = new Set(SUPPORTED_PAIRS.map(p => p.pairCode));
         const dataMap = new Map(prev.map(d => [d.pairCode, d]));
+        
         realtimeData.forEach(d => {
+          // 不正な銘柄コードまたはサポート対象外は無視
+          if (!d.pairCode || !supportedPairCodes.has(d.pairCode)) return;
+          
           // 同期処理中のものはマージしない
           if (!syncingPairsRef.current.has(d.pairCode)) {
             dataMap.set(d.pairCode, d);
           }
         });
-        return Array.from(dataMap.values()).sort((a, b) => b.totalScore - a.totalScore);
+        return Array.from(dataMap.values())
+          .filter(d => d.pairCode && supportedPairCodes.has(d.pairCode))
+          .sort((a, b) => b.totalScore - a.totalScore);
       });
 
       if (realtimeData.length > 0) {

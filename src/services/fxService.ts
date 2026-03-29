@@ -93,6 +93,11 @@ export const FXService = {
     try {
       if (!userId || !portfolioId) return { success: false, message: "Authentication required" };
       
+      // 銘柄コードのバリデーション
+      if (!pairCode || pairCode === "---" || !SUPPORTED_PAIRS.some(p => p.pairCode === pairCode)) {
+        return { success: false, message: `Invalid or unsupported FX pair: ${pairCode}` };
+      }
+      
       const isDemo = userId === DEMO_USER_ID;
       const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
       const normalizedId = pairCode.replace("/", "-");
@@ -128,6 +133,10 @@ export const FXService = {
 
   async setSyncing(userId: string, portfolioId: string, pairCode: string): Promise<boolean> {
     try {
+      if (!pairCode || pairCode === "---" || !SUPPORTED_PAIRS.some(p => p.pairCode === pairCode)) {
+        return false;
+      }
+      
       if (userId && portfolioId && userId !== DEMO_USER_ID) {
         const path = `users/${userId}/portfolios/${portfolioId}/fx_judgments`;
         await setDoc(doc(db, path, pairCode.replace("/", "-")), { 
