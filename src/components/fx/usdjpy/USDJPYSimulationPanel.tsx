@@ -33,13 +33,17 @@ export const USDJPYSimulationPanel = ({
   decision,
   showEntryForm,
   setShowEntryForm,
-  riskMetrics
+  riskMetrics,
+  indicatorStatus,
+  executionProfile
 }: { 
   currentPrice: number; 
   decision: USDJPYDecisionResult | null;
   showEntryForm: boolean;
   setShowEntryForm: (show: boolean) => void;
   riskMetrics: FXRiskMetrics | null;
+  indicatorStatus?: { status: "normal" | "caution" | "prohibited", message: string };
+  executionProfile?: { spreadPips: number, qualityScore: number, status: "ideal" | "caution" | "critical", volatilitySpike: boolean };
 }) => {
   const { user } = useAuth();
   const [activeSims, setActiveSims] = useState<FXSimulation[]>([]);
@@ -62,7 +66,9 @@ export const USDJPYSimulationPanel = ({
       riskPercent,
       stopPips,
       decision.score,
-      decision.isEnvironmentOk
+      decision.isEnvironmentOk,
+      indicatorStatus?.status || "normal",
+      executionProfile?.status || "ideal"
     );
   }, [riskMetrics, riskPercent, stopPips, decision]);
 
@@ -146,9 +152,12 @@ export const USDJPYSimulationPanel = ({
             isPullback: decision.reasons.some(r => r.includes("Pullback")),
             score: decision.score
           },
+          executionQuality: executionProfile?.qualityScore || 100,
+          eventStatus: indicatorStatus?.status || "normal",
+          structure: decision.structure,
           environment: decision.regime.type
         },
-      });
+      }, executionProfile);
       fetchSims();
       setShowEntryForm(false);
     } catch (err) {

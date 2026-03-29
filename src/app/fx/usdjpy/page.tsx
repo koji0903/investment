@@ -15,9 +15,24 @@ import { USDJPYRiskMonitor } from "@/components/fx/usdjpy/USDJPYRiskMonitor";
 import { USDJPYAIInsights } from "@/components/fx/usdjpy/USDJPYAIInsights";
 import { USDJPYRegimeMonitor } from "@/components/fx/usdjpy/USDJPYRegimeMonitor";
 import { USDJPYStrategyLab } from "@/components/fx/usdjpy/USDJPYStrategyLab";
+import { USDJPYIndicatorBanner } from "@/components/fx/usdjpy/USDJPYIndicatorBanner";
+import { USDJPYExecutionMonitor } from "@/components/fx/usdjpy/USDJPYExecutionMonitor";
+import { USDJPYStructureMonitor } from "@/components/fx/usdjpy/USDJPYStructureMonitor";
+import { USDJPYPseudoOrderBook } from "@/components/fx/usdjpy/USDJPYPseudoOrderBook";
 import { FXLearningService } from "@/services/fxLearningService";
 import { FXSimulationService } from "@/services/fxSimulationService";
-import { LearningMetric, FXRiskMetrics, FXWeightProfile } from "@/types/fx";
+import { FXIndicatorService } from "@/services/fxIndicatorService";
+import { FXExecutionService } from "@/services/fxExecutionService";
+import { FXStructureService } from "@/services/fxStructureService";
+import { FXLiquidityService } from "@/services/fxLiquidityService";
+import { 
+  LearningMetric, 
+  FXRiskMetrics, 
+  FXWeightProfile, 
+  FXExecutionProfile,
+  FXStructureAnalysis,
+  FXPseudoOrderBook
+} from "@/types/fx";
 import { checkTradePermission } from "@/utils/fx/tradeGovernance";
 import { FXPatternAnalyzer, AnalysisResult } from "@/utils/fx/FXPatternAnalyzer";
 import { FXWeightOptimizer } from "@/utils/fx/FXWeightOptimizer";
@@ -45,6 +60,10 @@ export default function USDJPYDashboardPage() {
   const [weightProfile, setWeightProfile] = React.useState<FXWeightProfile | null>(null);
   const [analysisResult, setAnalysisResult] = React.useState<AnalysisResult | null>(null);
   const [customParams, setCustomParams] = React.useState<any>(null);
+  const [indicatorStatus, setIndicatorStatus] = React.useState<any>(null);
+  const [executionProfile, setExecutionProfile] = React.useState<FXExecutionProfile | null>(null);
+  const [structureAnalysis, setStructureAnalysis] = React.useState<FXStructureAnalysis | null>(null);
+  const [pseudoOrderBook, setPseudoOrderBook] = React.useState<FXPseudoOrderBook | null>(null);
 
   // 1. 学習データ・AIモデル・リスクメトリクスの取得
   const fetchEssentialData = React.useCallback(async () => {
@@ -56,10 +75,12 @@ export default function USDJPYDashboardPage() {
         FXLearningService.getWeightProfile(user.uid),
         FXPatternAnalyzer.analyzeTradePatterns(user.uid)
       ]);
+      const status = await FXIndicatorService.getEventStatus();
       setMetrics(m);
       setRiskMetrics(r);
       setWeightProfile(w);
       setAnalysisResult(a);
+      setIndicatorStatus(status);
     } catch (e) {
       console.error("Failed to fetch essential data", e);
     }
@@ -89,7 +110,38 @@ export default function USDJPYDashboardPage() {
   // 2. 意思決定データの算出
   const decision = useMemo(() => {
     if (!ohlcData["1m"].length) return null;
-    let res = calculateUSDJPYDecision(ohlcData, metrics, isHighProbMode, weightProfile);
+    
+    // 執行品質の算出
+    const profile = FXExecutionService.calculateExecutionProfile(
+      quote?.bid || 0, 
+      quote?.ask || 0, 
+      ohlcData["1m"]
+    );
+    setExecutionProfile(profile);
+
+    // 相場構造の解析
+    const structure = FXStructureService.analyzeStructure(ohlcData);
+    setStructureAnalysis(structure);
+
+    // 擬似板情報の生成
+    const orderBook = FXLiquidityService.generatePseudoOrderBook(
+      quote?.price || 0,
+      quote?.bid || 0,
+      quote?.ask || 0,
+      ohlcData["1m"]
+    );
+    setPseudoOrderBook(orderBook);
+
+    let res = calculateUSDJPYDecision(
+      ohlcData, 
+      metrics, 
+      isHighProbMode, 
+      weightProfile, 
+      indicatorStatus || { status: "normal", message: "通常運用" },
+      profile,
+      structure,
+      orderBook
+    );
     
     // カスタムパラメータが適用されている場合は補正
     if (customParams && res) {
@@ -131,6 +183,16 @@ export default function USDJPYDashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-indigo-500/30">
+      {/* 経済指標警戒バナー */}
+      {indicatorStatus && (
+        <USDJPYIndicatorBanner 
+          status={indicatorStatus.status} 
+          message={indicatorStatus.message} 
+          nextEvent={indicatorStatus.nextEvent}
+          minutesToEvent={indicatorStatus.minutesToEvent}
+        />
+      )}
+
       {/* Top Header Row */}
       <header className="h-16 border-b border-slate-900 bg-slate-950/50 backdrop-blur-xl flex items-center justify-between px-6 sticky top-0 z-50">
         <div className="flex items-center gap-4">
@@ -192,6 +254,7 @@ export default function USDJPYDashboardPage() {
           <USDJPYRegimeMonitor regime={decision?.regime || null} />
           <USDJPYRiskMonitor metrics={riskMetrics} permission={permission} />
           {weightProfile && <USDJPYAIInsights analysis={analysisResult} weightProfile={weightProfile} />}
+          <USDJPYStructureMonitor structure={structureAnalysis} />
           <USDJPYTrendMonitor trends={decision?.trends} alignmentLevel={decision?.alignmentLevel} />
           <USDJPYFilterStatus decision={decision} />
           
@@ -228,6 +291,7 @@ export default function USDJPYDashboardPage() {
         {/* Center Column: Analysis & Decision (Col 6) */}
         <div className="xl:col-span-6 space-y-6">
           <USDJPYDecisionMonitor decision={decision} />
+          <USDJPYPseudoOrderBook orderBook={pseudoOrderBook} />
           
           {/* Chart Placeholder (Future improvement) */}
           <div className="h-[400px] bg-slate-950 border border-slate-900 rounded-[40px] flex items-center justify-center relative overflow-hidden group">
@@ -243,6 +307,9 @@ export default function USDJPYDashboardPage() {
 
         {/* Right Column: Sim & Risk & Scenarios (Col 3) */}
         <div className="xl:col-span-3 space-y-6 flex flex-col">
+          {/* 執行品質モニター */}
+          <USDJPYExecutionMonitor profile={executionProfile} />
+
           <div className="h-[500px] p-8 bg-slate-900/50 border border-slate-900 rounded-[40px] shadow-2xl overflow-hidden relative group">
              {quote && (
                <USDJPYSimulationPanel 
@@ -251,6 +318,8 @@ export default function USDJPYDashboardPage() {
                  showEntryForm={showEntryModal}
                  setShowEntryForm={setShowEntryModal}
                  riskMetrics={riskMetrics}
+                 indicatorStatus={indicatorStatus}
+                 executionProfile={executionProfile || undefined}
                />
              )}
           </div>

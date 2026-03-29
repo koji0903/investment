@@ -1,8 +1,8 @@
 import { 
-  TechnicalTrend, 
-  LearningMetric,
   FXWeightProfile,
-  FXMarketRegime
+  FXMarketRegime,
+  FXStructureAnalysis,
+  FXPseudoOrderBook
 } from "@/types/fx";
 import { 
   calculateATR 
@@ -42,13 +42,28 @@ export interface USDJPYDecisionResult {
     isHighVolatility: boolean;
   };
   regime: FXMarketRegime;
+  indicatorStatus: {
+    status: "normal" | "caution" | "prohibited";
+    message: string;
+  };
+  execution: {
+    spreadPips: number;
+    qualityScore: number;
+    status: "ideal" | "caution" | "critical";
+  };
+  structure: FXStructureAnalysis;
+  orderBook: FXPseudoOrderBook;
 }
 
 export function calculateUSDJPYDecision(
   ohlcData: Record<string, any[]>,
   learningMetrics: LearningMetric[],
   isHighProbMode: boolean = true,
-  weightProfile: FXWeightProfile | null = null
+  weightProfile: FXWeightProfile | null = null,
+  indicatorStatus: { status: "normal" | "caution" | "prohibited", message: string } = { status: "normal", message: "通常運用" },
+  executionProfile: { spreadPips: number, qualityScore: number, status: "ideal" | "caution" | "critical" } = { spreadPips: 0.2, qualityScore: 100, status: "ideal" },
+  structure: FXStructureAnalysis | null = null,
+  orderBook: FXPseudoOrderBook | null = null
 ): USDJPYDecisionResult {
   const trends = {
     "1m": getTrend(ohlcData["1m"]),
@@ -138,9 +153,21 @@ export function calculateUSDJPYDecision(
     session.isOk && 
     !fakeout.isFakeout &&
     (isHighProbMode ? pullback.isPullback : true) &&
-    ((primaryDirection === "buy" && totalScore >= 70) || (primaryDirection === "sell" && totalScore >= 70));
+    ((primaryDirection === "buy" && totalScore >= 70) || (primaryDirection === "sell" && totalScore >= 70)) &&
+    indicatorStatus.status !== "prohibited" &&
+    executionProfile.status !== "critical" &&
+    (structure ? structure.isEntryTiming : true) &&
+    (orderBook ? orderBook.liquidityScore >= 50 : true);
 
   if (isEntryAllowed) reasons.push("【AI最高評価】全フィルター合致");
+  if (structure && structure.completionScore < 75) reasons.push(`構造未完成: ${structure.label} (完成度 ${structure.completionScore}%)`);
+  if (orderBook && orderBook.liquidityScore < 50) reasons.push(`低流動性: 約定遅延リスク大`);
+  if (orderBook && Math.abs(orderBook.imbalance) > 0.5) reasons.push(`板の偏り: ${orderBook.imbalance > 0 ? "買い" : "売り"}注文が極端に増加中`);
+  
+  if (indicatorStatus.status === "prohibited") reasons.push(`取引禁止: ${indicatorStatus.message}`);
+  if (executionProfile.status === "critical") reasons.push(`執行品質低下: スプレッド拡大中 (${executionProfile.spreadPips.toFixed(1)} pips)`);
+  if (indicatorStatus.status === "caution") reasons.push("【重要】経済指標が近づいています。ロット抑制を推奨");
+  
   if (alignmentLevel === 100) reasons.push("全時間足トレンド完全一致");
   if (pullback.isPullback) reasons.push("絶好の押し目/戻りポイント");
   if (fakeout.isFakeout) reasons.push("強引な動き（ダマし）を検知");
@@ -164,7 +191,15 @@ export function calculateUSDJPYDecision(
       isPerfectOrder: isEnvironmentOk,
       isHighVolatility: lastATR > 0.15
     },
-    regime
+    regime,
+    indicatorStatus,
+    execution: {
+      spreadPips: executionProfile.spreadPips,
+      qualityScore: executionProfile.qualityScore,
+      status: executionProfile.status
+    },
+    structure: structure || { type: "UNKNOWN", completionScore: 0, label: "解析なし", reasons: [], isEntryTiming: false, energyLevel: 0 },
+    orderBook: orderBook || { bids: [], asks: [], imbalance: 0, liquidityScore: 100, walls: { resistance: [], support: [] } }
   };
 }
 

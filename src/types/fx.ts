@@ -267,6 +267,12 @@ export interface FXSimulation {
   exitReason?: string;
   // エントリー時の市場詳細コンテキスト (高度学習用)
   context: FXTradeContext;
+  execution?: {
+    slippagePips: number;
+    spreadPips: number;
+    executionQualityScore: number;
+    realizedEntryPrice: number;
+  };
   aiReview?: {
     score: number;
     compliance: string;
@@ -305,6 +311,9 @@ export interface FXTradeContext {
     isPullback: boolean;
     score: number;
   };
+  executionQuality: number;   // エントリー時の執行品質スコア
+  eventStatus: "normal" | "caution" | "prohibited"; // 指標警戒状態
+  structure: FXStructureAnalysis; // 相場構造解析結果
   environment: string;        // "TREND_UP" | "RANGE" | "VOLATILE" etc.
 }
 
@@ -439,7 +448,77 @@ export interface LotCalculationResult {
     consecutiveLoss: number; // 連敗による補正倍率
     drawdown: number;       // ドローダウンによる補正倍率
     environment: number;    // 市場環境による補正倍率
+    execution: number;      // 執行品質による補正倍率
+    event: number;          // 経済指標イベントによる補正倍率
+    structure: number;      // 構造完成度による補正倍率
+    liquidity: number;      // 流動性状態による補正倍率
   };
   reason: string;           // ロット決定の主要な理由
   isExecutionAllowed: boolean; // 取引許可（DD酷い場合などはfalse）
+}
+
+/**
+ * 経済指標イベント
+ */
+export interface FXEconomicEvent {
+  id: string;
+  name: string;
+  timestamp: string;          // ISO
+  importance: "high" | "medium" | "low";
+  currency: "USD" | "JPY" | "ALL";
+  actual?: string;
+  forecast?: string;
+  previous?: string;
+}
+
+/**
+ * 執行品質プロファイル
+ */
+export interface FXExecutionProfile {
+  spreadPips: number;
+  volatilitySpike: boolean;   // 急変動検知
+  slippageRisk: "low" | "medium" | "high";
+  liquidityScore: number;     // 0-100
+  qualityScore: number;       // 0-100
+  status: "ideal" | "caution" | "critical";
+}
+
+/**
+ * 相場構造解析
+ */
+export type FXStructureType = 
+  | "PULLBACK" 
+  | "BREAKOUT" 
+  | "RANGE_COMPRESSION" 
+  | "FAKE_REVERSAL" 
+  | "TREND_FOLLOW" 
+  | "UNKNOWN";
+
+export interface FXStructureAnalysis {
+  type: FXStructureType;
+  completionScore: number;    // 0-100
+  label: string;              // "押し目形成中", "ブレイク寸前" 等
+  reasons: string[];
+  isEntryTiming: boolean;     // 構造的に今が執行タイミングか
+  energyLevel: number;        // 0-100 (エネルギー蓄積度)
+}
+
+/**
+ * 擬似板情報
+ */
+export interface FXOrderBookEntry {
+  price: number;
+  size: number;               // 厚み (相対値)
+  isWall: boolean;            // 「壁」として機能しているか
+}
+
+export interface FXPseudoOrderBook {
+  bids: FXOrderBookEntry[];
+  asks: FXOrderBookEntry[];
+  imbalance: number;          // 需給の偏り (-1.0 〜 +1.0)
+  liquidityScore: number;     // 0-100
+  walls: {
+    resistance: number[];
+    support: number[];
+  };
 }

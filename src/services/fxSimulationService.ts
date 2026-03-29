@@ -23,10 +23,33 @@ export const FXSimulationService = {
   /**
    * 仮想エントリーの作成
    */
-  async createSimulation(userId: string, data: Omit<FXSimulation, "id" | "pnl" | "pnlPercentage" | "updatedAt">): Promise<string> {
+  async createSimulation(
+    userId: string, 
+    data: Omit<FXSimulation, "id" | "pnl" | "pnlPercentage" | "updatedAt">,
+    executionProfile?: { spreadPips: number, qualityScore: number, volatilitySpike: boolean }
+  ): Promise<string> {
     try {
+      // スリッページのエミュレーション (ボラティリティ急増時に発生)
+      let slippagePips = 0;
+      if (executionProfile?.volatilitySpike) {
+        // 0.2 〜 1.5 pips のランダムな滑り
+        slippagePips = 0.2 + Math.random() * 1.3;
+      } else if (executionProfile && executionProfile.spreadPips > 0.5) {
+        // スプレッド拡大時は 0.1 〜 0.3 pips 程度滑りやすい
+        slippagePips = Math.random() * 0.3;
+      }
+
+      const slipAmount = slippagePips / 100; // pips to currency units
+      const realizedEntryPrice = data.side === "buy" ? data.entryPrice + slipAmount : data.entryPrice - slipAmount;
+
       const docRef = await addDoc(collection(db, `users/${userId}/usdjpy/simulations`), {
         ...data,
+        execution: {
+          slippagePips,
+          spreadPips: executionProfile?.spreadPips || 0.2,
+          executionQualityScore: executionProfile?.qualityScore || 100,
+          realizedEntryPrice
+        },
         pnl: 0,
         pnlPercentage: 0,
         status: "open",
@@ -57,8 +80,9 @@ export const FXSimulationService = {
       if (!snap.exists()) throw new Error("Simulation not found");
       
       const data = snap.data() as FXSimulation;
-      const pnl = data.side === "buy" ? exitPrice - data.entryPrice : data.entryPrice - exitPrice;
-      const pnlPercentage = (pnl / data.entryPrice) * 100;
+      const entryPrice = data.execution?.realizedEntryPrice ?? data.entryPrice;
+      const pnl = data.side === "buy" ? exitPrice - entryPrice : entryPrice - exitPrice;
+      const pnlPercentage = (pnl / entryPrice) * 100;
 
       await updateDoc(docRef, {
         status: "closed",
