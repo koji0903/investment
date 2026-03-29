@@ -11,30 +11,33 @@ export const FXIndicatorService = {
    */
   async getUpcomingEvents(): Promise<FXEconomicEvent[]> {
     const now = new Date();
-    // デモ用: 今日・明日のダミー重要指標を生成
-    return [
-      {
-        id: "evt_usd_cpi",
-        name: "米・消費者物価指数 (CPI)",
-        timestamp: new Date(now.getTime() + 1000 * 60 * 45).toISOString(), // 45分後
-        importance: "high",
-        currency: "USD"
-      },
-      {
-        id: "evt_jpy_boj",
-        name: "日銀・政策金利発表",
-        timestamp: new Date(now.getTime() + 1000 * 60 * 60 * 3).toISOString(), // 3時間後
-        importance: "high",
-        currency: "JPY"
-      },
-      {
-        id: "evt_usd_fomc",
-        name: "FOMC議事要旨公開",
-        timestamp: new Date(now.getTime() + 1000 * 60 * 60 * 24).toISOString(), // 24時間後
-        importance: "medium",
-        currency: "USD"
-      }
+    const baseTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    
+    // カレンダー表示用に数日分のダミー指標を生成
+    const baseEvents: Omit<FXEconomicEvent, "timestamp">[] = [
+      { id: "usd_cpi", name: "米・消費者物価指数", importance: "high", currency: "USD" },
+      { id: "jpy_boj", name: "日銀・政策金利", importance: "high", currency: "JPY" },
+      { id: "usd_pce", name: "米・PCEデフレーター", importance: "high", currency: "USD" },
+      { id: "usd_job", name: "米・雇用統計", importance: "high", currency: "USD" },
+      { id: "jpy_tankan", name: "日銀短観", importance: "medium", currency: "JPY" },
     ];
+
+    const results: FXEconomicEvent[] = [];
+    
+    // 今日
+    results.push({ ...baseEvents[0], timestamp: new Date(now.getTime() + 1000 * 60 * 45).toISOString() });
+    results.push({ ...baseEvents[1], timestamp: new Date(now.getTime() + 1000 * 60 * 60 * 3).toISOString() });
+
+    // 明日
+    const tomorrow = new Date(baseTime.getTime() + 1000 * 60 * 60 * 24);
+    results.push({ ...baseEvents[2], timestamp: new Date(tomorrow.setHours(21, 30)).toISOString() });
+
+    // 明後日
+    const dayAfter = new Date(baseTime.getTime() + 1000 * 60 * 60 * 48);
+    results.push({ ...baseEvents[3], timestamp: new Date(dayAfter.setHours(21, 30)).toISOString() });
+    results.push({ ...baseEvents[4], timestamp: new Date(dayAfter.setHours(8, 50)).toISOString() });
+
+    return results;
   },
 
   /**

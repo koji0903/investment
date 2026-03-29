@@ -12,7 +12,7 @@ import {
   Timestamp,
   getDoc
 } from "firebase/firestore";
-import { FXSimulation, FXRiskMetrics } from "@/types/fx";
+import { FXSimulation, FXRiskMetrics, FXConditionAnalysis, FXBacktestComparison } from "@/types/fx";
 import { FXLearningService } from "./fxLearningService";
 import { setDoc } from "firebase/firestore";
 
@@ -247,6 +247,8 @@ export const FXSimulationService = {
         totalFinishedTrades: 0,
         dailyTradeCount: 0,
         dailyPnlPercent: 0,
+        ruleComplianceRate: 100, // 初期は100%
+        operationStatus: "normal",
         lastEntryTimestamp: new Date(0).toISOString(),
         lastExitTimestamp: new Date(0).toISOString(),
         lastTradeTimestamp: new Date().toISOString()
@@ -254,6 +256,71 @@ export const FXSimulationService = {
     } catch (error) {
       console.error("Error fetching risk metrics:", error);
       throw error;
+    }
+  },
+
+  /**
+   * 統合ダッシュボード用の集計パフォーマンスを取得
+   */
+  async getAggregatedPerformance(userId: string): Promise<{
+    today: { pips: number, yen: number, count: number, winRate: number },
+    weekly: { pips: number, yen: number, count: number, winRate: number },
+    monthly: { pips: number, yen: number, count: number, winRate: number },
+    allTime: { pips: number, yen: number, count: number, winRate: number }
+  }> {
+    try {
+      const db_ref = collection(db, `users/${userId}/usdjpy/simulations`);
+      const q = query(
+        db_ref,
+        where("status", "==", "closed"),
+        orderBy("exitTimestamp", "desc")
+      );
+      
+      const snap = await getDocs(q);
+      const trades = snap.docs.map(d => d.data() as FXSimulation);
+
+      const jstOffset = 9 * 60 * 60 * 1000;
+      const todayJST = new Date(new Date().getTime() + jstOffset);
+      todayJST.setHours(0, 0, 0, 0);
+
+      const weekStartJST = new Date(todayJST);
+      weekStartJST.setDate(todayJST.getDate() - todayJST.getDay());
+
+      const monthStartJST = new Date(todayJST);
+      monthStartJST.setDate(1);
+
+      const aggregate = (filteredTrades: FXSimulation[]) => {
+        const pips = filteredTrades.reduce((acc, t) => acc + (t.pnl * 100), 0);
+        const yen = filteredTrades.reduce((acc, t) => acc + (t.pnl * t.quantity * 100 * 100), 0);
+        const wins = filteredTrades.filter(t => t.pnl > 0).length;
+        return {
+          pips: Number(pips.toFixed(1)),
+          yen: Math.round(yen),
+          count: filteredTrades.length,
+          winRate: filteredTrades.length > 0 ? (wins / filteredTrades.length) * 100 : 0
+        };
+      };
+
+      const getJSTDateString = (iso: string) => {
+        return new Date(new Date(iso).getTime() + jstOffset).toISOString().split('T')[0];
+      };
+      
+      const todayStr = todayJST.toISOString().split('T')[0];
+
+      return {
+        today: aggregate(trades.filter(t => getJSTDateString(t.exitTimestamp!) === todayStr)),
+        weekly: aggregate(trades.filter(t => new Date(new Date(t.exitTimestamp!).getTime() + jstOffset).getTime() >= weekStartJST.getTime())),
+        monthly: aggregate(trades.filter(t => new Date(new Date(t.exitTimestamp!).getTime() + jstOffset).getTime() >= monthStartJST.getTime())),
+        allTime: aggregate(trades)
+      };
+    } catch (error) {
+      console.error("Error aggregating performance:", error);
+      return {
+        today: { pips: 0, yen: 0, count: 0, winRate: 0 },
+        weekly: { pips: 0, yen: 0, count: 0, winRate: 0 },
+        monthly: { pips: 0, yen: 0, count: 0, winRate: 0 },
+        allTime: { pips: 0, yen: 0, count: 0, winRate: 0 }
+      };
     }
   },
 
@@ -293,6 +360,21 @@ export const FXSimulationService = {
       const wins = history.filter(t => t.pnl > 0).length;
       const winRate = totalTradesCount > 0 ? wins / totalTradesCount : 0;
 
+      // 違反ログの取得
+      const violationsSnap = await getDocs(collection(db, `users/${userId}/usdjpy/violations`));
+      const violationCount = violationsSnap.size;
+      const ruleComplianceRate = metrics.totalFinishedTrades > 0 
+        ? Math.max(0, 100 - (violationCount / metrics.totalFinishedTrades * 100)) 
+        : 100;
+
+      // 運用状態の判定
+      let operationStatus: "normal" | "caution" | "stop" = "normal";
+      if (drawdownPercent > 15 || consecutiveLosses >= 5) {
+        operationStatus = "stop";
+      } else if (drawdownPercent > 8 || consecutiveLosses >= 3) {
+        operationStatus = "caution";
+      }
+
       const updatedMetrics: FXRiskMetrics = {
         ...metrics,
         currentBalance: newBalance,
@@ -303,6 +385,8 @@ export const FXSimulationService = {
         totalFinishedTrades: metrics.totalFinishedTrades + 1,
         dailyTradeCount: todayTrades.length + 1,
         dailyPnlPercent,
+        ruleComplianceRate,
+        operationStatus,
         lastExitTimestamp: exitTime,
         lastTradeTimestamp: new Date().toISOString()
       };
@@ -325,6 +409,86 @@ export const FXSimulationService = {
       });
     } catch (error) {
       console.error("Error logging violation:", error);
+    }
+  },
+
+  /**
+   * 条件別分析データの取得 (Section J用)
+   */
+  async getConditionAnalysis(userId: string): Promise<FXConditionAnalysis> {
+    try {
+      const q = query(
+        collection(db, `users/${userId}/usdjpy/simulations`),
+        where("status", "==", "closed"),
+        orderBy("exitTimestamp", "desc")
+      );
+      const snap = await getDocs(q);
+      const trades = snap.docs.map(d => d.data() as FXSimulation);
+
+      const result: FXConditionAnalysis = {
+        timeOfDay: {},
+        dayOfWeek: {},
+        regime: {},
+        sentiment: {},
+        liquidity: {}
+      };
+
+      trades.forEach(t => {
+        const exitDate = new Date(t.exitTimestamp!);
+        const hour = exitDate.getHours().toString().padStart(2, '0') + ":00";
+        const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][exitDate.getDay()];
+        const regimeType = t.context?.environment || "UNKNOWN";
+        const sentimentBias = t.context?.setup?.score > 70 ? "OPTIMISTIC" : t.context?.setup?.score < 30 ? "PESSIMISTIC" : "NEUTRAL";
+        const liquidityStatus = (t.execution?.executionQualityScore || 0) > 80 ? "HIGH" : "LOW/MED";
+
+        const updateAgg = (group: Record<string, any>, key: string) => {
+          if (!group[key]) group[key] = { winRate: 0, profit: 0, count: 0, wins: 0 };
+          group[key].count++;
+          group[key].profit += (t.pnl * 100);
+          if (t.pnl > 0) group[key].wins++;
+          group[key].winRate = (group[key].wins / group[key].count) * 100;
+        };
+
+        updateAgg(result.timeOfDay, hour);
+        updateAgg(result.dayOfWeek, day);
+        updateAgg(result.regime, regimeType);
+        updateAgg(result.sentiment, sentimentBias);
+        updateAgg(result.liquidity, liquidityStatus);
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Error fetching condition analysis:", error);
+      return { timeOfDay: {}, dayOfWeek: {}, regime: {}, sentiment: {}, liquidity: {} };
+    }
+  },
+
+  /**
+   * バックテスト比較データの取得 (Section K用 - 現状はシミュレーション)
+   */
+  async getBacktestComparisons(): Promise<FXBacktestComparison[]> {
+    // 実際にはFirestoreの比較用コレクションから取得するが、初期は標準比較セットを返す
+    return [
+      { id: "current", name: "現行ロジック", winRate: 62.5, expectedValue: 4.2, profitFactor: 1.65, maxDrawdown: 5.2, tradeCount: 156, stabilityScore: 88, overfittingWarning: false },
+      { id: "ma_crossover", name: "MAクロス候補", winRate: 58.2, expectedValue: 3.1, profitFactor: 1.34, maxDrawdown: 8.5, tradeCount: 210, stabilityScore: 65, overfittingWarning: false },
+      { id: "aggressive_momentum", name: "アグレッシブ", winRate: 45.1, expectedValue: 8.5, profitFactor: 1.48, maxDrawdown: 12.4, tradeCount: 88, stabilityScore: 45, overfittingWarning: true },
+    ];
+  },
+
+  /**
+   * ルール違反履歴の取得 (Section L用)
+   */
+  async getViolationLogs(userId: string): Promise<any[]> {
+    try {
+      const q = query(
+        collection(db, `users/${userId}/usdjpy/violations`),
+        orderBy("timestamp", "desc")
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (error) {
+       console.error("Error fetching violation logs:", error);
+       return [];
     }
   },
 

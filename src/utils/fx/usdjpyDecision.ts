@@ -3,6 +3,7 @@ import {
   FXMarketRegime,
   FXStructureAnalysis,
   FXPseudoOrderBook,
+  FXRiskMetrics,
   TechnicalTrend,
   LearningMetric
 } from "@/types/fx";
@@ -55,6 +56,14 @@ export interface USDJPYDecisionResult {
   };
   structure: FXStructureAnalysis;
   orderBook: FXPseudoOrderBook;
+  recommendation: {
+    action: "BUY" | "SELL" | "WAIT" | "CAUTION_LOT_REDUCTION" | "PROHIBITED";
+    lot: number;
+    tp: number;
+    sl: number;
+    rr: number;
+    reason: string;
+  };
 }
 
 export function calculateUSDJPYDecision(
@@ -65,7 +74,8 @@ export function calculateUSDJPYDecision(
   indicatorStatus: { status: "normal" | "caution" | "prohibited", message: string } = { status: "normal", message: "通常運用" },
   executionProfile: { spreadPips: number, qualityScore: number, status: "ideal" | "caution" | "critical" } = { spreadPips: 0.2, qualityScore: 100, status: "ideal" },
   structure: FXStructureAnalysis | null = null,
-  orderBook: FXPseudoOrderBook | null = null
+  orderBook: FXPseudoOrderBook | null = null,
+  riskMetrics: FXRiskMetrics | null = null
 ): USDJPYDecisionResult {
   const trends = {
     "1m": getTrend(ohlcData["1m"]),
@@ -149,11 +159,13 @@ export function calculateUSDJPYDecision(
   const isEnvironmentOk = alignmentLevel >= 66 && isVolOk;
   const pullback = checkPullback(ohlcData["5m"], primaryDirection);
 
-  // 最終判定
+  // 最終トレード許可判定 (メンタル排除 & リスク管理)
+  const isRiskOk = !riskMetrics || (riskMetrics.consecutiveLosses < 3 && riskMetrics.drawdownPercent < 10);
   const isEntryAllowed = 
     isEnvironmentOk && 
     session.isOk && 
     !fakeout.isFakeout &&
+    isRiskOk &&
     (isHighProbMode ? pullback.isPullback : true) &&
     ((primaryDirection === "buy" && totalScore >= 70) || (primaryDirection === "sell" && totalScore >= 70)) &&
     indicatorStatus.status !== "prohibited" &&
@@ -161,19 +173,25 @@ export function calculateUSDJPYDecision(
     (structure ? structure.isEntryTiming : true) &&
     (orderBook ? orderBook.liquidityScore >= 50 : true);
 
+  // 推奨ロットとSL/TPの計算 (簡易版)
+  const baseLot = 1.0; 
+  let adjustedLot = baseLot;
+  if (indicatorStatus.status === "caution") adjustedLot *= 0.5;
+  if (riskMetrics && riskMetrics.consecutiveLosses >= 1) adjustedLot *= 0.7;
+  
+  const slPips = 20;
+  const tpPips = slPips * 1.5;
+  const sl = primaryDirection === "buy" ? currentPrice - (slPips / 100) : currentPrice + (slPips / 100);
+  const tp = primaryDirection === "buy" ? currentPrice + (tpPips / 100) : currentPrice - (tpPips / 100);
+
   if (isEntryAllowed) reasons.push("【AI最高評価】全フィルター合致");
+  if (!isRiskOk) reasons.push(`取引制限中: ${riskMetrics?.consecutiveLosses! >= 3 ? "3連敗によるクールダウン" : "ドローダウン警告"}`);
   if (structure && structure.completionScore < 75) reasons.push(`構造未完成: ${structure.label} (完成度 ${structure.completionScore}%)`);
   if (orderBook && orderBook.liquidityScore < 50) reasons.push(`低流動性: 約定遅延リスク大`);
-  if (orderBook && Math.abs(orderBook.imbalance) > 0.5) reasons.push(`板の偏り: ${orderBook.imbalance > 0 ? "買い" : "売り"}注文が極端に増加中`);
   
-  if (indicatorStatus.status === "prohibited") reasons.push(`取引禁止: ${indicatorStatus.message}`);
-  if (executionProfile.status === "critical") reasons.push(`執行品質低下: スプレッド拡大中 (${executionProfile.spreadPips.toFixed(1)} pips)`);
-  if (indicatorStatus.status === "caution") reasons.push("【重要】経済指標が近づいています。ロット抑制を推奨");
-  
-  if (alignmentLevel === 100) reasons.push("全時間足トレンド完全一致");
-  if (pullback.isPullback) reasons.push("絶好の押し目/戻りポイント");
-  if (fakeout.isFakeout) reasons.push("強引な動き（ダマし）を検知");
-  if (weightProfile && weightProfile.sampleCount > 0) reasons.push("AI最適化重みを適用中");
+  const recommendationAction: "BUY" | "SELL" | "WAIT" | "CAUTION_LOT_REDUCTION" | "PROHIBITED" = 
+    !isEntryAllowed ? (indicatorStatus.status === "prohibited" ? "PROHIBITED" : "WAIT") :
+    (indicatorStatus.status === "caution" ? "CAUTION_LOT_REDUCTION" : (primaryDirection === "buy" ? "BUY" : "SELL"));
 
   return {
     score: totalScore,
@@ -201,7 +219,15 @@ export function calculateUSDJPYDecision(
       status: executionProfile.status
     },
     structure: structure || { type: "UNKNOWN", completionScore: 0, label: "解析なし", reasons: [], isEntryTiming: false, energyLevel: 0 },
-    orderBook: orderBook || { bids: [], asks: [], imbalance: 0, liquidityScore: 100, walls: { resistance: [], support: [] } }
+    orderBook: orderBook || { bids: [], asks: [], imbalance: 0, liquidityScore: 100, walls: { resistance: [], support: [] } },
+    recommendation: {
+      action: recommendationAction,
+      lot: Number(adjustedLot.toFixed(2)),
+      sl: Number(sl.toFixed(3)),
+      tp: Number(tp.toFixed(3)),
+      rr: 1.5,
+      reason: reasons[0] || "待機中"
+    }
   };
 }
 

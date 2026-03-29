@@ -89,7 +89,9 @@ export const USDJPYSimulationPanel = ({
         dailyPnlPercent: 0,
         lastEntryTimestamp: new Date(0).toISOString(),
         lastExitTimestamp: new Date(0).toISOString(),
-        lastTradeTimestamp: new Date().toISOString() 
+        lastTradeTimestamp: new Date().toISOString(),
+        ruleComplianceRate: 100,
+        operationStatus: "normal"
       },
       decision,
       activeSims.length > 0

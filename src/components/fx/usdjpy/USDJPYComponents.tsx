@@ -16,7 +16,10 @@ import {
   Search,
   CheckCircle2,
   XCircle,
-  Timer
+  Timer,
+  AlertCircle,
+  Target,
+  ChevronRightSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { USDJPYDecisionResult } from "@/utils/fx/usdjpyDecision";
@@ -165,79 +168,105 @@ export const USDJPYFilterStatus = ({ decision }: { decision: USDJPYDecisionResul
 };
 
 /**
- * 判断エンジンモニター (巨大な判定表示)
+ * 判断エンジンモニター (巨大な判定表示 - Section C 最終トレード判定)
  */
 export const USDJPYDecisionMonitor = ({ decision }: { decision: USDJPYDecisionResult | null }) => {
   if (!decision) return null;
 
-  const isBuy = decision.isEntryAllowed && decision.signal === "buy";
-  const isSell = decision.isEntryAllowed && decision.signal === "sell";
-  const isWait = !decision.isEntryAllowed;
+  const rec = decision.recommendation;
+  const isActionAllowed = decision.isEntryAllowed && rec.action !== "WAIT" && rec.action !== "PROHIBITED";
+  
+  const getActionColor = () => {
+    switch (rec.action) {
+      case "BUY": return "text-emerald-400 border-emerald-500/30 bg-emerald-500/5 shadow-[0_0_40px_rgba(16,185,129,0.1)]";
+      case "SELL": return "text-rose-400 border-rose-500/30 bg-rose-500/5 shadow-[0_0_40px_rgba(244,63,94,0.1)]";
+      case "CAUTION_LOT_REDUCTION": return "text-amber-400 border-amber-500/30 bg-amber-500/5";
+      case "PROHIBITED": return "text-slate-600 border-slate-700 bg-slate-900/50 grayscale";
+      default: return "text-slate-500 border-slate-800 bg-slate-900/30";
+    }
+  };
+
+  const statusMap = {
+    BUY: { label: "買い推奨", icon: ArrowRightCircle },
+    SELL: { label: "売り推奨", icon: ArrowRightCircle },
+    CAUTION_LOT_REDUCTION: { label: "ロット縮小", icon: AlertCircle },
+    WAIT: { label: "待機", icon: Timer },
+    PROHIBITED: { label: "禁止", icon: ShieldAlert },
+  };
+
+  const StatusIcon = statusMap[rec.action].icon;
 
   return (
-    <div className="p-10 bg-slate-900/50 border-2 border-slate-800 rounded-[56px] overflow-hidden relative group">
-      {/* Background Neural Network Pulse */}
-      <div className="absolute inset-0 opacity-10 pointer-events-none overflow-hidden">
-        <svg className="w-full h-full" viewBox="0 0 100 100">
-          <motion.circle 
-            animate={{ scale: [1, 1.3, 1], opacity: [0.05, 0.2, 0.05] }}
-            transition={{ repeat: Infinity, duration: 3 }}
-            cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-indigo-400" 
-          />
-        </svg>
-      </div>
+    <div className={cn(
+      "p-10 border-2 rounded-[56px] overflow-hidden relative group transition-all duration-700",
+      getActionColor()
+    )}>
+      {/* Background Grid Pattern */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
+           style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
 
       <div className="relative z-10 flex flex-col items-center text-center gap-8">
         
-        {/* Main Status Badge */}
-        <motion.div 
-          initial={{ scale: 0.9 }}
-          animate={{ scale: 1 }}
-          className={cn(
-            "px-6 py-2 rounded-2xl border flex items-center gap-2",
-            isBuy ? "bg-emerald-500 text-white border-emerald-400" : 
-            isSell ? "bg-rose-500 text-white border-rose-400" : 
-            "bg-slate-800 text-slate-400 border-slate-700"
-          )}
-        >
-          {isWait ? <ShieldAlert size={16} /> : <ShieldCheck size={16} />}
-          <span className="text-xs font-black uppercase tracking-[0.2em]">Decision Status</span>
-        </motion.div>
-
-        {/* Huge Decision Text */}
-        <div className="space-y-2">
-           <motion.h2 
-             key={decision.signal + decision.isEntryAllowed}
-             initial={{ y: 20, opacity: 0 }}
-             animate={{ y: 0, opacity: 1 }}
-             className={cn(
-              "text-7xl md:text-8xl font-black tracking-tighter uppercase tabular-nums",
-              isBuy ? "text-emerald-400 drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]" : 
-              isSell ? "text-rose-400 drop-shadow-[0_0_20px_rgba(244,63,94,0.3)]" : 
-              "text-slate-600"
-            )}
+        {/* Upper Header: Mission Control Status */}
+        <div className="flex items-center gap-6 w-full">
+           <div className="h-px flex-1 bg-current opacity-10" />
+           <motion.div 
+             initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+             className="flex items-center gap-2"
            >
-             {isWait ? "WAITING" : isBuy ? "BUY NOW" : "SELL NOW"}
-           </motion.h2>
-           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
-             {decision.reasons[0] || "分析エンジンが市場環境を常時監視中..."}
-           </p>
+              <StatusIcon size={14} className="animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Mission Decision Engine v2.0</span>
+           </motion.div>
+           <div className="h-px flex-1 bg-current opacity-10" />
         </div>
 
-        {/* Score & Reasons Grid */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-           <div className="p-6 bg-slate-950/80 rounded-[32px] border border-slate-900 flex flex-col items-center justify-center gap-2">
-              <span className="text-[10px] font-black text-slate-500 uppercase">Neural Confidence</span>
-              <div className="text-4xl font-black text-indigo-400">{decision.confidence}%</div>
+        {/* Huge Decision Text */}
+        <div className="space-y-4">
+           <motion.h2 
+             key={rec.action}
+             initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+             className="text-7xl md:text-9xl font-black tracking-tighter uppercase tabular-nums leading-none"
+           >
+             {rec.action.replace(/_/g, " ")}
+           </motion.h2>
+           <div className="flex items-center justify-center gap-3">
+              <span className="px-4 py-1 bg-white/5 rounded-full text-sm font-black tracking-widest text-white/40">
+                ALPHA CONFIDENCE: {decision.confidence}%
+              </span>
            </div>
+        </div>
 
-           <div className="flex flex-col gap-2 text-left justify-center">
-             {decision.reasons.slice(1, 4).map((r, i) => (
-                <div key={i} className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
-                   <div className="w-1 h-1 rounded-full bg-indigo-500" />
-                   {r}
-                </div>
-             ))}
+        {/* Recommended Strategy Detail Grid */}
+        <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+           {[
+             { label: "Target Lot", value: `${rec.lot} L`, icon: Zap },
+             { label: "Stop Loss", value: rec.sl.toFixed(3), icon: ShieldCheck },
+             { label: "Take Profit", value: rec.tp.toFixed(3), icon: Target },
+             { label: "Risk Reward", value: `1:${rec.rr}`, icon: ChevronRightSquare },
+           ].map((item, i) => (
+             <div key={i} className="p-5 bg-black/20 border border-white/5 rounded-[32px] flex flex-col items-center gap-1 group/item hover:bg-black/40 transition-all">
+                <item.icon size={14} className="text-white/20 mb-1" />
+                <span className="text-[9px] font-black text-white/30 uppercase tracking-widest">{item.label}</span>
+                <span className="text-lg font-black text-white/90 tabular-nums">{item.value}</span>
+             </div>
+           ))}
+        </div>
+
+        {/* Strategy Context Reason */}
+        <div className="max-w-xl p-6 bg-white/5 rounded-[40px] border border-white/5 space-y-2">
+           <div className="flex items-center justify-center gap-2 text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">
+              <Search size={10} />
+              Reasoning Context
+           </div>
+           <p className="text-sm font-bold text-white/80 leading-relaxed italic">
+             "{rec.reason}"
+           </p>
+           <div className="flex flex-wrap justify-center gap-2 pt-2">
+              {decision.reasons.slice(1, 4).map((r, i) => (
+                <span key={i} className="px-2 py-0.5 bg-black/20 rounded text-[9px] font-bold text-white/40">
+                  # {r}
+                </span>
+              ))}
            </div>
         </div>
       </div>

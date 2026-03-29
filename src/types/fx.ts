@@ -434,6 +434,8 @@ export interface FXRiskMetrics {
   totalFinishedTrades: number;
   dailyTradeCount: number;     // 本日のトレード回数
   dailyPnlPercent: number;    // 本日の損益率 (%)
+  ruleComplianceRate: number;  // ルール遵守率 (0-100)
+  operationStatus: "normal" | "caution" | "stop"; // 運用状態
   lastEntryTimestamp: string; // クールダウン計算用
   lastExitTimestamp: string;  // クールダウン計算用
   lastTradeTimestamp: string;
@@ -579,3 +581,34 @@ export interface FXTradingReview {
   summary: string;
   updatedAt: string;
 }
+
+/**
+ * 条件別分析成果 (Section J用)
+ */
+export interface FXConditionAnalysis {
+  timeOfDay: Record<string, { winRate: number, profit: number, count: number }>;
+  dayOfWeek: Record<string, { winRate: number, profit: number, count: number }>;
+  regime: Record<string, { winRate: number, profit: number, count: number }>;
+  sentiment: Record<string, { winRate: number, profit: number, count: number }>;
+  liquidity: Record<string, { winRate: number, profit: number, count: number }>;
+}
+
+/**
+ * 複数ロジック比較 (Section K用)
+ */
+export interface FXBacktestComparison {
+  id: string;
+  name: string;
+  winRate: number;
+  expectedValue: number;
+  profitFactor: number;
+  maxDrawdown: number;
+  tradeCount: number;
+  stabilityScore: number;
+  overfittingWarning: boolean;
+}
+
+export type USDJPYDashboardSection = 
+  | "STATUS" | "MARKET" | "DECISION" | "POSITION" 
+  | "CONTEXT" | "RISK" | "PERFORMANCE" | "REVIEW" 
+  | "LEARNING" | "ANALYSIS" | "BACKTEST" | "LOGS";
