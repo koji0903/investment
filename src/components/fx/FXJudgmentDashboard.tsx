@@ -1,7 +1,20 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { FXJudgment, SignalLabel, SUPPORTED_PAIRS } from "@/types/fx";
+import { 
+  Zap, 
+  Info, 
+  ShieldAlert, 
+  Trophy, 
+  TrendingUp, 
+  TrendingDown, 
+  Coins, 
+  ChevronRight, 
+  Target, 
+  ShieldCheck,
+  BarChart3
+} from "lucide-react";
+import { FXJudgment, SignalLabel, SUPPORTED_PAIRS, TechnicalTrend } from "@/types/fx";
 import { FXService } from "@/services/fxService";
 import { FXPairList } from "./FXPairList";
 import { FXPairDetailModal } from "./FXPairDetailModal";
@@ -9,9 +22,10 @@ import { FXEnergyBento } from "./FXEnergyBento";
 import { FXFilterSort } from "./FXFilterSort";
 import { SignalBadge } from "./FXUIComponents";
 import { useAuth } from "@/context/AuthContext";
-import { Zap, Info, ShieldAlert, Trophy, TrendingUp, TrendingDown, Coins, ChevronRight, Target, ShieldCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { FXSentimentWidget } from "./FXSentimentWidget";
+import { FXReviewDashboard } from "./FXReviewDashboard";
 
 export const FXJudgmentDashboard = () => {
   const [allJudgments, setAllJudgments] = useState<FXJudgment[]>([]);
@@ -21,6 +35,7 @@ export const FXJudgmentDashboard = () => {
   
   const [filters, setFilters] = useState({ search: "", label: "all" });
   const [sort, setSort] = useState({ key: "totalScore", order: "desc" as "asc" | "desc" });
+  const [activeTab, setActiveTab] = useState<"judgment" | "review">("judgment");
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const { user } = useAuth();
   const portfolioId = "default"; // 必要に応じて拡張可能
@@ -264,7 +279,46 @@ export const FXJudgmentDashboard = () => {
             テクニカル・ファンダメンタル・スワップ情報を統合。短期売買と中長期保有の優位性を個別に評価します。
           </p>
         </div>
+        
+        <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-[20px] border border-slate-200 dark:border-slate-800">
+          <button 
+            onClick={() => setActiveTab("judgment")}
+            className={cn(
+              "px-6 py-2.5 rounded-[16px] text-xs font-black transition-all flex items-center gap-2",
+              activeTab === "judgment" ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+            )}
+          >
+            <Zap size={14} fill={activeTab === "judgment" ? "currentColor" : "none"} />
+            分析・判断
+          </button>
+          <button 
+            onClick={() => setActiveTab("review")}
+            className={cn(
+              "px-6 py-2.5 rounded-[16px] text-xs font-black transition-all flex items-center gap-2",
+              activeTab === "review" ? "bg-white dark:bg-slate-900 text-slate-800 dark:text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+            )}
+          >
+            <BarChart3 size={14} />
+            運用レビュー
+          </button>
+        </div>
       </div>
+
+      <AnimatePresence mode="wait">
+        {activeTab === "judgment" ? (
+          <motion.div 
+            key="judgment-tab"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-12"
+          >
+            {/* Broad Market Sentiment (USD/JPY Highlight) */}
+            {allJudgments.find(j => j.pairCode === "USD/JPY")?.sentiment && (
+              <FXSentimentWidget 
+                sentiment={allJudgments.find(j => j.pairCode === "USD/JPY")!.sentiment!} 
+              />
+            )}
 
       {/* Sync Status Summary Section */}
       {!loading && syncStats.total > 0 && (
@@ -389,6 +443,18 @@ export const FXJudgmentDashboard = () => {
       </div>
 
       <FXPairDetailModal judgment={selectedJudgment} onClose={() => setSelectedJudgment(null)} />
+          </motion.div>
+        ) : (
+          <motion.div 
+            key="review-tab"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+          >
+            <FXReviewDashboard />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

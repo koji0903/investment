@@ -206,6 +206,25 @@ export const FXSimulationService = {
   },
 
   /**
+   * 指定期間のトレード履歴を取得 (レビュー用)
+   */
+  async getSimulationsByDateRange(userId: string, start: string, end: string): Promise<FXSimulation[]> {
+    try {
+      const q = query(
+        collection(db, `users/${userId}/usdjpy/simulations`),
+        where("exitTimestamp", ">=", start),
+        where("exitTimestamp", "<=", end),
+        orderBy("exitTimestamp", "asc")
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
+    } catch (error) {
+      console.error("Error fetching simulations by range:", error);
+      return [];
+    }
+  },
+
+  /**
    * 現在のリスクメトリクス（連敗、DD）を取得
    */
   async getRiskMetrics(userId: string): Promise<FXRiskMetrics> {

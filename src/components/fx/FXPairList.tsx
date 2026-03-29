@@ -20,7 +20,7 @@ interface FXPairListProps {
   onSelect: (judgment: FXJudgment) => void;
 }
 
-const MiniChart = ({ data, color }: { data: any[], color: string }) => {
+const MiniChart = ({ data, color }: { data: { value: number }[], color: string }) => {
   if (!data || data.length === 0) return <div className="h-8 w-24 bg-slate-50 dark:bg-slate-800/50 rounded animate-pulse" />;
   
   return (
@@ -209,7 +209,7 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                         <ConfidenceIndicator level={item.confidence} />
                         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 w-fit">
                           <ShieldCheck size={11} />
-                          <span>精度 {item.certainty}%</span>
+                          <span>精度 {item.certainty || 0}%</span>
                         </div>
                       </div>
                     </div>
@@ -334,8 +334,8 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
                 <p className="text-[10px] font-black text-slate-400 uppercase text-right">信頼度・精度</p>
                 <div className="flex flex-col items-end gap-1.5">
                    <ConfidenceIndicator level={item.confidence} />
-                   <div className="text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-500/20">
-                     精度 {item.certainty}%
+                    <div className="text-[10px] font-black text-indigo-500 bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-500/20">
+                     精度 {item.certainty || 0}%
                    </div>
                 </div>
               </div>

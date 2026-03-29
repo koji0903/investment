@@ -6,7 +6,8 @@ import {
   FXJudgment, 
   FXPairMaster, 
   CurrencyFundamental, 
-  SUPPORTED_PAIRS 
+  SUPPORTED_PAIRS,
+  FXMarketSentiment
 } from "@/types/fx";
 import { analyzeTechnical } from "@/utils/fx/technical";
 import { analyzeFundamental } from "@/utils/fx/fundamental";
@@ -18,6 +19,8 @@ import { calculateATR, calculatePivotPoints } from "@/lib/technicalAnalysis";
 import { consolidateJudgments } from "@/utils/fx/scoring";
 import { calculateDecision } from "@/utils/investment/decisionEngine";
 import { saveInvestmentDecision } from "@/lib/db";
+import { getMarketSentimentAction } from "@/lib/actions/fxSentiment";
+import { applySentimentToJudgment } from "@/utils/fx/scoring";
 
 // マスタ情報の定義は types/fx.ts に移動
 
@@ -138,6 +141,17 @@ async function syncSpecificPair(userId: string, portfolioId: string, pair: FXPai
       }));
       
       judgment = consolidateJudgments(judgment, judgment.energyAnalysis, judgment.entryTimingAnalysis);
+      
+      // --- 広域マーケット地合いの統合 (USD/JPY の場合) ---
+      if (pair.pairCode === "USD/JPY") {
+        try {
+          const sentiment = await getMarketSentimentAction();
+          judgment = applySentimentToJudgment(judgment, sentiment);
+        } catch (sentErr) {
+          console.error("[Sentiment] Broad market analysis failed:", sentErr);
+        }
+      }
+
       judgment.syncStatus = "completed";
       judgment.lastSyncAt = new Date().toISOString();
       judgment.updatedAt = new Date().toISOString();

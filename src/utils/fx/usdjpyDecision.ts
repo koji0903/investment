@@ -2,7 +2,9 @@ import {
   FXWeightProfile,
   FXMarketRegime,
   FXStructureAnalysis,
-  FXPseudoOrderBook
+  FXPseudoOrderBook,
+  TechnicalTrend,
+  LearningMetric
 } from "@/types/fx";
 import { 
   calculateATR 

@@ -244,3 +244,52 @@ export function consolidateJudgments(
     updatedAt: new Date().toISOString()
   };
 }
+
+/**
+ * マーケット地合い（通貨強弱）を判定結果に適用し、スコアとコメントを補正する
+ */
+export function applySentimentToJudgment(
+  judgment: FXJudgment,
+  sentiment: any // FXMarketSentiment
+): FXJudgment {
+  if (!sentiment) return judgment;
+
+  let sentimentBonus = 0;
+  const isUSDJPY = judgment.pairCode === "USD/JPY";
+  
+  // USD/JPYの場合の特化ロジック
+  if (isUSDJPY) {
+    // ドル強 & 円弱 なら上昇の追い風
+    if (sentiment.usdLabel === "強い" && sentiment.jpyLabel === "弱い") {
+      sentimentBonus = 15;
+    } else if (sentiment.usdLabel === "弱い" && sentiment.jpyLabel === "強い") {
+      sentimentBonus = -15;
+    } else if (sentiment.usdLabel === "強い" || sentiment.jpyLabel === "弱い") {
+      sentimentBonus = 7;
+    } else if (sentiment.usdLabel === "弱い" || sentiment.jpyLabel === "強い") {
+      sentimentBonus = -7;
+    }
+  }
+
+  const finalScore = Math.max(-100, Math.min(100, judgment.totalScore + sentimentBonus));
+  const signalLabel = getSignalFromScore(finalScore);
+
+  let sentimentComment = "";
+  if (sentimentBonus > 10) {
+    sentimentComment = "【地合い: 強気】ドル強・円弱の明確なトレンドが追い風となっています。";
+  } else if (sentimentBonus < -10) {
+    sentimentComment = "【地合い: 弱気】ドル弱・円強の流れが逆風となっており、警戒が必要です。";
+  } else if (Math.abs(sentimentBonus) > 0) {
+    sentimentComment = `【地合い: ${sentimentBonus > 0 ? "やや強気" : "やや弱気"}】市場全体の流れと整合しています。`;
+  } else {
+    sentimentComment = "【地合い: 中立】通貨強弱に特筆すべき偏りはありません。";
+  }
+
+  return {
+    ...judgment,
+    totalScore: finalScore,
+    signalLabel,
+    sentiment,
+    summaryComment: `${sentimentComment} ${judgment.summaryComment}`
+  };
+}

@@ -234,6 +234,9 @@ export interface FXJudgment {
   // ポジションサイズ自動調整 (新規追加)
   positionSizing?: PositionSizingAnalysis;
 
+  // 市場地合い分析 (新規追加)
+  sentiment?: FXMarketSentiment;
+
   certainty: number;           // 0-100 (%) 統合判断の確からしさ
   safetyScore: number;         // 0-100: 損失最小化のしやすさ・安全性反映
   syncStatus?: "pending" | "syncing" | "completed" | "failed"; // 同期ステータス
@@ -521,4 +524,58 @@ export interface FXPseudoOrderBook {
     resistance: number[];
     support: number[];
   };
+}
+
+/**
+ * 市場地合い判定結果 (複数通貨ペア横断)
+ */
+export interface FXMarketSentiment {
+  usdStrength: number;         // 0-100
+  usdLabel: "強い" | "中立" | "弱い";
+  jpyStrength: number;         // 0-100
+  jpyLabel: "強い" | "中立" | "弱い";
+  crossYenSentiment: "bullish" | "bearish" | "neutral";
+  overallBias: "USD_STRENGTH" | "JPY_STRENGTH" | "CROSS_YEN_BULLISH" | "CROSS_YEN_BEARISH" | "NEUTRAL" | "STABLE";
+  integratedScore: number;     // 0-100 (USD/JPYに対する追い風度)
+  reasons: string[];
+  updatedAt: string;
+}
+
+/**
+ * トレード運用レビュー
+ */
+export interface FXTradingReview {
+  id: string;
+  userId: string;
+  period: "daily" | "weekly";
+  startDate: string;
+  endDate: string;
+  stats: {
+    totalTrades: number;
+    winCount: number;
+    lossCount: number;
+    winRate: number;
+    profitFactor: number;
+    totalPnl: number;
+    totalPnlYen: number;
+    maxDrawdown: number;
+    averageProfit: number;
+    averageLoss: number;
+  };
+  patterns: {
+    winning: string[];
+    losing: string[];
+  };
+  compliance: {
+    score: number;             // 0-100
+    violationCount: number;
+    details: string[];
+  };
+  sentimentCorrelations: {
+    tailwindWinRate: number;
+    headwindWinRate: number;
+  };
+  aiRecommendations: string[];
+  summary: string;
+  updatedAt: string;
 }
