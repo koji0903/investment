@@ -244,3 +244,71 @@ export interface FXJudgment {
   indicators?: TechnicalAnalysisResult["indicators"];
   chartData?: { date: string; value: number }[];
 }
+
+/**
+ * USD/JPY シミュレーション (仮想トレード)
+ */
+export interface FXSimulation {
+  id: string;
+  userId: string;
+  pairCode: "USD/JPY";
+  status: "open" | "closed";
+  side: "buy" | "sell";
+  entryPrice: number;
+  entryTimestamp: string;
+  exitPrice?: number;
+  exitTimestamp?: string;
+  takeProfit?: number;
+  stopLoss?: number;
+  quantity: number; // ロット数 or 通貨量
+  pnl: number;
+  pnlPercentage: number;
+  entryReason: string;
+  exitReason?: string;
+  // エントリー時の市場コンディション (学習用)
+  context: {
+    trend1m: TechnicalTrend;
+    trend5m: TechnicalTrend;
+    trend15m: TechnicalTrend;
+    trend1h: TechnicalTrend;
+    rsi15m: number;
+    volatilityATR: number;
+    isBreakout: boolean;
+    structuralPhase: StructurePhase;
+    totalScore: number;
+  };
+  updatedAt: string;
+}
+
+/**
+ * 学習エンジン用メトリクス
+ */
+export interface LearningMetric {
+  patternId: string; // e.g. "trend_alignment_buy"
+  patternName: string;
+  description: string;
+  winRate: number; // 0-1 (0-100%)
+  totalTrades: number;
+  expectedValue: number; // 期待値 (pips or currency)
+  reliabilityCorrection: number; // 判断エンジンへの補正値 (-20〜+20)
+  lastUpdatedAt: string;
+}
+
+/**
+ * USD/JPY ダッシュボード状態
+ */
+export interface USDJPYDashboardState {
+  userId: string;
+  scenarios: {
+    bullish: string;
+    bearish: string;
+    invalidation: string;
+  };
+  riskSettings: {
+    capital: number;
+    riskPercent: number;
+    defaultStopPips: number;
+  };
+  learningWeights: Record<string, number>; // パターンID -> 重み
+  updatedAt: string;
+}

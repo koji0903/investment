@@ -277,3 +277,64 @@ export async function getFXJudgmentsAction(userId: string, portfolioId: string):
 export async function generateFXDummyDataAction(userId: string, portfolioId: string): Promise<FXJudgment[]> {
   return getFXJudgmentsAction(userId, portfolioId);
 }
+
+/**
+ * USD/JPY のリアルタイムクオートを取得
+ */
+export async function getUSDJPYQuoteAction(): Promise<{ price: number; bid: number; ask: number; changePercent: number; updatedAt: string }> {
+  try {
+    const quote = await yf.quote("JPY=X");
+    const price = quote.regularMarketPrice || 0;
+    // Yahoo Finance の為替クオートには Bid/Ask が直接含まれない場合があるため、スプレッドを考慮したダミー値を生成（本番では専用API推奨）
+    const spread = 0.003; // 0.3 pips
+    return {
+      price,
+      bid: price - (spread / 2),
+      ask: price + (spread / 2),
+      changePercent: quote.regularMarketChangePercent || 0,
+      updatedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error("Error fetching USD/JPY quote:", error);
+    throw error;
+  }
+}
+
+/**
+ * USD/JPY の各時間足（1m, 5m, 15m, 1h）の OHLC データを取得
+ */
+export async function getUSDJPYOHLCAction(interval: "1m" | "5m" | "15m" | "1h"): Promise<any[]> {
+  const end = new Date();
+  const start = new Date();
+  
+  // 各時間足に応じた期間設定
+  switch (interval) {
+    case "1m": start.setHours(end.getHours() - 2); break; // 直近2時間
+    case "5m": start.setHours(end.getHours() - 10); break; // 直近10時間
+    case "15m": start.setDate(end.getDate() - 2); break; // 直近2日
+    case "1h": start.setDate(end.getDate() - 7); break; // 直近1週間
+  }
+
+  try {
+    const result = await yf.chart("JPY=X", {
+      period1: start,
+      period2: end,
+      interval: interval as any
+    });
+    
+    if (result && result.quotes) {
+      return result.quotes.filter(q => q.close !== null).map(q => ({
+        timestamp: new Date(q.date).getTime(),
+        open: q.open,
+        high: q.high,
+        low: q.low,
+        close: q.close,
+        volume: q.volume
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error(`Error fetching USD/JPY OHLC (${interval}):`, error);
+    return [];
+  }
+}
