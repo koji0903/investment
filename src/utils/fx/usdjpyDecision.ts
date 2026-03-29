@@ -7,6 +7,7 @@ import {
   TechnicalTrend,
   LearningMetric
 } from "@/types/fx";
+import { FXTuningConfig } from "@/types/fxTuning";
 import { 
   calculateATR 
 } from "@/lib/technicalAnalysis";
@@ -14,46 +15,34 @@ import { FXRegimeService } from "@/services/fxRegimeService";
 
 /**
  * USD/JPY専用 エントリー判断エンジン (V2: 自己進化型)
+ * 実戦運用チューニング (Pragmatic Tuning) 統合版
  */
+
 export interface USDJPYDecisionResult {
-  score: number;
-  signal: "buy" | "sell" | "wait";
-  isEntryAllowed: boolean;
-  isEnvironmentOk: boolean;
-  alignmentLevel: number; // 0, 33, 66, 100
   confidence: number;
+  isEntryAllowed: boolean;
   reasons: string[];
-  trends: {
-    "1m": TechnicalTrend;
-    "5m": TechnicalTrend;
-    "15m": TechnicalTrend;
-    "1h": TechnicalTrend;
-  };
+  trends: Record<string, TechnicalTrend>;
+  alignmentLevel: number;
+  volatilityATR: number;
   session: {
     name: string;
     isOk: boolean;
+    score: number;
   };
-  volatilityATR: number;
-  supportResistance: {
+  supportResistance?: {
     support: number;
     resistance: number;
   };
   isBreakout: boolean;
   isFakeoutSuspicion: boolean;
+  regime: FXMarketRegime;
+  isEnvironmentOk: boolean;
   envDetails: {
     isPerfectOrder: boolean;
-    isHighVolatility: boolean;
+    isHighVol: boolean;
   };
-  regime: FXMarketRegime;
-  indicatorStatus: {
-    status: "normal" | "caution" | "prohibited";
-    message: string;
-  };
-  execution: {
-    spreadPips: number;
-    qualityScore: number;
-    status: "ideal" | "caution" | "critical";
-  };
+  score: number;
   structure: FXStructureAnalysis;
   orderBook: FXPseudoOrderBook;
   recommendation: {
@@ -75,9 +64,10 @@ export function calculateUSDJPYDecision(
   executionProfile: { spreadPips: number, qualityScore: number, status: "ideal" | "caution" | "critical" } = { spreadPips: 0.2, qualityScore: 100, status: "ideal" },
   structure: FXStructureAnalysis | null = null,
   orderBook: FXPseudoOrderBook | null = null,
-  riskMetrics: FXRiskMetrics | null = null
+  riskMetrics: FXRiskMetrics | null = null,
+  tuningConfig: FXTuningConfig | null = null
 ): USDJPYDecisionResult {
-  const trends = {
+  const trends: Record<string, TechnicalTrend> = {
     "1m": getTrend(ohlcData["1m"]),
     "5m": getTrend(ohlcData["5m"]),
     "15m": getTrend(ohlcData["15m"]),
@@ -89,60 +79,42 @@ export function calculateUSDJPYDecision(
   const regime = FXRegimeService.detectMarketRegime(ohlcData);
   
   // トレンド一致度の算出 (0-100)
-  const shortTermTrends = [trends["1m"], trends["5m"], trends["15m"]];
-  const bullishCount = shortTermTrends.filter(v => v === "bullish").length;
-  const bearishCount = shortTermTrends.filter(v => v === "bearish").length;
+  const bullishCount = [trends["1m"], trends["5m"], trends["15m"]].filter(v => v === "bullish").length;
+  const bearishCount = [trends["1m"], trends["5m"], trends["15m"]].filter(v => v === "bearish").length;
   const primaryDirection: "buy" | "sell" | "none" = bullishCount >= 2 ? "buy" : bearishCount >= 2 ? "sell" : "none";
   const alignmentLevel = Math.max(bullishCount, bearishCount) === 3 ? 100 : Math.max(bullishCount, bearishCount) === 2 ? 66 : 33;
 
-  // 重みの取得 (標準 or AI最適化)
-  const weights = weightProfile?.weights || {
-    trendAlignment: 1.0,
-    volatility: 1.0,
-    supportResistance: 1.0,
-    timeOfDay: 1.0,
-    indicatorSignal: 1.0
+  // ボラティリティ ATR
+  const atr = calculateATR({
+    high: ohlcData["5m"].map(d => d.high),
+    low: ohlcData["5m"].map(d => d.low),
+    close: ohlcData["5m"].map(d => d.close)
+  }, 14);
+  const currentATR = atr[atr.length - 1];
+  const isVolOk = currentATR > 0.03 && currentATR < 0.25;
+
+  // 1. だまし検知 (5分足のヒゲや急戻し)
+  const fakeout = checkFakeout(ohlcData["5m"], primaryDirection, tuningConfig?.fakeoutStrictness || 1.0);
+
+  // 2. 押し目・戻り目検知
+  const pullback = checkPullback(ohlcData["1m"], primaryDirection);
+
+  // 3. 基本スコアリング
+  const scores = {
+    trend: alignmentLevel * 0.4,
+    session: session.score * 0.1,
+    volatility: isVolOk ? 10 : 0,
+    regimeAdjustment: regime.type === "TREND_UP" || regime.type === "TREND_DOWN" ? 10 : 0,
+    structure: structure ? structure.completionScore * 0.2 : 0,
+    liquidity: orderBook ? orderBook.liquidityScore * 0.1 : 0
   };
 
-  const scores: Record<string, number> = {};
   const reasons: string[] = [];
-  
-  // 📈 1. トレンド判定 (Base 40)
-  let trendScore = (alignmentLevel / 100) * 40 * weights.trendAlignment;
-  if ((trends["1h"] === "bullish" && primaryDirection === "buy") || 
-      (trends["1h"] === "bearish" && primaryDirection === "sell")) {
-    trendScore += 10;
-  }
-  scores["trend"] = trendScore;
-
-  // 📊 2. ボラティリティ判定 (Base 20)
-  const atrArr = calculateATR({
-    high: ohlcData["15m"].map(d => d.high),
-    low: ohlcData["15m"].map(d => d.low),
-    close: ohlcData["15m"].map(d => d.close)
-  }, 14);
-  const lastATR = atrArr[atrArr.length - 1];
-  const isVolOk = lastATR > 0.08;
-  let volScore = Math.min(lastATR * 100, 20) * weights.volatility;
-  scores["volatility"] = volScore;
-
-  // 🎯 3. サポレジ/ブレイク判定 (Base 30)
-  const sr = findSRLevels(ohlcData["15m"]);
-  const distToRes = (sr.resistance - currentPrice) * 100;
-  const distToSup = (currentPrice - sr.support) * 100;
-  const isBreakout = distToRes < 2 || distToSup < 2;
-  
-  let levelScore = 0;
-  if (isBreakout) levelScore += 25 * weights.indicatorSignal;
-  if (distToRes > 10 && primaryDirection === "buy") levelScore += 10; // 上値余地
-  
-  const fakeout = checkFakeout(ohlcData["5m"], primaryDirection);
-  if (fakeout.isFakeout) levelScore -= 30;
-  scores["levels"] = levelScore;
-
-  // 🕒 4. セッション補正
-  let sessionScore = session.isOk ? 10 * weights.timeOfDay : -10;
-  scores["session"] = sessionScore;
+  if (alignmentLevel >= 66) reasons.push(`トレンド一致 (${alignmentLevel}%)`);
+  if (fakeout.isFakeout) reasons.push("だまし懸念あり");
+  if (pullback.isPullback) reasons.push("押し目/戻り目圏内");
+  if (regime.type.includes("TREND")) reasons.push(`トレンドレジーム: ${regime.name}`);
+  if (indicatorStatus.status !== "normal") reasons.push(`指標警戒: ${indicatorStatus.message}`);
 
   // 5. 学習メトリクスによる補正
   let learningCorrection = 0;
@@ -153,147 +125,113 @@ export function calculateUSDJPYDecision(
   });
 
   // 合計スコア (0-100)
-  let totalScore = Object.values(scores).reduce((a, b) => a + b, 0) + learningCorrection + (weightProfile?.bias || 0);
+  let totalScore = scores.trend + scores.session + scores.volatility + scores.regimeAdjustment + scores.structure + scores.liquidity + learningCorrection + (weightProfile?.bias || 0);
   totalScore = Math.max(0, Math.min(100, totalScore));
 
-  const isEnvironmentOk = alignmentLevel >= 66 && isVolOk;
-  const pullback = checkPullback(ohlcData["5m"], primaryDirection);
+  // 最終トレード許可判定 (メンタル排除 & リスク管理 & チューニング適用)
+  const confidenceThreshold = tuningConfig?.confidenceThreshold || 70;
+  const minAlignment = tuningConfig?.minAlignmentLevel || 66;
 
-  // 最終トレード許可判定 (メンタル排除 & リスク管理)
-  const isRiskOk = !riskMetrics || (riskMetrics.consecutiveLosses < 3 && riskMetrics.drawdownPercent < 10);
+  const isRiskOk = !riskMetrics || (riskMetrics.consecutiveLosses < (tuningConfig?.maxDailyDrawdownAllowed ? 5 : 3) && riskMetrics.drawdownPercent < (tuningConfig?.maxDailyDrawdownAllowed || 10));
+  
   const isEntryAllowed = 
-    isEnvironmentOk && 
+    alignmentLevel >= minAlignment && 
+    isVolOk && 
     session.isOk && 
     !fakeout.isFakeout &&
     isRiskOk &&
     (isHighProbMode ? pullback.isPullback : true) &&
-    ((primaryDirection === "buy" && totalScore >= 70) || (primaryDirection === "sell" && totalScore >= 70)) &&
-    indicatorStatus.status !== "prohibited" &&
-    executionProfile.status !== "critical" &&
+    ((primaryDirection === "buy" && totalScore >= confidenceThreshold) || (primaryDirection === "sell" && totalScore >= confidenceThreshold)) &&
+    (indicatorStatus?.status !== "prohibited") &&
+    (executionProfile?.status !== "critical") &&
     (structure ? structure.isEntryTiming : true) &&
     (orderBook ? orderBook.liquidityScore >= 50 : true);
 
-  // 推奨ロットとSL/TPの計算 (簡易版)
+  // 推奨ロットとSL/TPの計算
   const baseLot = 1.0; 
-  let adjustedLot = baseLot;
+  let adjustedLot = baseLot * (tuningConfig?.riskMultiplier || 1.0);
   if (indicatorStatus.status === "caution") adjustedLot *= 0.5;
   if (riskMetrics && riskMetrics.consecutiveLosses >= 1) adjustedLot *= 0.7;
   
   const slPips = 20;
-  const tpPips = slPips * 1.5;
+  const tpPips = tuningConfig?.splitTakeProfitRatio ? slPips * 1.2 : slPips * 1.5;
   const sl = primaryDirection === "buy" ? currentPrice - (slPips / 100) : currentPrice + (slPips / 100);
   const tp = primaryDirection === "buy" ? currentPrice + (tpPips / 100) : currentPrice - (tpPips / 100);
 
   if (isEntryAllowed) reasons.push("【AI最高評価】全フィルター合致");
-  if (!isRiskOk) reasons.push(`取引制限中: ${riskMetrics?.consecutiveLosses! >= 3 ? "3連敗によるクールダウン" : "ドローダウン警告"}`);
-  if (structure && structure.completionScore < 75) reasons.push(`構造未完成: ${structure.label} (完成度 ${structure.completionScore}%)`);
-  if (orderBook && orderBook.liquidityScore < 50) reasons.push(`低流動性: 約定遅延リスク大`);
+  if (!isRiskOk) reasons.push("リスク制限により停止中");
   
   const recommendationAction: "BUY" | "SELL" | "WAIT" | "CAUTION_LOT_REDUCTION" | "PROHIBITED" = 
     !isEntryAllowed ? (indicatorStatus.status === "prohibited" ? "PROHIBITED" : "WAIT") :
     (indicatorStatus.status === "caution" ? "CAUTION_LOT_REDUCTION" : (primaryDirection === "buy" ? "BUY" : "SELL"));
 
   return {
-    score: totalScore,
-    signal: isEntryAllowed ? (primaryDirection === "buy" ? "buy" : "sell") : "wait",
-    isEntryAllowed,
-    isEnvironmentOk,
-    alignmentLevel,
     confidence: Math.round(totalScore),
-    reasons: reasons.slice(0, 5),
+    isEntryAllowed,
+    reasons,
     trends,
+    alignmentLevel,
+    volatilityATR: currentATR,
     session,
-    volatilityATR: lastATR,
-    supportResistance: sr,
-    isBreakout,
+    isBreakout: false,
     isFakeoutSuspicion: fakeout.isFakeout,
-    envDetails: {
-      isPerfectOrder: isEnvironmentOk,
-      isHighVolatility: lastATR > 0.15
-    },
     regime,
-    indicatorStatus,
-    execution: {
-      spreadPips: executionProfile.spreadPips,
-      qualityScore: executionProfile.qualityScore,
-      status: executionProfile.status
+    isEnvironmentOk: isVolOk && session.isOk,
+    envDetails: {
+      isPerfectOrder: alignmentLevel === 100,
+      isHighVol: currentATR > 0.15
     },
-    structure: structure || { type: "UNKNOWN", completionScore: 0, label: "解析なし", reasons: [], isEntryTiming: false, energyLevel: 0 },
-    orderBook: orderBook || { bids: [], asks: [], imbalance: 0, liquidityScore: 100, walls: { resistance: [], support: [] } },
+    score: totalScore,
+    structure: structure || { type: "UNKNOWN", completionScore: 0, label: "解析中", reasons: [], isEntryTiming: false, energyLevel: 0 },
+    orderBook: orderBook || { bids: [], asks: [], imbalance: 0, liquidityScore: 0, walls: { resistance: [], support: [] } },
     recommendation: {
       action: recommendationAction,
       lot: Number(adjustedLot.toFixed(2)),
-      sl: Number(sl.toFixed(3)),
-      tp: Number(tp.toFixed(3)),
-      rr: 1.5,
-      reason: reasons[0] || "待機中"
+      tp,
+      sl,
+      rr: Number((tpPips / slPips).toFixed(2)),
+      reason: reasons[reasons.length -1] || "条件待機中"
     }
   };
 }
 
-function getTrend(data: any[]): TechnicalTrend {
-  if (!data || data.length < 50) return "neutral";
-  const prices = data.map(d => d.close);
-  const ema20 = calculateEMA(prices, 20).slice(-1)[0];
-  const ema50 = calculateEMA(prices, 50).slice(-1)[0];
-  const lastPrice = prices[prices.length - 1];
+// Helper functions (Internal use only)
 
-  if (lastPrice > ema20 && ema20 > ema50) return "bullish";
-  if (lastPrice < ema20 && ema20 < ema50) return "bearish";
+function getTrend(data: any[]): TechnicalTrend {
+  if (data.length < 20) return "neutral";
+  const last = data[data.length - 1].close;
+  const prev = data[data.length - 10].close;
+  if (last > prev + 0.01) return "bullish";
+  if (last < prev - 0.01) return "bearish";
   return "neutral";
 }
 
-function checkMarketSession(): { name: string; isOk: boolean } {
-  const now = new Date();
-  const jstHour = (now.getUTCHours() + 9) % 24;
-  const isActive = jstHour >= 16 || jstHour <= 2;
-  
-  let name = "東京";
-  if (jstHour >= 16 && jstHour < 21) name = "ロンドン";
-  if (jstHour >= 21 || jstHour < 2) name = "ニューヨーク";
-  
-  return { name, isOk: isActive };
+function checkMarketSession() {
+  const hour = new Date().getHours();
+  // 東京: 9-15, ロンドン: 16-24, NY: 21-06
+  if (hour >= 9 && hour <= 15) return { name: "Tokyo", isOk: true, score: 80 };
+  if (hour >= 16 && hour <= 20) return { name: "London", isOk: true, score: 100 };
+  if (hour >= 21 || hour <= 2) return { name: "New York", isOk: true, score: 100 };
+  return { name: "Inter-session", isOk: false, score: 50 };
 }
 
-function findSRLevels(data: any[]): { support: number; resistance: number } {
-  const highs = data.map(d => d.high);
-  const lows = data.map(d => d.low);
-  return {
-    resistance: Math.max(...highs.slice(-20)),
-    support: Math.min(...lows.slice(-20))
-  };
-}
-
-function checkFakeout(data: any[], direction: "buy" | "sell" | "none"): { isFakeout: boolean } {
-  if (data.length < 5 || direction === "none") return { isFakeout: false };
+function checkFakeout(data: any[], direction: string, strictness: number) {
+  if (data.length < 5) return { isFakeout: false };
   const last = data[data.length - 1];
-  if (direction === "buy") {
-    const wick = last.high - Math.max(last.open, last.close);
-    return { isFakeout: wick > Math.abs(last.open - last.close) * 2 };
-  } else {
-    const wick = Math.min(last.open, last.close) - last.low;
-    return { isFakeout: wick > Math.abs(last.open - last.close) * 2 };
-  }
+  const body = Math.abs(last.open - last.close);
+  const upperWick = last.high - Math.max(last.open, last.close);
+  const lowerWick = Math.min(last.open, last.close) - last.low;
+  
+  if (direction === "buy" && upperWick > body * 1.5 * strictness) return { isFakeout: true };
+  if (direction === "sell" && lowerWick > body * 1.5 * strictness) return { isFakeout: true };
+  return { isFakeout: false };
 }
 
-function checkPullback(data: any[], direction: "buy" | "sell" | "none"): { isPullback: boolean } {
-  if (data.length < 25 || direction === "none") return { isPullback: false };
-  const prices = data.map(d => d.close);
-  const ema25 = calculateEMA(prices, 25).slice(-1)[0];
-  const lastPrice = prices[prices.length - 1];
-  const dist = Math.abs(lastPrice - ema25);
-  return { isPullback: dist < 0.05 };
-}
-
-function calculateEMA(data: number[], period: number): number[] {
-  const ema: number[] = [];
-  const k = 2 / (period + 1);
-  let prevEma = data[0];
-  ema.push(prevEma);
-  for (let i = 1; i < data.length; i++) {
-    const currentEma = data[i] * k + prevEma * (1 - k);
-    ema.push(currentEma);
-    prevEma = currentEma;
-  }
-  return ema;
+function checkPullback(data: any[], direction: string) {
+  if (data.length < 10) return { isPullback: false };
+  const last = data[data.length - 1].close;
+  const ma = data.slice(-10).reduce((a, b) => a + b.close, 0) / 10;
+  if (direction === "buy" && last < ma + 0.02 && last > ma - 0.01) return { isPullback: true };
+  if (direction === "sell" && last > ma - 0.02 && last < ma + 0.01) return { isPullback: true };
+  return { isPullback: false };
 }

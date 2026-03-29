@@ -1,4 +1,5 @@
 import { FXRiskMetrics, LotCalculationResult } from "@/types/fx";
+import { FXTuningConfig } from "@/types/fxTuning";
 
 /**
  * 自動ロット調整ロジック
@@ -12,7 +13,8 @@ export function calculateAdjustedLot(
   indicatorStatus: "normal" | "caution" | "prohibited" = "normal",
   executionStatus: "ideal" | "caution" | "critical" = "ideal",
   structureScore: number = 100,
-  liquidityScore: number = 100
+  liquidityScore: number = 100,
+  tuningConfig: FXTuningConfig | null = null
 ): LotCalculationResult {
   const pipsValue = 100; // 1ロット(1万通貨)あたり1pips(0.01円) = 100円
   
@@ -122,7 +124,8 @@ export function calculateAdjustedLot(
                     multipliers.event *
                     multipliers.execution *
                     multipliers.structure *
-                    multipliers.liquidity;
+                    multipliers.liquidity *
+                    (tuningConfig?.riskMultiplier || 1.0);
 
   // 14. 最終的な取引可否判定
   const isExecutionAllowed = 

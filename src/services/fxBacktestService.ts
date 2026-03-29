@@ -41,12 +41,12 @@ export const FXBacktestService = {
 
       if (!currentSlice["1h"].length) continue;
 
-      const decision = calculateUSDJPYDecision(currentSlice, [], true);
+      const decision = calculateUSDJPYDecision(currentSlice, []);
       
       if (decision.isEntryAllowed && decision.confidence >= options.confidenceThreshold) {
         // エントリー発生 -> 簡易的に将来の結果を確認 (未来予知によるシミュレート)
         const entryPrice = data1m[i].close;
-        const side = decision.signal === "buy" ? 1 : -1;
+        const side = decision.recommendation.action === "BUY" ? 1 : -1;
         
         // 決済判定 (最大2時間 = 120分)
         let pips = -options.slPips; // デフォルト損切り

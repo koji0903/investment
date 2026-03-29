@@ -7,6 +7,12 @@ import { FXIndicatorService } from "@/services/fxIndicatorService";
 import { getMarketSentimentAction } from "@/lib/actions/fxSentiment";
 import { getFXReviewsAction } from "@/lib/actions/fxReview";
 import { calculateUSDJPYDecision } from "@/utils/fx/usdjpyDecision";
+import { FXTuningService } from "@/services/fxTuningService";
+import { 
+  FXTuningConfig,
+  FXDriftAnalysis,
+  FXTuningLog
+} from "@/types/fxTuning";
 import { 
   FXJudgment, 
   FXMarketSentiment, 
@@ -23,6 +29,7 @@ import {
 import { FXExecutionService } from "@/services/fxExecutionService";
 import { FXStructureService } from "@/services/fxStructureService";
 import { FXLiquidityService } from "@/services/fxLiquidityService";
+import { USDJPYDecisionResult } from "@/utils/fx/usdjpyDecision";
 
 export function useIntegratedCommandCenter() {
   const { user } = useAuth();
@@ -33,9 +40,9 @@ export function useIntegratedCommandCenter() {
   const [reviews, setReviews] = useState<FXTradingReview[]>([]);
   const [riskMetrics, setRiskMetrics] = useState<FXRiskMetrics | null>(null);
   const [activePositions, setActivePositions] = useState<FXSimulation[]>([]);
-  const [performance, setPerformance] = useState<any>(null);
+  const [performance, setPerformance] = useState<any>(null); // TODO: Define Full Performance type
   const [weightProfile, setWeightProfile] = useState<FXWeightProfile | null>(null);
-  const [indicatorStatus, setIndicatorStatus] = useState<any>(null);
+  const [indicatorStatus, setIndicatorStatus] = useState<{ status: "normal" | "caution" | "prohibited", message: string } | null>(null);
   const [executionProfile, setExecutionProfile] = useState<FXExecutionProfile | null>(null);
   const [structureAnalysis, setStructureAnalysis] = useState<FXStructureAnalysis | null>(null);
   const [pseudoOrderBook, setPseudoOrderBook] = useState<FXPseudoOrderBook | null>(null);
@@ -43,6 +50,9 @@ export function useIntegratedCommandCenter() {
   const [backtestComparisons, setBacktestComparisons] = useState<FXBacktestComparison[]>([]);
   const [violationLogs, setViolationLogs] = useState<any[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [tuningConfig, setTuningConfig] = useState<FXTuningConfig | null>(null);
+  const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(null);
+  const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>([]);
   
   const [isDataLoading, setIsDataLoading] = useState(true);
 
@@ -50,7 +60,10 @@ export function useIntegratedCommandCenter() {
   const refreshData = useCallback(async () => {
     if (!user) return;
     try {
-      const [s, r, rm, ap, perf, wp, inst, cond, btest, logs, evts] = await Promise.all([
+      const [
+        s, r, rm, ap, perf, wp, inst, cond, btest, logs, evts,
+        tConfig, drift, tLogs
+      ] = await Promise.all([
         getMarketSentimentAction(),
         getFXReviewsAction(user.uid),
         FXSimulationService.getRiskMetrics(user.uid),
@@ -61,7 +74,10 @@ export function useIntegratedCommandCenter() {
         FXSimulationService.getConditionAnalysis(user.uid),
         FXSimulationService.getBacktestComparisons(),
         FXSimulationService.getViolationLogs(user.uid),
-        FXIndicatorService.getUpcomingEvents()
+        FXIndicatorService.getUpcomingEvents(),
+        FXTuningService.getTuningConfig(user.uid),
+        FXTuningService.analyzeDrift(user.uid),
+        FXTuningService.getTuningLogs(user.uid)
       ]);
 
       setSentiment(s);
@@ -75,6 +91,10 @@ export function useIntegratedCommandCenter() {
       setBacktestComparisons(btest);
       setViolationLogs(logs);
       setUpcomingEvents(evts);
+      setTuningConfig(tConfig);
+      setDriftAnalysis(drift);
+      setTuningLogs(tLogs);
+
       setIsDataLoading(false);
     } catch (e) {
       console.error("Error fetching integrated data", e);
@@ -88,7 +108,7 @@ export function useIntegratedCommandCenter() {
   }, [refreshData]);
 
   // Real-time calculation based on market data
-  const decision = useMemo(() => {
+  const decision: USDJPYDecisionResult | null = useMemo(() => {
     if (!ohlcData["1m"].length) return null;
 
     const profile = FXExecutionService.calculateExecutionProfile(
@@ -118,9 +138,10 @@ export function useIntegratedCommandCenter() {
       profile,
       structure,
       orderBook,
-      riskMetrics
+      riskMetrics,
+      tuningConfig
     );
-  }, [ohlcData, quote, weightProfile, indicatorStatus, riskMetrics]);
+  }, [ohlcData, quote, weightProfile, indicatorStatus, riskMetrics, tuningConfig]);
 
   // Periodic position management
   useEffect(() => {
@@ -148,7 +169,12 @@ export function useIntegratedCommandCenter() {
     violationLogs,
     upcomingEvents,
     decision,
+    tuningConfig,
+    driftAnalysis,
+    tuningLogs,
     isLoading: isMarketLoading || isDataLoading,
-    refreshData
+    refreshData,
+    updateTuning: (updates: Partial<FXTuningConfig>, reason: string) => 
+      FXTuningService.updateTuningConfig(user?.uid || "", updates, reason)
   };
 }

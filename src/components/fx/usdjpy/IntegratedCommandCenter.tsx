@@ -27,7 +27,9 @@ import {
   Info,
   ChevronRight,
   AlertTriangle,
-  Timer
+  Timer,
+  Settings2,
+  Plus
 } from "lucide-react";
 import { 
   USDJPYStructureMonitor 
@@ -36,7 +38,10 @@ import { USDJPYPseudoOrderBook } from "./USDJPYPseudoOrderBook";
 import { USDJPYIndicatorCalendar } from "./USDJPYIndicatorCalendar";
 import { USDJPYDetailedAnalysis } from "./USDJPYDetailedAnalysis";
 import { USDJPYOperationLogs } from "./USDJPYOperationLogs";
+import { USDJPYTuningMaster } from "./USDJPYTuningMaster";
+import { USDJPYSimulationPanel } from "./USDJPYSimulationPanel";
 import { FXSentimentWidget } from "../FXSentimentWidget";
+import { USDJPYDecisionResult } from "@/utils/fx/usdjpyDecision";
 
 
 export const IntegratedCommandCenter = () => {
@@ -59,8 +64,15 @@ export const IntegratedCommandCenter = () => {
     violationLogs,
     upcomingEvents,
     decision,
-    isLoading 
+    tuningConfig,
+    driftAnalysis,
+    tuningLogs,
+    isLoading,
+    refreshData,
+    updateTuning
   } = useIntegratedCommandCenter();
+
+  const [showEntryForm, setShowEntryForm] = React.useState(false);
 
   if (isLoading) {
     return (
@@ -239,6 +251,12 @@ export const IntegratedCommandCenter = () => {
                       <LayoutDashboard size={20} className="text-slate-500" />
                       <h3 className="text-sm font-black text-slate-200 uppercase tracking-widest">保有ポジション</h3>
                     </div>
+                    <button 
+                      onClick={() => setShowEntryForm(true)}
+                      className="p-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-xl transition-all active:scale-95"
+                    >
+                       <Plus size={18} />
+                    </button>
                   </div>
                   
                   {activePositions.length === 0 ? (
@@ -315,8 +333,24 @@ export const IntegratedCommandCenter = () => {
            backtestComparisons={backtestComparisons}
            violationLogs={violationLogs}
            simulations={activePositions}
+           tuningConfig={tuningConfig}
+           driftAnalysis={driftAnalysis}
+           tuningLogs={tuningLogs}
+           onUpdateTuning={updateTuning}
+           onRefreshTuning={refreshData}
          />
-      </section>
+       </section>
+
+       <USDJPYSimulationPanel 
+         currentPrice={quote?.price || 0}
+         decision={decision}
+         showEntryForm={showEntryForm}
+         setShowEntryForm={setShowEntryForm}
+         riskMetrics={riskMetrics}
+         indicatorStatus={indicatorStatus || undefined}
+         executionProfile={executionProfile || undefined}
+         tuningConfig={tuningConfig}
+       />
     </div>
   );
 };
@@ -375,14 +409,19 @@ const BottomAnalysisTabs = ({
   conditionAnalysis, 
   backtestComparisons, 
   violationLogs,
-  simulations 
+  simulations,
+  tuningConfig, 
+  driftAnalysis, 
+  tuningLogs,
+  onUpdateTuning,
+  onRefreshTuning
 }: any) => {
   const [activeTab, setActiveTab] = React.useState("performance");
 
   const tabs = [
     { id: "performance", label: "運用実績", icon: BarChart3 },
     { id: "analysis", label: "ニューラル洞察", icon: Activity },
-    { id: "learning", label: "自動最適化", icon: Zap },
+    { id: "tuning", label: "実戦チューニング", icon: Settings2 },
     { id: "history", label: "運用ログ", icon: History },
     { id: "reviews", label: "戦略レビュー", icon: Target },
   ];
@@ -445,67 +484,18 @@ const BottomAnalysisTabs = ({
              </motion.div>
            )}
 
-           {activeTab === "learning" && (
+           {activeTab === "tuning" && (
              <motion.div 
-               key="opt"
-               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-               className="grid grid-cols-1 lg:grid-cols-2 gap-10"
+               key="tuning"
+               initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }}
              >
-                <div className="p-8 bg-slate-950 rounded-[40px] border border-slate-800 space-y-8">
-                   <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500">
-                         <Layers size={24} />
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-black text-slate-200">Neural Weight Profile</h4>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase">Current Optimization State</p>
-                      </div>
-                   </div>
-
-                   <div className="space-y-6">
-                      {weightProfile ? (
-                        Object.entries(weightProfile.weights).map(([key, val]: [string, any]) => (
-                          <div key={key} className="space-y-2">
-                             <div className="flex justify-between items-center px-1">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{key.replace(/([A-Z])/g, ' $1')}</span>
-                                <span className={cn(
-                                  "text-xs font-black",
-                                  val > 1.2 ? "text-emerald-400" : val < 0.8 ? "text-rose-400" : "text-indigo-400"
-                                )}>
-                                  {(val as number).toFixed(2)}
-                                </span>
-                             </div>
-                             <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden">
-                                <motion.div 
-                                  initial={{ width: 0 }} animate={{ width: `${Math.min((val as number) * 50, 100)}%` }}
-                                  className={cn(
-                                    "h-full rounded-full",
-                                    val > 1.2 ? "bg-emerald-500" : val < 0.8 ? "bg-rose-500" : "bg-indigo-500"
-                                  )}
-                                />
-                             </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-20 text-center italic text-slate-600">プロファイルを同期中...</div>
-                      )}
-                   </div>
-                </div>
-
-                <div className="space-y-6">
-                   <div className="p-8 bg-indigo-500/5 border border-indigo-500/10 rounded-[40px] space-y-4">
-                      <div className="flex items-center gap-3">
-                         <Zap size={18} className="text-indigo-400" />
-                         <h4 className="text-sm font-black text-slate-200 uppercase">Self-Optimization Log</h4>
-                      </div>
-                      <div className="space-y-3">
-                         <LearningLogItem text="Regime detected: Trending Up. Increasing trend alignment weights by 0.15" />
-                         <LearningLogItem text="Volatility spike detected. Reducing lot sizing multiplier to 0.70" />
-                         <LearningLogItem text="Session overlap (LDN/NY). Activating aggressive breakout filters" />
-                         <LearningLogItem text="Liquidity score dropped. Tightening slippage protection threshold" />
-                      </div>
-                   </div>
-                </div>
+                <USDJPYTuningMaster 
+                  config={tuningConfig} 
+                  drift={driftAnalysis} 
+                  logs={tuningLogs} 
+                  onUpdate={onUpdateTuning}
+                  onRefresh={onRefreshTuning}
+                />
              </motion.div>
            )}
 

@@ -23,6 +23,7 @@ import { USDJPYDecisionResult } from "@/utils/fx/usdjpyDecision";
 import { calculateAdjustedLot } from "@/utils/fx/lotCalculator";
 import { checkTradePermission, TradePermissionResult } from "@/utils/fx/tradeGovernance";
 import { FXRiskMetrics } from "@/types/fx";
+import { FXTuningConfig } from "@/types/fxTuning";
 import { Settings2, Calculator, Info, ShieldX, MessageSquare } from "lucide-react";
 
 /**
@@ -35,7 +36,8 @@ export const USDJPYSimulationPanel = ({
   setShowEntryForm,
   riskMetrics,
   indicatorStatus,
-  executionProfile
+  executionProfile,
+  tuningConfig
 }: { 
   currentPrice: number; 
   decision: USDJPYDecisionResult | null;
@@ -44,6 +46,7 @@ export const USDJPYSimulationPanel = ({
   riskMetrics: FXRiskMetrics | null;
   indicatorStatus?: { status: "normal" | "caution" | "prohibited", message: string };
   executionProfile?: { spreadPips: number, qualityScore: number, status: "ideal" | "caution" | "critical", volatilitySpike: boolean };
+  tuningConfig?: FXTuningConfig | null;
 }) => {
   const { user } = useAuth();
   const [activeSims, setActiveSims] = useState<FXSimulation[]>([]);
@@ -68,9 +71,12 @@ export const USDJPYSimulationPanel = ({
       decision.score,
       decision.isEnvironmentOk,
       indicatorStatus?.status || "normal",
-      executionProfile?.status || "ideal"
+      executionProfile?.status || "ideal",
+      decision.structure.completionScore,
+      decision.orderBook.liquidityScore,
+      tuningConfig
     );
-  }, [riskMetrics, riskPercent, stopPips, decision]);
+  }, [riskMetrics, riskPercent, stopPips, decision, tuningConfig]);
 
   const finalLot = useAutoLot ? (lotResult?.adjustedLot || 0.01) : manualLot;
 
