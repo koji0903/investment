@@ -57,7 +57,7 @@ const AlertContext = createContext<AlertContextType | undefined>(undefined);
 
 export const AlertProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
-  const { calculatedAssets } = usePortfolio();
+  const { calculatedAssets, news } = usePortfolio();
   const [rules, setRules] = useState<AlertRule[]>([]);
   const [notifications, setNotifications] = useState<AlertNotification[]>([]);
   const hasHighImpactNewsRef = useRef(false);
@@ -82,22 +82,14 @@ export const AlertProvider = ({ children }: { children: React.ReactNode }) => {
     return () => unsub();
   }, [user]);
 
-  // 定期的なニュース重要度チェック（5分ごと）
+  // ニュース重要度チェック（PortfolioContextのニュースが更新された時に実行）
   useEffect(() => {
-    const checkNews = async () => {
-      try {
-        const res = await fetch("/api/news");
-        const data = await res.json();
-        const newsList: { importance: string }[] = data.news ?? [];
-        hasHighImpactNewsRef.current = newsList.some((n: any) => n.importance === "high");
-      } catch {
-        hasHighImpactNewsRef.current = false;
-      }
-    };
-    checkNews();
-    const interval = setInterval(checkNews, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!news) {
+      hasHighImpactNewsRef.current = false;
+      return;
+    }
+    hasHighImpactNewsRef.current = news.some((n: any) => n.importance === "high");
+  }, [news]);
 
   // 資産価格が変化するたびにアラート評価
   useEffect(() => {

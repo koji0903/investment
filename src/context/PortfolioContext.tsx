@@ -24,6 +24,7 @@ import {
 } from "@/lib/db";
 import { setDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { NewsItem } from "@/app/api/news/route";
 
 interface AnalysisSummary {
   realizedProfit: number;
@@ -62,6 +63,9 @@ interface PortfolioContextType {
   currentScore: PortfolioScores | null;
   retryFetch: () => void;
   refreshPrices: () => Promise<void>;
+  news: NewsItem[];
+  isNewsFetching: boolean;
+  fetchNews: () => Promise<void>;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
@@ -82,6 +86,8 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [news, setNews] = useState<NewsItem[]>([]);
+  const [isNewsFetching, setIsNewsFetching] = useState(false);
   const { notify } = useNotify();
 
   // デモデータの自動生成
@@ -220,6 +226,28 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
 
     return () => clearInterval(interval);
   }, [fetchMarketData]);
+
+  // ニュースデータのフェッチ
+  const fetchNews = React.useCallback(async () => {
+    try {
+      setIsNewsFetching(true);
+      const res = await fetch("/api/news");
+      if (!res.ok) throw new Error("Failed to fetch news");
+      const data = await res.json();
+      setNews(data.news || []);
+    } catch (error) {
+      console.error("Failed to fetch news", error);
+    } finally {
+      setIsNewsFetching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNews();
+    // 5分ごとにニュースを更新
+    const interval = setInterval(fetchNews, 300000);
+    return () => clearInterval(interval);
+  }, [fetchNews]);
 
   const syncExternalData = async (providerType: 'stock' | 'crypto' | 'fx') => {
     if (isDemo || !user) {
@@ -440,6 +468,9 @@ export const PortfolioProvider = ({ children }: { children: React.ReactNode }) =
         refreshPrices: async () => {
           await fetchMarketData(0, true);
         },
+        news,
+        isNewsFetching,
+        fetchNews,
       }}
     >
       {children}

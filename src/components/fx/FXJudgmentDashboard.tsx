@@ -332,7 +332,7 @@ export const FXJudgmentDashboard = () => {
           </div>
           <div className="space-y-12">
             {energyHighlights.map((j, idx) => (
-              <div key={j.pairCode} className="p-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-[48px] border border-slate-100 dark:border-slate-800/50 relative overflow-hidden">
+              <div key={`${j.pairCode}-${idx}`} className="p-8 bg-slate-50/50 dark:bg-slate-800/20 rounded-[48px] border border-slate-100 dark:border-slate-800/50 relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-8 opacity-[0.03] -z-10 pointer-events-none">
                   <Zap size={200} fill="currentColor" className="text-slate-900 dark:text-white" />
                 </div>

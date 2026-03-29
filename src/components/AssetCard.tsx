@@ -50,28 +50,18 @@ const CategoryIcon = ({ category, className }: { category: string; className?: s
 
 export const AssetCard = React.memo(({ asset }: AssetCardProps) => {
   const { isDemo, user } = useAuth();
-  const { refreshPrices, isFetching: globalFetching } = usePortfolio();
+  const { refreshPrices, isFetching: globalFetching, news } = usePortfolio();
   const isProfit = asset.profitAndLoss >= 0;
-  const [sentiment, setSentiment] = useState<SentimentResult | null>(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [localFetching, setLocalFetching] = useState(false);
 
   // このアセットが更新の対象かどうか
   const isUpdating = (globalFetching || localFetching) && !!asset.symbol;
 
-  useEffect(() => {
-    const fetchSentiment = async () => {
-      try {
-        const res = await fetch("/api/news");
-        const data = await res.json();
-        const news: NewsItem[] = data.news ?? [];
-        setSentiment(getAssetSentiment(asset.name, news));
-      } catch (e) {
-        console.error("Failed to fetch sentiment for asset", e);
-      }
-    };
-    fetchSentiment();
-  }, [asset.name]);
+  const sentiment = useMemo(() => {
+    if (!news || news.length === 0) return null;
+    return getAssetSentiment(asset.name, news);
+  }, [asset.name, news]);
 
   const handleRefresh = async (e: React.MouseEvent) => {
     e.stopPropagation();

@@ -68,9 +68,9 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
             </tr>
           </thead>
           <tbody>
-            {judgments.map((item) => (
+            {judgments.map((item, index) => (
               <tr 
-                key={item.pairCode}
+                key={`${item.pairCode || "unknown"}-${index}`}
                 onClick={() => onSelect(item)}
                 className="group border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/20 cursor-pointer transition-colors"
               >
@@ -226,9 +226,9 @@ export const FXPairList: React.FC<FXPairListProps> = ({ judgments, onSelect }) =
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
-        {judgments.map((item) => (
+        {judgments.map((item, index) => (
           <motion.div 
-            key={item.pairCode}
+            key={`${item.pairCode || "unknown"}-${index}`}
             whileTap={{ scale: 0.98 }}
             onClick={() => onSelect(item)}
             className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[28px] shadow-sm space-y-4"

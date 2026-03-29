@@ -17,32 +17,17 @@ import {
   Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePortfolio } from "@/context/PortfolioContext";
 
 export const MarketSentiment = () => {
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [sentiment, setSentiment] = useState<SentimentResult>({ score: 50, type: "neutral", label: "中立" });
+  const { news, isNewsFetching: isLoading, fetchNews } = usePortfolio();
 
-  const fetchNews = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/news");
-      const data = await res.json();
-      const newsItems = data.news ?? [];
-      setNews(newsItems);
-      setSentiment(calculateOverallSentiment(newsItems));
-    } catch (error) {
-      console.error("Failed to fetch news for sentiment", error);
-    } finally {
-      setIsLoading(false);
+  const sentiment = useMemo(() => {
+    if (!news || news.length === 0) {
+      return { score: 50, type: "neutral" as const, label: "中立" };
     }
-  };
-
-  useEffect(() => {
-    fetchNews();
-    const interval = setInterval(fetchNews, 5 * 60 * 1000); // 5分ごと
-    return () => clearInterval(interval);
-  }, []);
+    return calculateOverallSentiment(news);
+  }, [news]);
 
   // ゲージの角度計算 (0-100 -> -90deg to 90deg)
   const rotation = (sentiment.score / 100) * 180 - 90;

@@ -55,37 +55,16 @@ const formatRelativeTime = (dateStr: string) => {
 };
 
 export const NewsPanel = ({ filterKeyword }: { filterKeyword?: string }) => {
-  const { calculatedAssets, isFetching } = usePortfolio();
-  const [news, setNews] = useState<NewsItem[]>([]);
-  const [isLoadingNews, setIsLoadingNews] = useState(true);
-  const [fetchedAt, setFetchedAt] = useState<string | null>(null);
+  const { calculatedAssets, news, isNewsFetching: isLoadingNews, fetchNews } = usePortfolio();
   const [activeTab, setActiveTab] = useState<TabType>("すべて");
   const [search, setSearch] = useState("");
+
+  const fetchedAt = useMemo(() => new Date().toISOString(), [news]); // 簡易的な更新時刻表示
 
   const relatedKeywords = useMemo(() => 
     calculatedAssets.map(a => a.name).filter(Boolean), 
     [calculatedAssets]
   );
-
-  const fetchNews = async () => {
-    setIsLoadingNews(true);
-    try {
-      const res = await fetch("/api/news");
-      const data = await res.json();
-      setNews(data.news ?? []);
-      setFetchedAt(data.fetchedAt);
-    } catch {
-      setNews(getDummyNews());
-    } finally {
-      setIsLoadingNews(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchNews();
-    const interval = setInterval(fetchNews, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   const filtered = useMemo(() => {
     let items = news;

@@ -3,6 +3,54 @@ import YahooFinance from "yahoo-finance2";
 const yf = new YahooFinance();
 import { getTechnicalStatus } from "@/lib/technicalAnalysis";
 
+// --- キャッシュとユーティリティ ---
+
+// 簡易インメモリキャッシュ
+const quoteCache = new Map<string, { data: any; timestamp: number }>();
+const historyCache = new Map<string, { data: any; timestamp: number }>();
+
+const QUOTE_CACHE_TTL = 2 * 60 * 1000; // 2分
+const HISTORY_CACHE_TTL = 60 * 60 * 1000; // 1時間
+
+/**
+ * 指定ミリ秒待機する
+ */
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * 429エラー(Too Many Requests)時に指数バックオフでリトライする
+ */
+async function fetchWithRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  initialDelay = 1000
+): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error: unknown) {
+      lastError = error;
+      // yahoo-finance2のエラー形式やHTTPステータスを確認
+      const err = error as any;
+      const isRateLimit = 
+        err.code === 429 || 
+        err.status === 429 || 
+        err.message?.includes("429") ||
+        err.message?.includes("Too Many Requests");
+
+      if (isRateLimit && i < maxRetries - 1) {
+        const waitTime = initialDelay * Math.pow(2, i);
+        console.warn(`[YahooFinance] Rate limited (429). Retrying in ${waitTime}ms... (Attempt ${i + 1}/${maxRetries})`);
+        await delay(waitTime);
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError;
+}
+
 // 銘柄コードの正規化ロジック
 function normalizeSymbol(sym: string): string {
   if (!sym) return "";
@@ -24,6 +72,8 @@ function normalizeSymbol(sym: string): string {
 // 共通のデータ取得ロジック
 async function getMarketData(requestedSymbols: string[] = []) {
   try {
+    const now = Date.now();
+
     // リクエストされたシンボルと正規化後のマッピングを作成
     const symbolMap = new Map<string, string>();
     requestedSymbols.forEach(orig => {
@@ -44,40 +94,59 @@ async function getMarketData(requestedSymbols: string[] = []) {
       ...Array.from(symbolMap.values())
     ])].filter(Boolean);
 
-    // 外部APIをチャンクに分けて実行 (一度に大量のリクエストを防ぐ)
-    const CHUNK_SIZE = 10;
-    const chunks = [];
-    for (let i = 0; i < allNormalizedSymbols.length; i += CHUNK_SIZE) {
-      chunks.push(allNormalizedSymbols.slice(i, i + CHUNK_SIZE));
-    }
-
     const quoteResults: { symbol: string; price: number | null; currency: string | null; changePercent: number }[] = [];
-    for (const chunk of chunks) {
-      try {
-        // yf.quote は配列を受け取りバルク取得が可能
-        const results: any = await yf.quote(chunk);
-        
-        // 単体と配列の両方のレスポンス形式に対応
-        const resultsArray = Array.isArray(results) ? results : [results];
-        
-        resultsArray.forEach(quote => {
-          if (!quote) return;
-          const price = quote.regularMarketPrice ?? quote.price ?? quote.regularMarketPreviousClose ?? quote.previousClose;
-          quoteResults.push({
-            symbol: quote.symbol,
-            price: price,
-            currency: quote.currency || (quote.symbol.endsWith(".T") ? "JPY" : "USD"),
-            changePercent: quote.regularMarketChangePercent || 0
+    
+    // キャッシュにあるものを抽出、ないものをリストアップ
+    const symbolsToFetch: string[] = [];
+    allNormalizedSymbols.forEach(sym => {
+      const cached = quoteCache.get(sym);
+      if (cached && (now - cached.timestamp < QUOTE_CACHE_TTL)) {
+        quoteResults.push(cached.data);
+      } else {
+        symbolsToFetch.push(sym);
+      }
+    });
+
+    // 外部APIをチャンクに分けて実行 (一度に大量のリクエストを防ぐ)
+    if (symbolsToFetch.length > 0) {
+      const CHUNK_SIZE = 10;
+      const chunks = [];
+      for (let i = 0; i < symbolsToFetch.length; i += CHUNK_SIZE) {
+        chunks.push(symbolsToFetch.slice(i, i + CHUNK_SIZE));
+      }
+
+      for (const [index, chunk] of chunks.entries()) {
+        if (index > 0) await delay(500); // チャンク間にディレイを設ける
+
+        try {
+          // fetchWithRetry を使用してバルク取得
+          const results = await fetchWithRetry(() => yf.quote(chunk)) as any;
+          
+          // 単体と配列の両方のレスポンス形式に対応
+          const resultsArray = Array.isArray(results) ? results : [results];
+          
+          resultsArray.forEach((quote: any) => {
+            if (!quote) return;
+            const price = quote.regularMarketPrice ?? quote.price ?? quote.regularMarketPreviousClose ?? quote.previousClose;
+            const data = {
+              symbol: quote.symbol,
+              price: price,
+              currency: quote.currency || (quote.symbol.endsWith(".T") ? "JPY" : "USD"),
+              changePercent: quote.regularMarketChangePercent || 0
+            };
+            quoteResults.push(data);
+            // キャッシュを更新
+            quoteCache.set(quote.symbol, { data, timestamp: now });
           });
-        });
-      } catch (e) {
-        console.error(`Failed to fetch quotes for chunk: ${chunk.join(",")}`, e);
-        // エラー時はフォールバックとしてnullを埋める
-        chunk.forEach(sym => {
-          if (!quoteResults.find(r => r.symbol === sym)) {
-            quoteResults.push({ symbol: sym, price: null, currency: null, changePercent: 0 });
-          }
-        });
+        } catch (e) {
+          console.error(`Failed to fetch quotes for chunk: ${chunk.join(",")}`, e);
+          // エラー時はフォールバックとしてnullを埋める（キャッシュはしない）
+          chunk.forEach(sym => {
+            if (!quoteResults.find(r => r.symbol === sym)) {
+              quoteResults.push({ symbol: sym, price: null, currency: null, changePercent: 0 });
+            }
+          });
+        }
       }
     }
 
@@ -100,9 +169,6 @@ async function getMarketData(requestedSymbols: string[] = []) {
       const res = quoteResults.find(r => r.symbol === normalized);
       if (res && res.price !== null) {
         priceMap[original] = res.price;
-        
-        // 特殊対応: 日本株で .T を付け忘れた場合など、通貨変換が必要な場合は検討の余地あり
-        // 現状は、正規化した結果の価格をそのまま返す
       }
     });
 
@@ -111,45 +177,60 @@ async function getMarketData(requestedSymbols: string[] = []) {
 
     // FXヒストリカルデータ取得
     const fxAnalysisPairs = ["JPY=X", "EURJPY=X", "GBPJPY=X", "EURUSD=X"];
-    const fxAnalysis = await Promise.all(
-      fxAnalysisPairs.map(async (pair) => {
-        try {
-          const endDate = new Date();
-          const startDate = new Date();
-          startDate.setDate(startDate.getDate() - 40);
+    const fxAnalysis = [];
 
-          const historical = await yf.historical(pair, {
-            period1: startDate,
-            period2: endDate,
-            interval: "1d"
-          });
-
-          const prices = (historical as any[]).map(h => h.close).filter((p: any): p is number => p !== undefined);
-          const lastPrice = prices[prices.length - 1];
-          const tech = getTechnicalStatus(lastPrice, prices);
-
-          const swapData: Record<string, { buy: number; sell: number }> = {
-            "JPY=X": { buy: 232, sell: -251 },
-            "EURJPY=X": { buy: 158, sell: -182 },
-            "GBPJPY=X": { buy: 215, sell: -241 },
-            "AUDJPY=X": { buy: 184, sell: -205 },
-            "EURUSD=X": { buy: -125, sell: 102 },
-            "CHFJPY=X": { buy: 135, sell: -155 }
-          };
-
-          return {
-            pair,
-            price: lastPrice,
-            change: prices.length > 1 ? ((lastPrice - prices[prices.length - 2]) / prices[prices.length - 2]) * 100 : 0,
-            technical: tech,
-            swap: swapData[pair] || { buy: 0, sell: 0 },
-            history: prices.slice(-20)
-          };
-        } catch (e) {
-          return { pair, price: null, change: 0, technical: null, history: [] };
+    // シーケンシャルに処理してレートリミットを回避
+    for (const pair of fxAnalysisPairs) {
+      try {
+        // ヒストリカルデータのキャッシュ確認
+        const cachedHistory = historyCache.get(pair);
+        if (cachedHistory && (now - cachedHistory.timestamp < HISTORY_CACHE_TTL)) {
+          fxAnalysis.push(cachedHistory.data);
+          continue;
         }
-      })
-    );
+
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 40);
+
+        const historical = await fetchWithRetry(() => yf.historical(pair, {
+          period1: startDate,
+          period2: endDate,
+          interval: "1d"
+        })) as any[];
+
+        const prices = historical.map(h => h.close).filter((p): p is number => p !== undefined);
+        const lastPrice = prices[prices.length - 1];
+        const tech = getTechnicalStatus(lastPrice, prices);
+
+        const swapData: Record<string, { buy: number; sell: number }> = {
+          "JPY=X": { buy: 232, sell: -251 },
+          "EURJPY=X": { buy: 158, sell: -182 },
+          "GBPJPY=X": { buy: 215, sell: -241 },
+          "AUDJPY=X": { buy: 184, sell: -205 },
+          "EURUSD=X": { buy: -125, sell: 102 },
+          "CHFJPY=X": { buy: 135, sell: -155 }
+        };
+
+        const analysisData = {
+          pair,
+          price: lastPrice,
+          change: prices.length > 1 ? ((lastPrice - prices[prices.length - 2]) / prices[prices.length - 2]) * 100 : 0,
+          technical: tech,
+          swap: swapData[pair] || { buy: 0, sell: 0 },
+          history: prices.slice(-20)
+        };
+
+        fxAnalysis.push(analysisData);
+        // キャッシュ保存
+        historyCache.set(pair, { data: analysisData, timestamp: now });
+        
+        // 短い待機を入れて連続アクセスを軽減
+        await delay(200);
+      } catch (e) {
+        fxAnalysis.push({ pair, price: null, change: 0, technical: null, history: [] });
+      }
+    }
 
     const macroData = ["^GSPC", "^N225", "^TNX", "JPY=X"].map(sym => {
       const r = quoteResults.find(res => res.symbol === sym);
@@ -174,7 +255,7 @@ async function getMarketData(requestedSymbols: string[] = []) {
       dailyChanges: dailyChangeMap,
       macro: macroData,
       fxAnalysis: fxAnalysis,
-      timestamp: new Date().toISOString() 
+      timestamp: new Date(now).toISOString() 
     };
   } catch (error) {
     throw error;
@@ -202,3 +283,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to fetch market data" }, { status: 500 });
   }
 }
+
