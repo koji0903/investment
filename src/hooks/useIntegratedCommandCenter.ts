@@ -58,7 +58,10 @@ export function useIntegratedCommandCenter() {
 
   // Data Fetching
   const refreshData = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setIsDataLoading(false);
+      return;
+    }
     try {
       const [
         s, r, rm, ap, perf, wp, inst, cond, btest, logs, evts,
@@ -94,10 +97,10 @@ export function useIntegratedCommandCenter() {
       setTuningConfig(tConfig);
       setDriftAnalysis(drift);
       setTuningLogs(tLogs);
-
-      setIsDataLoading(false);
     } catch (e) {
       console.error("Error fetching integrated data", e);
+    } finally {
+      setIsDataLoading(false);
     }
   }, [user]);
 
@@ -108,18 +111,18 @@ export function useIntegratedCommandCenter() {
   }, [refreshData]);
 
   // Real-time calculation based on market data
-  const decision: USDJPYDecisionResult | null = useMemo(() => {
-    if (!ohlcData["1m"].length) return null;
+  const derivedData = useMemo(() => {
+    if (!ohlcData["1m"].length) {
+      return { decision: null, executionProfile: null, structureAnalysis: null, pseudoOrderBook: null };
+    }
 
     const profile = FXExecutionService.calculateExecutionProfile(
       quote?.bid || 0, 
       quote?.ask || 0, 
       ohlcData["1m"]
     );
-    setExecutionProfile(profile);
 
     const structure = FXStructureService.analyzeStructure(ohlcData);
-    setStructureAnalysis(structure);
 
     const orderBook = FXLiquidityService.generatePseudoOrderBook(
       quote?.price || 0,
@@ -127,9 +130,8 @@ export function useIntegratedCommandCenter() {
       quote?.ask || 0,
       ohlcData["1m"]
     );
-    setPseudoOrderBook(orderBook);
 
-    return calculateUSDJPYDecision(
+    const decision = calculateUSDJPYDecision(
       ohlcData, 
       [], // metrics are now integrated in reviews/weightProfile mostly
       true, // isHighProbMode
@@ -141,6 +143,8 @@ export function useIntegratedCommandCenter() {
       riskMetrics,
       tuningConfig
     );
+
+    return { decision, executionProfile: profile, structureAnalysis: structure, pseudoOrderBook: orderBook };
   }, [ohlcData, quote, weightProfile, indicatorStatus, riskMetrics, tuningConfig]);
 
   // Periodic position management
@@ -161,14 +165,14 @@ export function useIntegratedCommandCenter() {
     performance,
     weightProfile,
     indicatorStatus,
-    executionProfile,
-    structureAnalysis,
-    pseudoOrderBook,
+    decision: derivedData.decision,
+    executionProfile: derivedData.executionProfile,
+    structureAnalysis: derivedData.structureAnalysis,
+    pseudoOrderBook: derivedData.pseudoOrderBook,
     conditionAnalysis,
     backtestComparisons,
     violationLogs,
     upcomingEvents,
-    decision,
     tuningConfig,
     driftAnalysis,
     tuningLogs,
