@@ -26,94 +26,18 @@ import {
   History,
   Info,
   ChevronRight,
-  AlertTriangle
+  AlertTriangle,
+  Timer
 } from "lucide-react";
 import { 
-  USDJPYPriceBoard, 
-  USDJPYDecisionMonitor 
-} from "./USDJPYComponents";
-import { USDJPYRegimeMonitor } from "./USDJPYRegimeMonitor";
-import { USDJPYExecutionMonitor } from "./USDJPYExecutionMonitor";
-import { USDJPYStructureMonitor } from "./USDJPYStructureMonitor";
+  USDJPYStructureMonitor 
+} from "./USDJPYStructureMonitor";
 import { USDJPYPseudoOrderBook } from "./USDJPYPseudoOrderBook";
-import { USDJPYRiskMonitor } from "./USDJPYRiskMonitor";
 import { USDJPYIndicatorCalendar } from "./USDJPYIndicatorCalendar";
 import { USDJPYDetailedAnalysis } from "./USDJPYDetailedAnalysis";
 import { USDJPYOperationLogs } from "./USDJPYOperationLogs";
 import { FXSentimentWidget } from "../FXSentimentWidget";
 
-/**
- * Section A: 総合運用ステータス
- */
-const StatsBar = ({ performance, riskMetrics }: { performance: any, riskMetrics: any }) => {
-  if (!performance || !riskMetrics) return null;
-
-  const cards = [
-    { label: "Today", pips: performance.today.pips, yen: performance.today.yen, count: performance.today.count, winRate: performance.today.winRate },
-    { label: "Weekly", pips: performance.weekly.pips, yen: performance.weekly.yen, count: performance.weekly.count, winRate: performance.weekly.winRate },
-    { label: "Monthly", pips: performance.monthly.pips, yen: performance.monthly.yen, count: performance.monthly.count, winRate: performance.monthly.winRate },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-      {cards.map((c, i) => (
-        <div key={i} className="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 flex flex-col justify-center relative overflow-hidden group hover:border-indigo-500/30 transition-all">
-          <div className="absolute top-0 right-0 p-2 opacity-5 scale-150 rotate-12 group-hover:scale-[2] transition-transform">
-             <Trophy size={48} />
-          </div>
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{c.label} PnL</span>
-          <div className="flex items-baseline gap-2 mt-1">
-            <span className={cn(
-              "text-2xl font-black tabular-nums tracking-tighter",
-              c.pips >= 0 ? "text-emerald-400" : "text-rose-400"
-            )}>
-              {c.pips > 0 ? `+${c.pips}` : c.pips}
-            </span>
-            <span className="text-[10px] font-bold text-slate-500 uppercase">pips</span>
-          </div>
-          <div className="flex items-center justify-between mt-3">
-            <span className="text-xs font-bold text-slate-400">
-               {new Intl.NumberFormat('ja-JP').format(c.yen)}円
-            </span>
-            <span className="text-[9px] font-black px-1.5 py-0.5 bg-slate-800 rounded text-slate-500">
-              {c.winRate.toFixed(1)}% WR
-            </span>
-          </div>
-        </div>
-      ))}
-      
-      {/* Rule Compliance & Status (Section A Extended) */}
-      <div className="bg-slate-900/60 border border-slate-800 rounded-3xl p-5 flex flex-col justify-center relative overflow-hidden group hover:border-amber-500/30 transition-all">
-        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Compliance Rate</span>
-        <div className="text-2xl font-black mt-1 text-amber-400 tracking-tighter">
-          {riskMetrics.ruleComplianceRate?.toFixed(1) || 100}%
-        </div>
-        <div className="w-full h-1 bg-slate-800 rounded-full mt-3 overflow-hidden">
-           <div className="h-full bg-amber-500" style={{ width: `${riskMetrics.ruleComplianceRate || 100}%` }} />
-        </div>
-      </div>
-
-      <div className={cn(
-        "rounded-3xl p-5 text-white shadow-xl flex flex-col justify-center relative overflow-hidden group transition-all",
-        riskMetrics.operationStatus === "stop" ? "bg-rose-600 shadow-rose-600/20" : 
-        riskMetrics.operationStatus === "caution" ? "bg-amber-500 shadow-amber-500/20" : 
-        "bg-indigo-600 shadow-indigo-600/20"
-      )}>
-        <div className="absolute top-0 right-0 p-2 opacity-20 rotate-12 group-hover:scale-125 transition-transform">
-           {riskMetrics.operationStatus === "stop" ? <ShieldAlert size={48} /> : <ShieldCheck size={48} />}
-        </div>
-        <span className="text-[10px] font-black opacity-70 uppercase tracking-widest">Op Status</span>
-        <div className="text-xl font-black mt-1 flex items-center gap-2">
-          {riskMetrics.operationStatus === "stop" ? "停止 (STOP)" : 
-           riskMetrics.operationStatus === "caution" ? "警戒 (CAUTION)" : "通常 (NORMAL)"}
-        </div>
-        <div className="mt-3 flex items-center gap-1.5">
-           <span className="text-[9px] font-black opacity-80 uppercase">DD {riskMetrics.drawdownPercent.toFixed(1)}% / L {riskMetrics.consecutiveLosses}</span>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export const IntegratedCommandCenter = () => {
   const { 
@@ -147,218 +71,242 @@ export const IntegratedCommandCenter = () => {
             <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0" />
           </div>
           <div className="flex flex-col items-center gap-1">
-             <span className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">System Initializing</span>
-             <span className="text-[10px] font-bold text-slate-600 uppercase">Synchronizing Neural Assets...</span>
+             <span className="text-xs font-black text-slate-400 uppercase tracking-[0.3em]">システム初期化中</span>
+             <span className="text-[10px] font-bold text-slate-600 uppercase">ニューラル資産を同期しています...</span>
           </div>
         </div>
       </div>
     );
   }
 
+  const rec = decision?.recommendation;
+  const isActionAllowed = decision?.isEntryAllowed && rec?.action !== "WAIT" && rec?.action !== "PROHIBITED";
+
   return (
-    <div className="space-y-8 pb-32 max-w-[1600px] mx-auto">
-      {/* Header Stat Area (Section A) */}
-      <StatsBar performance={performance} riskMetrics={riskMetrics} />
-
-      {/* Main Grid: Upper (B, C) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-         <div className="lg:col-span-4 space-y-6">
-            {/* Section B: Current Market Assessment */}
-            <div className="p-8 bg-slate-900/50 border border-slate-900 rounded-[40px] space-y-8">
-               <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Activity size={20} className="text-indigo-400" />
-                    <h3 className="text-sm font-black text-slate-200 uppercase tracking-widest">Market Context</h3>
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tabular-nums">1.033ms Latency</span>
-               </div>
-               
-               <USDJPYPriceBoard quote={quote} />
-               <USDJPYRegimeMonitor regime={decision?.regime || null} />
-               
-               {sentiment && (
-                  <div className="p-6 bg-slate-950/60 rounded-3xl border border-slate-800/50 space-y-4">
-                     <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-slate-500 uppercase">Integrated Sentiment</span>
-                        <span className={cn(
-                          "text-xs font-black px-2 py-0.5 rounded",
-                          sentiment.integratedScore > 65 ? "text-emerald-400 bg-emerald-500/10" : "text-rose-400 bg-rose-500/10"
-                        )}>
-                          {sentiment.integratedScore}%
-                        </span>
-                     </div>
-                     <div className="flex justify-between items-center bg-slate-900/50 p-3 rounded-2xl">
-                        <div className="text-center flex-1">
-                           <p className="text-[9px] font-black text-slate-600 uppercase">USD Strength</p>
-                           <p className="text-sm font-black text-slate-200">{sentiment.usdStrength}</p>
-                        </div>
-                        <div className="w-px h-6 bg-slate-800" />
-                        <div className="text-center flex-1">
-                           <p className="text-[9px] font-black text-slate-600 uppercase">JPY Strength</p>
-                           <p className="text-sm font-black text-slate-200">{sentiment.jpyStrength}</p>
-                        </div>
-                     </div>
-                  </div>
-               )}
-            </div>
-            
-            <USDJPYIndicatorCalendar events={upcomingEvents} />
-         </div>
-
-         <div className="lg:col-span-8 flex flex-col gap-8">
-            {/* Section C: Master Decision Hero (Central Command) */}
-            <USDJPYDecisionMonitor decision={decision} />
-            
-            {/* Section D: Active Position Management */}
-            <div className="p-8 bg-slate-900/50 border border-slate-900 rounded-[48px] space-y-8 flex-1">
-               <div className="flex items-center justify-between">
-                 <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                     <MousePointer2 size={24} />
-                   </div>
-                   <div>
-                      <h3 className="text-xl font-black text-slate-200 tracking-tight">Active Operations</h3>
-                      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{activePositions.length} Positions Under AI Management</p>
-                   </div>
-                 </div>
-                 {activePositions.length > 0 && (
-                    <div className="px-4 py-2 bg-indigo-500 rounded-full text-[10px] font-black text-white animate-pulse">
-                      LIVE TRACKING
-                    </div>
-                 )}
-               </div>
-
-               <div className="grid grid-cols-1 gap-4">
-                  {activePositions.length === 0 ? (
-                    <div className="p-16 text-center border-2 border-dashed border-slate-800 rounded-[40px] text-slate-600 font-bold flex flex-col items-center gap-3">
-                      <LayoutDashboard size={40} className="opacity-20" />
-                      現在保有中のポジションはありません
-                    </div>
-                  ) : (
-                    activePositions.map((pos) => (
-                      <div key={pos.id} className="p-8 bg-slate-950/60 border border-slate-800 rounded-[40px] flex items-center justify-between group hover:border-indigo-500/50 transition-all duration-500 hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)]">
-                         <div className="flex items-center gap-8">
-                            <div className={cn(
-                              "w-16 h-16 rounded-3xl flex items-center justify-center font-black text-lg",
-                              pos.side === "buy" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
-                            )}>
-                              {pos.side === "buy" ? "LONG" : "SHORT"}
-                            </div>
-                            <div className="space-y-1">
-                               <div className="flex items-center gap-3">
-                                 <span className="text-xl font-black text-slate-200">{pos.quantity} Lots</span>
-                                 <span className="text-[10px] font-bold text-slate-500 flex items-center gap-1">
-                                    <Clock size={12} />
-                                    {new Date(pos.entryTimestamp).toLocaleTimeString()}
-                                 </span>
-                               </div>
-                               <div className="flex items-center gap-6">
-                                  <div className="text-xs font-bold text-slate-400">
-                                    ENTRY <span className="tabular-nums text-slate-300 ml-1">{pos.entryPrice.toFixed(3)}</span>
-                                  </div>
-                                  <div className="text-xs font-bold text-slate-400">
-                                    MARKET <span className="tabular-nums text-slate-300 ml-1">{quote?.price.toFixed(3)}</span>
-                                  </div>
-                               </div>
-                            </div>
-                         </div>
-
-                         <div className="text-right flex flex-col items-end gap-2">
-                            <div className={cn(
-                              "text-4xl font-black tabular-nums tracking-tighter",
-                              pos.pnl >= 0 ? "text-emerald-400" : "text-rose-400"
-                            )}>
-                              {pos.pnl >= 0 ? "+" : ""}{(pos.pnl * 100).toFixed(1)} <span className="text-sm font-bold opacity-60">PIPS</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                               <div className="px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-xl text-[9px] font-black text-indigo-400 uppercase">
-                                 Recommended: {pos.pnl * 100 > 10 ? "TRAILING STOP" : "HOLD POSITION"}
-                               </div>
-                               <div className="px-3 py-1 bg-slate-800 rounded-xl text-[9px] font-black text-slate-500 uppercase">
-                                 Protection: {pos.stopLoss?.toFixed(3) || "NONE"}
-                               </div>
-                            </div>
-                         </div>
-                      </div>
-                    ))
-                  )}
-               </div>
-            </div>
-         </div>
-      </div>
-
-      {/* Mid Grid: E, F */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Section E: 地合い・レジーム・流動性 (Bento-style detail) */}
-          <div className="space-y-6">
-             <USDJPYStructureMonitor structure={structureAnalysis} />
-             <USDJPYPseudoOrderBook orderBook={pseudoOrderBook} />
+    <div className="space-y-12 pb-32 max-w-[1600px] mx-auto px-4 lg:px-0">
+      
+      {/* ーーーーーーーーーーーーーーーーーーーー
+          ■ ファーストビュー (最優先・最重要)
+          ーーーーーーーーーーーーーーーーーーーー */}
+      <section className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          
+          {/* 【左】 アクション指示 (Priority 3) */}
+          <div className="lg:col-span-3 grid grid-cols-2 gap-4">
+             <ActionCard 
+              label="推奨ロット" 
+              value={`${rec?.lot || 0.01} Lot`} 
+              sub="リスク許容度に基づく" 
+              icon={Zap} 
+              color="text-indigo-400"
+             />
+             <ActionCard 
+              label="損切り (SL)" 
+              value={rec?.sl.toFixed(3) || "---"} 
+              sub="資産保護ポイント" 
+              icon={ShieldAlert} 
+              color="text-rose-400"
+             />
+             <ActionCard 
+              label="利確 (TP)" 
+              value={rec?.tp.toFixed(3) || "---"} 
+              sub="ターゲット" 
+              icon={Target} 
+              color="text-emerald-400"
+             />
+             <ActionCard 
+              label="リスクリワード (RR)" 
+              value={`1:${rec?.rr || 0}`} 
+              sub="期待値管理" 
+              icon={BarChart3} 
+              color="text-indigo-400"
+             />
           </div>
 
-          <div className="lg:col-span-2 space-y-6">
-             {/* Section F: ロット・リスク管理 */}
-             <div className="p-8 bg-slate-900/50 border border-slate-900 rounded-[40px] grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                   <div className="flex items-center gap-3">
-                      <Lock size={20} className="text-amber-500" />
-                      <h3 className="text-sm font-black text-slate-200 uppercase tracking-widest">Risk Guard Settings</h3>
+          {/* 【中央】 最終トレード判定 (Priority 1, 2) */}
+          <div className="lg:col-span-6 flex flex-col justify-center">
+             <div className={cn(
+               "h-full p-10 border-4 rounded-[64px] relative overflow-hidden flex flex-col items-center justify-center text-center transition-all duration-700",
+               rec?.action === "BUY" ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-400 shadow-[0_0_100px_rgba(16,185,129,0.15)]" :
+               rec?.action === "SELL" ? "bg-rose-500/10 border-rose-500/40 text-rose-400 shadow-[0_0_100px_rgba(244,63,94,0.15)]" :
+               rec?.action === "PROHIBITED" ? "bg-slate-900 border-slate-800 text-slate-500 opacity-60" :
+               "bg-slate-900/50 border-slate-800 text-slate-400"
+             )}>
+                <div className="absolute top-8 left-0 right-0 flex justify-center opacity-30">
+                  <span className="text-[10px] font-black tracking-[0.5em] uppercase">M-Decision Engine v2.5</span>
+                </div>
+
+                <div className="space-y-2">
+                   <p className="text-[14px] font-black uppercase tracking-[0.4em] opacity-60">
+                      {rec?.action === "WAIT" ? "待機" : "トレード"}判定
+                   </p>
+                   <motion.h2 
+                     key={rec?.action}
+                     initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                     className="text-[100px] lg:text-[140px] font-black leading-none tracking-tighter"
+                   >
+                     {rec?.action === "BUY" ? "「買」" : 
+                      rec?.action === "SELL" ? "「売」" : 
+                      rec?.action === "PROHIBITED" ? "禁止" : "見送り"}
+                   </motion.h2>
+                   <div className="flex items-center justify-center gap-4 mt-4">
+                      <div className="px-5 py-1.5 bg-white/5 border border-white/10 rounded-full flex items-center gap-2">
+                         <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">信頼度</span>
+                         <span className="text-xl font-black text-white/90">{decision?.confidence || 0}%</span>
+                      </div>
+                      <div className="px-5 py-1.5 bg-white/5 border border-white/10 rounded-full flex items-center gap-2">
+                         <span className="text-[11px] font-black text-white/40 uppercase tracking-widest">現在地</span>
+                         <span className="text-xl font-black text-white/90 tabular-nums">{quote?.price.toFixed(3) || "---"}</span>
+                      </div>
                    </div>
-                   <USDJPYRiskMonitor metrics={riskMetrics} permission={null} />
+                </div>
+             </div>
+          </div>
+
+          {/* 【右】 リスク・ガバナンス (Priority 4) */}
+          <div className="lg:col-span-3 flex flex-col gap-4">
+             <div className="flex-1 bg-slate-900/60 border border-slate-800 p-6 rounded-[40px] flex flex-col justify-center gap-6 relative group overflow-hidden">
+                <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-125 transition-transform">
+                   <ShieldCheck size={120} />
                 </div>
                 
-                <div className="p-6 bg-slate-950/60 rounded-[32px] border border-slate-800 space-y-6">
-                   <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Lot Sizing Logic</span>
-                      <Zap size={14} className="text-yellow-400" />
+                <div className="space-y-4">
+                   <div className="flex justify-between items-center text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                      <span>現在の連敗数</span>
+                      <span className={cn("text-lg px-2 rounded", (riskMetrics?.consecutiveLosses || 0) >= 3 ? "bg-rose-500/20 text-rose-500" : "text-slate-200")}>
+                        {riskMetrics?.consecutiveLosses || 0}
+                      </span>
                    </div>
-                   <div className="flex items-end justify-between">
-                      <div>
-                         <p className="text-[9px] font-bold text-slate-500">Suggested Balance</p>
-                         <p className="text-3xl font-black text-slate-200">{((riskMetrics?.currentBalance || 0) / 10000).toFixed(1)} <span className="text-xs">万円</span></p>
-                      </div>
-                      <div className="text-right">
-                         <p className="text-[9px] font-bold text-slate-500">Max Loss Allowance</p>
-                         <p className="text-xl font-black text-rose-400">-{ ((riskMetrics?.currentBalance || 0) * 0.02).toLocaleString() }円</p>
-                      </div>
+                   <div className="flex justify-between items-center text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                      <span>ドローダウン</span>
+                      <span className={cn("text-lg", (riskMetrics?.drawdownPercent || 0) > 5 ? "text-rose-400" : "text-slate-200")}>
+                         {riskMetrics?.drawdownPercent.toFixed(1) || "0.0"}%
+                      </span>
                    </div>
-                   <div className="pt-4 border-t border-slate-800 space-y-3">
-                      <div className="flex justify-between text-[10px] font-bold">
-                         <span className="text-slate-500">MAX CONSECUTIVE LOSS LIMIT</span>
-                         <span className="text-slate-200">5 Trades</span>
-                      </div>
-                      <div className="flex justify-between text-[10px] font-bold">
-                         <span className="text-slate-500">MAX DAILY DRAWDOWN</span>
-                         <span className="text-slate-200">3.0%</span>
-                      </div>
+                   <div className="flex justify-between items-center text-[11px] font-black text-slate-500 uppercase tracking-widest">
+                      <span>本日損益 (円)</span>
+                      <span className={cn("text-xl font-black", performance.today.yen >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                         {performance.today.yen.toLocaleString()}円
+                      </span>
                    </div>
                 </div>
-             </div>
 
-             {/* Section H: レビュー・改善提案 (Snippet) */}
-             <div className="p-8 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[40px] flex items-center justify-between group">
-                <div className="space-y-4 max-w-2xl">
-                   <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
-                         <Info size={20} />
-                      </div>
-                      <h3 className="text-sm font-black text-slate-200 uppercase tracking-widest">AI Strategic Feedback</h3>
-                   </div>
-                   <p className="text-lg font-bold text-slate-400 italic leading-snug group-hover:text-slate-200 transition-colors">
-                     {reviews.length > 0 ? `"${reviews[0].summary}"` : "現在トレードデータを解析し、改善の機会を特定しています。"}
-                   </p>
-                </div>
-                <div className="hidden md:flex flex-col items-center gap-2 pr-6">
-                   <div className="text-[10px] font-black text-slate-500 uppercase">Review Score</div>
-                   <div className="text-5xl font-black text-indigo-500">
-                     {reviews.length > 0 ? reviews[0].compliance.score : "--"}
-                   </div>
+                <div className={cn(
+                  "p-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-widest",
+                  riskMetrics?.operationStatus === "stop" ? "bg-rose-500/20 text-rose-500 border border-rose-500/40" :
+                  riskMetrics?.operationStatus === "caution" ? "bg-amber-500/20 text-amber-500 border border-amber-500/40" :
+                  "bg-emerald-500/20 text-emerald-500 border border-emerald-500/40"
+                )}>
+                   {riskMetrics?.operationStatus === "stop" ? <ShieldAlert size={14} /> : <ShieldCheck size={14} />}
+                   運用：{riskMetrics?.operationStatus === "stop" ? "停止" : riskMetrics?.operationStatus === "caution" ? "警戒" : "正常"}
                 </div>
              </div>
           </div>
-      </div>
+        </div>
 
-      {/* Lower Section: G, I, J, K, L (Analysis Tabs) */}
-      <div className="bg-slate-900/50 border border-slate-900 rounded-[48px] overflow-hidden">
+        {/* 相場状態バー (Priority 5の一部) */}
+        <div className="p-4 bg-slate-900/40 border border-slate-900 rounded-[32px] grid grid-cols-2 md:grid-cols-4 gap-8">
+           <StatusMetric label="相場レジーム" value={decision?.regime.name || "不明"} icon={Layers} />
+           <StatusMetric label="地合い・センチメント" value={`${sentiment?.integratedScore || 0}%`} sub={(sentiment?.integratedScore || 0) > 60 ? "強気" : "弱気"} icon={Activity} />
+           <StatusMetric label="流動性スコア" value={`${pseudoOrderBook?.liquidityScore || 0}`} sub="安定" icon={MousePointer2} />
+           <StatusMetric label="経済指標状況" value={indicatorStatus?.message || "通常時"} icon={Timer} highlight={indicatorStatus?.status !== "normal"} />
+        </div>
+
+        {/* 判断理由 (Priority 5) */}
+        <div className="p-6 bg-indigo-500/5 border border-indigo-500/10 rounded-[40px] flex items-center gap-6">
+           <div className="w-12 h-12 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 shrink-0">
+              <Info size={24} />
+           </div>
+           <div className="space-y-1">
+              <p className="text-[10px] font-black text-indigo-400/60 uppercase tracking-widest">判断の主要根拠 / Reasoning Context</p>
+              <p className="text-xl font-bold text-slate-200 italic leading-relaxed">
+                 "{rec?.reason || "市場データを解析して最適なエントリーポイントを特定しています。"}"
+              </p>
+           </div>
+        </div>
+      </section>
+
+      {/* ーーーーーーーーーーーーーーーーーーーー
+          ■ セカンドビュー (分析・詳細)
+          ーーーーーーーーーーーーーーーーーーーー */}
+      <section className="space-y-8">
+         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-8 flex flex-col gap-8">
+               {/* 実行ポジション管理 */}
+               <div className="p-8 bg-slate-900/30 border border-slate-900 rounded-[48px] space-y-8">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <LayoutDashboard size={20} className="text-slate-500" />
+                      <h3 className="text-sm font-black text-slate-200 uppercase tracking-widest">保有ポジション</h3>
+                    </div>
+                  </div>
+                  
+                  {activePositions.length === 0 ? (
+                    <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-[40px] text-slate-600 font-bold">
+                       現在保有中のポジションはありません
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                       {activePositions.map((pos) => (
+                         <div key={pos.id} className="p-6 bg-slate-950/40 border border-slate-800 rounded-[32px] flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                               <div className={cn(
+                                 "w-12 h-12 rounded-2xl flex items-center justify-center font-black",
+                                 pos.side === "buy" ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+                               )}>
+                                 {pos.side === "buy" ? "買" : "売"}
+                               </div>
+                               <div>
+                                  <p className="text-lg font-black text-slate-200">{pos.quantity} Lot</p>
+                                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Entry: {pos.entryPrice.toFixed(3)}</p>
+                               </div>
+                            </div>
+                            <div className="text-right">
+                               <p className={cn(
+                                 "text-2xl font-black tabular-nums",
+                                 pos.pnl >= 0 ? "text-emerald-400" : "text-rose-400"
+                               )}>
+                                 {pos.pnl >= 0 ? "+" : ""}{(pos.pnl * 100).toFixed(1)} <span className="text-sm">PIPS</span>
+                               </p>
+                               <span className="text-[9px] font-black bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded uppercase">
+                                 AI提言: {pos.pnl * 100 > 10 ? "利確準備" : "継続保有"}
+                               </span>
+                            </div>
+                         </div>
+                       ))}
+                    </div>
+                  )}
+               </div>
+
+               {/* 詳細分析グリッド */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <USDJPYStructureMonitor structure={structureAnalysis} />
+                  <USDJPYPseudoOrderBook orderBook={pseudoOrderBook} />
+               </div>
+            </div>
+
+            <div className="lg:col-span-4 space-y-8">
+               <div className="p-8 bg-slate-900/30 border border-slate-900 rounded-[40px] space-y-6">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                     <AlertCircle size={14} className="text-indigo-500" /> ロジック完成度・信頼性
+                  </h3>
+                  <div className="space-y-4">
+                     <IndicatorBar label="構造完成度" value={structureAnalysis?.completionScore || 0} />
+                     <IndicatorBar label="ブレイク品質" value={decision?.score || 0} />
+                     <IndicatorBar label="価格帯優位性" value={pseudoOrderBook?.liquidityScore || 0} />
+                     <IndicatorBar label="エネルギー蓄積" value={85} /> {/* Dummy for UI layout */}
+                  </div>
+               </div>
+               
+               <USDJPYIndicatorCalendar events={upcomingEvents} />
+            </div>
+         </div>
+      </section>
+
+      {/* ーーーーーーーーーーーーーーーーーーーー
+          ■ サードビュー (成績・レビュー・学習)
+          ーーーーーーーーーーーーーーーーーーーー */}
+      <section className="bg-slate-900/30 border border-slate-900 rounded-[48px] overflow-hidden">
          <BottomAnalysisTabs 
            performance={performance} 
            reviews={reviews} 
@@ -368,10 +316,57 @@ export const IntegratedCommandCenter = () => {
            violationLogs={violationLogs}
            simulations={activePositions}
          />
-      </div>
+      </section>
     </div>
   );
 };
+
+const ActionCard = ({ label, value, sub, icon: Icon, color }: any) => (
+  <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-[32px] space-y-1 hover:border-indigo-500/30 transition-all">
+    <div className="flex items-center gap-2 text-slate-500 mb-1">
+       <Icon size={12} className={color} />
+       <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+    </div>
+    <div className={cn("text-xl font-black tracking-tight tabular-nums", color)}>{value}</div>
+    <div className="text-[8px] font-bold text-slate-600 uppercase tracking-tight">{sub}</div>
+  </div>
+);
+
+const StatusMetric = ({ label, value, sub, icon: Icon, highlight }: any) => (
+  <div className="flex items-center gap-3">
+    <div className={cn(
+      "w-10 h-10 rounded-xl flex items-center justify-center text-slate-500",
+      highlight ? "bg-rose-500/10 text-rose-500" : "bg-slate-950 text-slate-500"
+    )}>
+       <Icon size={18} />
+    </div>
+    <div>
+       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
+       <div className="flex items-baseline gap-2">
+          <span className="text-sm font-black text-slate-200">{value}</span>
+          {sub && <span className="text-[10px] font-black text-slate-600 uppercase italic">{sub}</span>}
+       </div>
+    </div>
+  </div>
+);
+
+const IndicatorBar = ({ label, value }: { label: string, value: number }) => (
+  <div className="space-y-1.5">
+     <div className="flex justify-between items-center px-1">
+        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</span>
+        <span className="text-xs font-black text-slate-300">{value}%</span>
+     </div>
+     <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden">
+        <motion.div 
+          initial={{ width: 0 }} animate={{ width: `${value}%` }}
+          className={cn(
+            "h-full rounded-full",
+            value > 80 ? "bg-emerald-500" : value > 50 ? "bg-indigo-500" : "bg-amber-500"
+          )}
+        />
+     </div>
+  </div>
+);
 
 const BottomAnalysisTabs = ({ 
   performance, 
@@ -385,11 +380,11 @@ const BottomAnalysisTabs = ({
   const [activeTab, setActiveTab] = React.useState("performance");
 
   const tabs = [
-    { id: "performance", label: "Performance", icon: BarChart3 },
-    { id: "analysis", label: "Neural Insights", icon: Activity },
-    { id: "learning", label: "Optimization", icon: Zap },
-    { id: "history", label: "Operations Log", icon: History },
-    { id: "reviews", label: "Manual Review", icon: Target },
+    { id: "performance", label: "運用実績", icon: BarChart3 },
+    { id: "analysis", label: "ニューラル洞察", icon: Activity },
+    { id: "learning", label: "自動最適化", icon: Zap },
+    { id: "history", label: "運用ログ", icon: History },
+    { id: "reviews", label: "戦略レビュー", icon: Target },
   ];
 
   return (
