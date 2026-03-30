@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Layers, Activity, Zap, CheckCircle2, AlertCircle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FXStructureAnalysis } from "@/types/fx";
+import { HelpTooltip } from "../FXUIComponents";
 
 /**
  * 相場構造解析モニター
@@ -46,9 +47,12 @@ export const USDJPYStructureMonitor = ({
       </div>
 
       {/* Completion Score */}
-      <div className="space-y-3 relative z-10">
+      <div className="space-y-3 relative z-10 group/p1 cursor-help">
         <div className="flex justify-between items-end">
-          <span className="text-[10px] font-black text-slate-500 uppercase">完成スコア</span>
+          <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-1">
+            完成スコア
+            <Info size={10} className="opacity-0 group-hover/p1:opacity-40 transition-opacity" />
+          </span>
           <span className={cn(
             "text-2xl font-black tabular-nums tracking-tighter",
             structure.completionScore >= 75 ? "text-indigo-400" : "text-slate-300"
@@ -57,6 +61,11 @@ export const USDJPYStructureMonitor = ({
           </span>
         </div>
         
+        <HelpTooltip 
+          text="チャートの形（ダブルボトム等）がどれだけ完成に近いかを示します。75%以上がエントリーの理想です。" 
+          className="group-hover/p1:opacity-100 group-hover/p1:visible"
+        />
+
         <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
           <motion.div 
             initial={{ width: 0 }}
@@ -83,9 +92,12 @@ export const USDJPYStructureMonitor = ({
 
       {/* Energy & Reasons */}
       <div className="grid grid-cols-1 gap-4 relative z-10">
-        <div className="space-y-2">
+        <div className="space-y-2 group cursor-help relative">
            <div className="flex justify-between items-center text-[9px] font-black text-slate-500 uppercase">
-              <span>エネルギー蓄積</span>
+              <span className="flex items-center gap-1">
+                エネルギー蓄積
+                <Info size={10} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+              </span>
               <span className="text-slate-300">{structure.energyLevel}%</span>
            </div>
            <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
@@ -95,6 +107,9 @@ export const USDJPYStructureMonitor = ({
                 className="h-full bg-indigo-400 rounded-full"
               />
            </div>
+           <HelpTooltip 
+             text="値動きのパワーがどれくらい溜まっているかです。数値が高いほど、ブレイク時に勢いが出やすくなります。" 
+           />
         </div>
 
         <div className="space-y-1.5">

@@ -124,6 +124,7 @@ export const IntegratedCommandCenter = () => {
               sub="リスク許容度に基づく" 
               icon={Zap} 
               color="text-indigo-400"
+              tooltip="資金を守りながら利益を最大化する取引量です。AIが損切り幅と資金から自動計算します。"
              />
              <ActionCard 
               label="損切り (SL)" 
@@ -131,6 +132,7 @@ export const IntegratedCommandCenter = () => {
               sub="資産保護ポイント" 
               icon={ShieldAlert} 
               color="text-rose-400"
+              tooltip="予想が外れた際に、損失を最小限に抑えるための自動決済価格です。必ず設定しましょう。"
              />
              <ActionCard 
               label="利確 (TP)" 
@@ -138,6 +140,7 @@ export const IntegratedCommandCenter = () => {
               sub="ターゲット" 
               icon={Target} 
               color="text-emerald-400"
+              tooltip="利益を確定させる目標価格です。欲張らずにここで確実に利益を積み上げます。"
              />
              <ActionCard 
               label="リスクリワード (RR)" 
@@ -145,6 +148,7 @@ export const IntegratedCommandCenter = () => {
               sub="期待値管理" 
               icon={BarChart3} 
               color="text-indigo-400"
+              tooltip="損失1に対して期待できる利益の比率です。1.5以上が推奨され、高いほど『お得』な取引です。"
              />
           </div>
 
@@ -231,10 +235,33 @@ export const IntegratedCommandCenter = () => {
 
         {/* 相場状態バー (Priority 5の一部) */}
         <div className="p-4 bg-slate-900/40 border border-slate-900 rounded-[32px] grid grid-cols-2 md:grid-cols-4 gap-8">
-           <StatusMetric label="相場レジーム" value={decision?.regime.name || "不明"} icon={Layers} />
-           <StatusMetric label="地合い・センチメント" value={`${sentiment?.integratedScore || 0}%`} sub={(sentiment?.integratedScore || 0) > 60 ? "強気" : "弱気"} icon={Activity} />
-           <StatusMetric label="流動性スコア" value={`${pseudoOrderBook?.liquidityScore || 0}`} sub="安定" icon={MousePointer2} />
-           <StatusMetric label="経済指標状況" value={indicatorStatus?.message || "通常時"} icon={Timer} highlight={indicatorStatus?.status !== "normal"} />
+           <StatusMetric 
+             label="相場レジーム" 
+             value={decision?.regime.name || "不明"} 
+             icon={Layers} 
+             tooltip="現在の相場の『型』です。トレンド（一方向へ強い）かレンジ（停滞）かを分析します。"
+           />
+           <StatusMetric 
+             label="地合い・センチメント" 
+             value={`${sentiment?.integratedScore || 0}%`} 
+             sub={(sentiment?.integratedScore || 0) > 60 ? "強気" : "弱気"} 
+             icon={Activity} 
+             tooltip="市場のムードです。ニュースや他市場の動きから、投資家の期待値をスコア化しています。"
+           />
+           <StatusMetric 
+             label="流動性スコア" 
+             value={`${pseudoOrderBook?.liquidityScore || 0}`} 
+             sub="安定" 
+             icon={MousePointer2} 
+             tooltip="取引のしやすさを示します。高いほど、思い通りの価格ですぐに決済可能です。"
+           />
+           <StatusMetric 
+             label="経済指標状況" 
+             value={indicatorStatus?.message || "通常時"} 
+             icon={Timer} 
+             highlight={indicatorStatus?.status !== "normal"} 
+             tooltip="重要なニュース発表の有無です。発表前後は急な値動きが多いため注意が必要です。"
+           />
         </div>
 
         {/* 判断理由 (Priority 5) */}
@@ -492,16 +519,27 @@ interface ActionCardProps {
   sub: string;
   icon: React.ElementType;
   color: string;
+  tooltip?: string;
 }
 
-const ActionCard = ({ label, value, sub, icon: Icon, color }: ActionCardProps) => (
-  <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-[32px] space-y-1 hover:border-indigo-500/30 transition-all">
+const ActionCard = ({ label, value, sub, icon: Icon, color, tooltip }: ActionCardProps) => (
+  <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-[32px] space-y-1 hover:border-indigo-500/30 transition-all group relative cursor-help">
     <div className="flex items-center gap-2 text-slate-500 mb-1">
        <Icon size={12} className={color} />
        <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
+       <Info size={10} className="opacity-0 group-hover:opacity-40 transition-opacity ml-auto" />
     </div>
     <div className={cn("text-xl font-black tracking-tight tabular-nums", color)}>{value}</div>
     <div className="text-[8px] font-bold text-slate-600 uppercase tracking-tight">{sub}</div>
+
+    {tooltip && (
+       <div className="absolute bottom-full left-0 mb-3 w-48 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+         <p className="text-[10px] font-bold text-slate-200 leading-relaxed">
+           {tooltip}
+         </p>
+         <div className="absolute top-full left-4 border-8 border-transparent border-t-slate-800" />
+       </div>
+    )}
   </div>
 );
 
@@ -511,23 +549,36 @@ interface StatusMetricProps {
   sub?: string;
   icon: React.ElementType;
   highlight?: boolean;
+  tooltip?: string;
 }
 
-const StatusMetric = ({ label, value, sub, icon: Icon, highlight }: StatusMetricProps) => (
-  <div className="flex items-center gap-3">
+const StatusMetric = ({ label, value, sub, icon: Icon, highlight, tooltip }: StatusMetricProps) => (
+  <div className="flex items-center gap-3 group relative cursor-help">
     <div className={cn(
-      "w-10 h-10 rounded-xl flex items-center justify-center text-slate-500",
-      highlight ? "bg-rose-500/10 text-rose-500" : "bg-slate-950 text-slate-500"
+      "w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 transition-colors",
+      highlight ? "bg-rose-500/10 text-rose-500" : "bg-slate-950 text-slate-500 group-hover:bg-slate-900"
     )}>
        <Icon size={18} />
     </div>
     <div>
-       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{label}</p>
+       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+         {label}
+         <Info size={8} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+       </p>
        <div className="flex items-baseline gap-2">
           <span className="text-sm font-black text-slate-200">{value}</span>
           {sub && <span className="text-[10px] font-black text-slate-600 uppercase italic">{sub}</span>}
        </div>
     </div>
+
+    {tooltip && (
+       <div className="absolute bottom-full left-0 mb-3 w-56 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+         <p className="text-[10px] font-bold text-slate-200 leading-relaxed">
+           {tooltip}
+         </p>
+         <div className="absolute top-full left-6 border-8 border-transparent border-t-slate-800" />
+       </div>
+    )}
   </div>
 );
 
@@ -687,7 +738,7 @@ const BottomAnalysisTabs = ({
                 key="rev"
                 className="space-y-6"
              >
-                {reviews.map((rev: any) => (
+                {reviews.map((rev: { id: string, period: string, startDate: string, endDate: string, summary: string, patterns: { winning: string[] }, aiRecommendations: string[] }) => (
                   <div key={rev.id} className="p-8 bg-slate-950/60 border border-slate-900 rounded-[48px] space-y-8">
                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">

@@ -25,6 +25,7 @@ import { checkTradePermission, TradePermissionResult } from "@/utils/fx/tradeGov
 import { FXRiskMetrics } from "@/types/fx";
 import { FXTuningConfig } from "@/types/fxTuning";
 import { Settings2, Calculator, Info, ShieldX, MessageSquare } from "lucide-react";
+import { HelpTooltip } from "../FXUIComponents";
 
 /**
  * USD/JPY シミュレーション（仮想トレード）パネル
@@ -76,7 +77,7 @@ export const USDJPYSimulationPanel = ({
       decision.orderBook.liquidityScore,
       tuningConfig
     );
-  }, [riskMetrics, riskPercent, stopPips, decision, tuningConfig]);
+  }, [riskMetrics, riskPercent, stopPips, decision, tuningConfig, indicatorStatus, executionProfile]);
 
   const finalLot = useAutoLot ? (lotResult?.adjustedLot || 0.01) : manualLot;
 
@@ -343,9 +344,12 @@ export const USDJPYSimulationPanel = ({
                        </div>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3 group/risk relative cursor-help">
                        <div className="flex justify-between text-[10px] font-black uppercase text-slate-500">
-                          <span>1トレードあたりの許容リスク (%)</span>
+                          <span className="flex items-center gap-1">
+                            1トレードあたりの許容リスク (%)
+                            <Info size={10} className="opacity-0 group-hover/risk:opacity-40 transition-opacity" />
+                          </span>
                           <span className="text-indigo-400 font-black">{riskPercent.toFixed(1)}%</span>
                        </div>
                        <input 
@@ -357,25 +361,39 @@ export const USDJPYSimulationPanel = ({
                           <span>保守的 (0.1%)</span>
                           <span>制限 (2.0%)</span>
                        </div>
+                       <HelpTooltip 
+                         text="1回の取引で許容する損失額を、全資金の何%にするか。プロの推奨は1.0%〜2.0%です。" 
+                         position="bottom-full left-0"
+                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-6 pb-2">
-                       <div className="space-y-2">
+                       <div className="space-y-2 group/sl relative cursor-help">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                              <Calculator size={10} /> ストップロス (Pips)
+                             <Info size={10} className="opacity-0 group-hover/sl:opacity-40 transition-opacity" />
                           </label>
                           <input 
                             type="number" value={stopPips} onChange={(e) => setStopPips(parseInt(e.target.value))}
                             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-black focus:border-indigo-500 outline-none tabular-nums"
                           />
+                          <HelpTooltip 
+                            text="値動きの単位です。ドル円では20Pips=0.2円となります。ここを指定することで適切なロットを選定します。" 
+                            position="bottom-full left-0"
+                          />
                        </div>
-                       <div className="space-y-2">
+                       <div className="space-y-2 group/tp relative cursor-help">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                              <TrendingUp size={10} /> ターゲット (Pips)
+                             <Info size={10} className="opacity-0 group-hover/tp:opacity-40 transition-opacity" />
                           </label>
                           <input 
                             type="number" value={tpPips} onChange={(e) => setTpPips(parseInt(e.target.value))}
                             className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-black focus:border-indigo-500 outline-none tabular-nums"
+                          />
+                          <HelpTooltip 
+                            text="利益を確定させたい目標の値幅です。ストップロスの1.5倍〜2倍以上に設定するのが基本です。" 
+                            position="bottom-full right-0"
                           />
                        </div>
                     </div>
@@ -411,10 +429,13 @@ export const USDJPYSimulationPanel = ({
                           />
                        </div>
                     ) : (
-                       <div className="space-y-4">
+                       <div className="space-y-4 group/autolot relative cursor-help">
                           <div className="flex items-start justify-between">
                              <div className="space-y-1">
-                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">AI推奨ロット</span>
+                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-1">
+                                  AI推奨ロット
+                                  <Info size={10} className="opacity-0 group-hover/autolot:opacity-40 transition-opacity" />
+                                </span>
                                 <div className="text-4xl font-black text-white tabular-nums tracking-tighter">
                                    {lotResult?.adjustedLot} <span className="text-sm text-indigo-400/50 uppercase ml-1">ロット</span>
                                 </div>
@@ -437,6 +458,9 @@ export const USDJPYSimulationPanel = ({
                              <span className="text-[10px] font-black text-slate-500 uppercase">推定最大損失</span>
                              <span className="text-sm font-black text-rose-400 tabular-nums">-{formatCurrency(lotResult?.maxLossAmount || 0)}</span>
                           </div>
+                          <HelpTooltip 
+                            text="リスク許容度と分析スコアから算出された、今回の取引に最適な数量です。根拠は下の説明を確認してください。" 
+                          />
                        </div>
                     )}
                  </div>

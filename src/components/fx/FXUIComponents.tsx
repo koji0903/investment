@@ -154,3 +154,29 @@ export const ScoreBadge = ({ score, label }: { score: number, label: string }) =
     </div>
   );
 };
+
+/**
+ * 投資初心者向けヘルプツールチップ
+ */
+export const HelpTooltip = ({ text, className, position = "bottom-full left-0" }: { text: string, className?: string, position?: string }) => (
+  <div className={cn(
+    "absolute mb-3 w-64 p-4 bg-slate-800/95 backdrop-blur-md border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible transition-all z-[100] pointer-events-none group-hover:opacity-100 group-hover:visible",
+    position,
+    className
+  )}>
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-indigo-400">
+        <Info size={12} />
+        <span className="text-[10px] font-black uppercase tracking-widest">Guideline</span>
+      </div>
+      <p className="text-[11px] font-bold text-slate-200 leading-relaxed">
+        {text}
+      </p>
+    </div>
+    <div className={cn(
+      "absolute border-8 border-transparent",
+      position.includes("bottom-full") ? "top-full border-t-slate-800" : "bottom-full border-b-slate-800",
+      position.includes("left-0") ? "left-6" : "left-1/2 -translate-x-1/2"
+    )} />
+  </div>
+);

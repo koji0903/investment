@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Box, ArrowUpRight, ArrowDownLeft, ShieldAlert, BarChart3, Info, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FXPseudoOrderBook } from "@/types/fx";
+import { HelpTooltip } from "../FXUIComponents";
 
 /**
  * 擬似板情報モニター
@@ -24,9 +25,12 @@ export const USDJPYPseudoOrderBook = ({
   return (
     <div className="p-8 bg-slate-900 border border-slate-800 rounded-[48px] space-y-8 shadow-2xl relative overflow-hidden group">
       {/* Imbalance Meter */}
-      <div className="space-y-4">
+      <div className="space-y-4 group/imbalance relative cursor-help">
         <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-500">
-           <span className="flex items-center gap-2"><BarChart3 size={14} /> 需給バランス</span>
+           <span className="flex items-center gap-2">
+             <BarChart3 size={14} /> 需給バランス
+             <Info size={10} className="opacity-0 group-hover/imbalance:opacity-40 transition-opacity" />
+           </span>
            <span className={cn(
              "tabular-nums",
              orderBook.imbalance > 0 ? "text-emerald-400" : "text-rose-400"
@@ -45,6 +49,9 @@ export const USDJPYPseudoOrderBook = ({
              )}
            />
         </div>
+        <HelpTooltip 
+          text="「買いたい人」と「売りたい人」の注文の偏りです。プラスなら買い、マイナスなら売りの意欲が強いことを示します。" 
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-px bg-slate-800/30 rounded-3xl overflow-hidden border border-slate-800/50">
@@ -65,7 +72,15 @@ export const USDJPYPseudoOrderBook = ({
                      )}
                    />
                    <div className="relative z-10 flex items-center gap-3">
-                      {bid.isWall && <div className="text-[8px] font-black text-emerald-400 bg-emerald-400/10 px-1 rounded border border-emerald-400/20">厚い壁</div>}
+                      {bid.isWall && (
+                        <div className="group/wall relative text-[8px] font-black text-emerald-400 bg-emerald-400/10 px-1 rounded border border-emerald-400/20 cursor-help">
+                          厚い壁
+                          <HelpTooltip 
+                            text="大量の注文が入っている価格帯です。反発や一時的な停滞が起きやすい目安となります。" 
+                            position="bottom-full right-0"
+                          />
+                        </div>
+                      )}
                       <span className="text-[10px] font-black tabular-nums text-slate-300 tracking-tighter">{bid.price}</span>
                    </div>
                 </div>
@@ -91,7 +106,15 @@ export const USDJPYPseudoOrderBook = ({
                    />
                    <div className="relative z-10 flex items-center gap-3">
                       <span className="text-[10px] font-black tabular-nums text-slate-300 tracking-tighter">{ask.price}</span>
-                      {ask.isWall && <div className="text-[8px] font-black text-rose-400 bg-rose-400/10 px-1 rounded border border-rose-400/20">厚い壁</div>}
+                      {ask.isWall && (
+                        <div className="group/wall relative text-[8px] font-black text-rose-400 bg-rose-400/10 px-1 rounded border border-rose-400/20 cursor-help">
+                          厚い壁
+                          <HelpTooltip 
+                            text="大量の売り注文が控えている価格帯です。上値を押さえる「天井」として意識されます。" 
+                            position="bottom-full left-0"
+                          />
+                        </div>
+                      )}
                    </div>
                 </div>
               ))}
@@ -116,15 +139,18 @@ export const USDJPYPseudoOrderBook = ({
            ))}
         </div>
 
-        <div className="p-4 bg-slate-950 border border-slate-800 rounded-3xl flex items-center gap-4">
+        <div className="p-4 bg-slate-950 border border-slate-800 rounded-3xl flex items-center gap-4 group relative cursor-help">
            <div className={cn(
-             "w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0",
+             "w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0 transition-all group-hover:scale-110",
              orderBook.liquidityScore >= 70 ? "bg-indigo-500 shadow-xl shadow-indigo-500/20" : "bg-amber-500 shadow-xl shadow-amber-500/20"
            )}>
              <Zap size={18} fill="currentColor" />
            </div>
            <div>
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">流動性の健全性</p>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+                流動性の健全性
+                <Info size={8} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+              </p>
               <div className="flex items-baseline gap-2">
                  <h4 className="text-lg font-black text-white">{orderBook.liquidityScore}%</h4>
                  <span className="text-[10px] font-bold text-slate-500 italic">
@@ -132,6 +158,9 @@ export const USDJPYPseudoOrderBook = ({
                  </span>
               </div>
            </div>
+           <HelpTooltip 
+             text="取引の『スムーズさ』を示します。スコアが高いほど、大きな注文でも約定しやすく、価格の急落・急騰が起きにくい状態です。" 
+           />
         </div>
       </div>
 
