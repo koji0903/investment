@@ -106,10 +106,14 @@ export const USDJPYSimulationPanel = ({
 
   const fetchSims = async () => {
     if (!user) return;
-    const active = await FXSimulationService.getActiveSimulations(user.uid);
-    const past = await FXSimulationService.getSimulationHistory(user.uid);
-    setActiveSims(active);
-    setHistory(past);
+    try {
+      const active = await FXSimulationService.getActiveSimulations(user.uid);
+      const past = await FXSimulationService.getSimulationHistory(user.uid);
+      setActiveSims(active);
+      setHistory(past);
+    } catch (err) {
+      console.error("Failed to fetch simulations:", err);
+    }
   };
 
   useEffect(() => {

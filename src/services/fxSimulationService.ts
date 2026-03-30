@@ -175,11 +175,12 @@ export const FXSimulationService = {
     try {
       const q = query(
         collection(db, `users/${userId}/fx_usdjpy_simulations`),
-        where("status", "==", "open"),
-        orderBy("entryTimestamp", "desc")
+        where("status", "==", "open")
       );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
+      const sims = snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
+      // 取得後に降順ソート
+      return sims.sort((a, b) => new Date(b.entryTimestamp).getTime() - new Date(a.entryTimestamp).getTime());
     } catch (error) {
       console.error("Error fetching active simulations:", error);
       return [];
@@ -193,12 +194,14 @@ export const FXSimulationService = {
     try {
       const q = query(
         collection(db, `users/${userId}/fx_usdjpy_simulations`),
-        where("status", "==", "closed"),
-        orderBy("exitTimestamp", "desc"),
-        // リミットは後で実装
+        where("status", "==", "closed")
       );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation)).slice(0, limitCount);
+      const sims = snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
+      // 取得後に降順ソートしてリミット適用
+      return sims
+        .sort((a, b) => new Date(b.exitTimestamp!).getTime() - new Date(a.exitTimestamp!).getTime())
+        .slice(0, limitCount);
     } catch (error) {
       console.error("Error fetching simulation history:", error);
       return [];
@@ -213,11 +216,11 @@ export const FXSimulationService = {
       const q = query(
         collection(db, `users/${userId}/fx_usdjpy_simulations`),
         where("exitTimestamp", ">=", start),
-        where("exitTimestamp", "<=", end),
-        orderBy("exitTimestamp", "asc")
+        where("exitTimestamp", "<=", end)
       );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
+      const sims = snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
+      return sims.sort((a, b) => new Date(a.exitTimestamp!).getTime() - new Date(b.exitTimestamp!).getTime());
     } catch (error) {
       console.error("Error fetching simulations by range:", error);
       return [];
@@ -271,9 +274,8 @@ export const FXSimulationService = {
     try {
       const db_ref = collection(db, `users/${userId}/fx_usdjpy_simulations`);
       const q = query(
-        db_ref,
-        where("status", "==", "closed"),
-        orderBy("exitTimestamp", "desc")
+        collection(db, `users/${userId}/fx_usdjpy_simulations`),
+        where("status", "==", "closed")
       );
       
       const snap = await getDocs(q);
@@ -481,11 +483,15 @@ export const FXSimulationService = {
   async getViolationLogs(userId: string): Promise<any[]> {
     try {
       const q = query(
-        collection(db, `users/${userId}/fx_usdjpy_violations`),
-        orderBy("timestamp", "desc")
+        collection(db, `users/${userId}/fx_usdjpy_violations`)
       );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      return logs.sort((a: any, b: any) => {
+        const timeA = a.timestamp?.seconds || 0;
+        const timeB = b.timestamp?.seconds || 0;
+        return timeB - timeA;
+      });
     } catch (error) {
        console.error("Error fetching violation logs:", error);
        return [];
