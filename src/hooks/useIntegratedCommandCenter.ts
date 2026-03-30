@@ -30,29 +30,29 @@ import { FXExecutionService } from "@/services/fxExecutionService";
 import { FXStructureService } from "@/services/fxStructureService";
 import { FXLiquidityService } from "@/services/fxLiquidityService";
 import { USDJPYDecisionResult } from "@/utils/fx/usdjpyDecision";
-import { FXPersistence } from "@/utils/fx/persistence";
+import { AppPersistence } from "@/utils/common/persistence";
 
 export function useIntegratedCommandCenter() {
   const { user } = useAuth();
   const { quote, ohlcData, isLoading: isMarketLoading } = useUSDJPYData(3000);
 
   // States (Initial logic: Load from cache if available)
-  const [sentiment, setSentiment] = useState<FXMarketSentiment | null>(() => FXPersistence.load("sentiment"));
-  const [reviews, setReviews] = useState<FXTradingReview[]>(() => FXPersistence.load("reviews") || []);
-  const [riskMetrics, setRiskMetrics] = useState<FXRiskMetrics | null>(() => FXPersistence.load("riskMetrics"));
-  const [activePositions, setActivePositions] = useState<FXSimulation[]>(() => FXPersistence.load("activePositions") || []);
-  const [performance, setPerformance] = useState<any>(() => FXPersistence.load("performance")); 
-  const [weightProfile, setWeightProfile] = useState<FXWeightProfile | null>(() => FXPersistence.load("weightProfile"));
-  const [indicatorStatus, setIndicatorStatus] = useState<{ status: "normal" | "caution" | "prohibited", message: string } | null>(() => FXPersistence.load("indicatorStatus"));
-  const [conditionAnalysis, setConditionAnalysis] = useState<FXConditionAnalysis | null>(() => FXPersistence.load("conditionAnalysis"));
-  const [backtestComparisons, setBacktestComparisons] = useState<FXBacktestComparison[]>(() => FXPersistence.load("backtestComparisons") || []);
-  const [violationLogs, setViolationLogs] = useState<any[]>(() => FXPersistence.load("violationLogs") || []);
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>(() => FXPersistence.load("upcomingEvents") || []);
-  const [tuningConfig, setTuningConfig] = useState<FXTuningConfig | null>(() => FXPersistence.load("tuningConfig"));
-  const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(() => FXPersistence.load("driftAnalysis"));
-  const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>(() => FXPersistence.load("tuningLogs") || []);
+  const [sentiment, setSentiment] = useState<FXMarketSentiment | null>(() => AppPersistence.load("sentiment"));
+  const [reviews, setReviews] = useState<FXTradingReview[]>(() => AppPersistence.load("reviews") || []);
+  const [riskMetrics, setRiskMetrics] = useState<FXRiskMetrics | null>(() => AppPersistence.load("riskMetrics"));
+  const [activePositions, setActivePositions] = useState<FXSimulation[]>(() => AppPersistence.load("activePositions") || []);
+  const [performance, setPerformance] = useState<any>(() => AppPersistence.load("performance")); 
+  const [weightProfile, setWeightProfile] = useState<FXWeightProfile | null>(() => AppPersistence.load("weightProfile"));
+  const [indicatorStatus, setIndicatorStatus] = useState<{ status: "normal" | "caution" | "prohibited", message: string } | null>(() => AppPersistence.load("indicatorStatus"));
+  const [conditionAnalysis, setConditionAnalysis] = useState<FXConditionAnalysis | null>(() => AppPersistence.load("conditionAnalysis"));
+  const [backtestComparisons, setBacktestComparisons] = useState<FXBacktestComparison[]>(() => AppPersistence.load("backtestComparisons") || []);
+  const [violationLogs, setViolationLogs] = useState<any[]>(() => AppPersistence.load("violationLogs") || []);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>(() => AppPersistence.load("upcomingEvents") || []);
+  const [tuningConfig, setTuningConfig] = useState<FXTuningConfig | null>(() => AppPersistence.load("tuningConfig"));
+  const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(() => AppPersistence.load("driftAnalysis"));
+  const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>(() => AppPersistence.load("tuningLogs") || []);
   
-  const [isDataLoading, setIsDataLoading] = useState(!FXPersistence.load("riskMetrics"));
+  const [isDataLoading, setIsDataLoading] = useState(!AppPersistence.load("riskMetrics"));
 
   // Data Fetching
   const refreshData = useCallback(async () => {
@@ -95,19 +95,19 @@ export function useIntegratedCommandCenter() {
       setTuningLogs(tLogs);
 
       // Save to cache
-      FXPersistence.save("sentiment", s);
-      FXPersistence.save("reviews", r);
-      FXPersistence.save("riskMetrics", rm);
-      FXPersistence.save("activePositions", ap);
-      FXPersistence.save("performance", perf);
-      FXPersistence.save("weightProfile", wp);
-      FXPersistence.save("indicatorStatus", inst);
-      FXPersistence.save("conditionAnalysis", cond);
-      FXPersistence.save("backtestComparisons", btest);
-      FXPersistence.save("violationLogs", logs);
-      FXPersistence.save("upcomingEvents", evts);
-      FXPersistence.save("tuningConfig", tConfig);
-      FXPersistence.save("tuningLogs", tLogs);
+      AppPersistence.save("sentiment", s);
+      AppPersistence.save("reviews", r);
+      AppPersistence.save("riskMetrics", rm);
+      AppPersistence.save("activePositions", ap);
+      AppPersistence.save("performance", perf);
+      AppPersistence.save("weightProfile", wp);
+      AppPersistence.save("indicatorStatus", inst);
+      AppPersistence.save("conditionAnalysis", cond);
+      AppPersistence.save("backtestComparisons", btest);
+      AppPersistence.save("violationLogs", logs);
+      AppPersistence.save("upcomingEvents", evts);
+      AppPersistence.save("tuningConfig", tConfig);
+      AppPersistence.save("tuningLogs", tLogs);
     } catch (e) {
       console.error("Error fetching integrated data", e);
     } finally {
@@ -128,7 +128,7 @@ export function useIntegratedCommandCenter() {
     try {
       const d = await FXTuningService.analyzeDrift(user.uid);
       setDriftAnalysis(d);
-      FXPersistence.save("driftAnalysis", d);
+      AppPersistence.save("driftAnalysis", d);
     } catch (e) {
       console.error("Manual drift analysis failed", e);
     }

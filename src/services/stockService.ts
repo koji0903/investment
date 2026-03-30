@@ -1,4 +1,4 @@
-import { db, saveStockJudgment, updateStockSyncingStatus } from "@/lib/db";
+import { db, saveStockJudgment, saveStockJudgmentsBatch, updateStockSyncingStatus } from "@/lib/db";
 import { collection, query, onSnapshot, orderBy, doc, getDoc } from "firebase/firestore";
 import { StockJudgment, StockPairMaster } from "@/types/stock";
 import { DEMO_USER_ID } from "@/lib/constants";
@@ -12,6 +12,7 @@ import {
 
 import { getStockMasterAction } from "@/lib/actions/stockMaster";
 import { TSE_PRIME_MASTER } from "@/data/tse_prime_master";
+import { AppPersistence } from "@/utils/common/persistence";
 
 export const MONITORING_STOCKS: StockPairMaster[] = TSE_PRIME_MASTER;
 
@@ -58,7 +59,23 @@ export const StockService = {
 
   getJudgments: async (userId: string, portfolioId: string): Promise<StockJudgment[]> => {
     try {
-      return await getStockJudgmentsAction(userId, portfolioId);
+      // 1. キャッシュから読み込み
+      const cacheKey = `stock_judgments_${portfolioId}`;
+      const cached = AppPersistence.load<StockJudgment[]>(cacheKey, 30 * 60 * 1000); // 30分キャッシュ
+      if (cached) {
+        console.log("[Stock] Loading judgments from cache");
+        return cached;
+      }
+
+      // 2. Firestore から取得
+      const results = await getStockJudgmentsAction(userId, portfolioId);
+      
+      // 3. キャッシュに保存
+      if (results.length > 0) {
+        AppPersistence.save(cacheKey, results);
+      }
+      
+      return results;
     } catch (error) {
       console.error("Error fetching stock judgments:", error);
       return [];
@@ -127,16 +144,23 @@ export const StockService = {
    */
   syncRealData: async (userId: string, portfolioId: string, customTargets?: StockPairMaster[]): Promise<StockJudgment[]> => {
     try {
-      // サーバー側の一括同期は権限の問題で Firestore 保存できないため、クライアント側で順次実行
       const results: StockJudgment[] = [];
-      // ターゲットが指定されていなければデフォルト（以前のロジック用）を使用
-      const targets = customTargets || MONITORING_STOCKS.slice(0, 15);
+      const targets = customTargets || MONITORING_STOCKS.slice(0, 5); // 数を絞って負荷低減
       
       for (const stk of targets) {
-        const res = await StockService.syncStock(userId, portfolioId, stk.ticker);
-        if (res.success && res.data) results.push(res.data as StockJudgment);
-        // 短い待機を入れてレート制限を回避
-        await new Promise(r => setTimeout(r, 800));
+        // syncSpecificStockAction は Server Action なので、ここでの同期は最小限
+        const res = await syncSpecificStockAction(userId, portfolioId, stk.ticker);
+        if (res.success && res.data) {
+          results.push(res.data as StockJudgment);
+        }
+        await new Promise(r => setTimeout(r, 1000));
+      }
+      
+      // 最後にまとめて保存 (WriteBatch)
+      if (results.length > 0) {
+        await saveStockJudgmentsBatch(userId, portfolioId, results);
+        // キャッシュを更新
+        AppPersistence.save(`stock_judgments_${portfolioId}`, results);
       }
       
       return results;

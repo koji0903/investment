@@ -17,7 +17,8 @@ import {
   query,
   getDocs,
   getDoc, 
-  orderBy 
+  orderBy,
+  limit
 } from "firebase/firestore";
 import { isConfigValid } from "@/lib/firebase";
 import { performFinancialAnalysis } from "@/utils/stock/financialAnalysis";
@@ -353,7 +354,8 @@ export async function getStockJudgmentsAction(userId: string, portfolioId: strin
   try {
     const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
     const colRef = collection(db, path);
-    const q = query(colRef, orderBy("totalScore", "desc"));
+    // 最新の50件に制限
+    const q = query(colRef, orderBy("updatedAt", "desc"), limit(50));
     const snap = await getDocs(q).catch(err => {
       console.warn("[Stock] Firestore read failed:", err.message);
       return null;

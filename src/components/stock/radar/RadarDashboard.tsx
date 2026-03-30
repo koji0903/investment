@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { AppPersistence } from "@/utils/common/persistence";
 
 const DEFAULT_FILTER: RadarFilter = {
   minMarketCap: 500, minVolume: 50000, perRange: [0, 20], pbrRange: [0, 1.5], minRoe: 8, minRevenueGrowth: 5, minDividendYield: 2.5, sectors: []
@@ -30,11 +31,25 @@ export const RadarDashboard: React.FC = () => {
   const [filter, setFilter] = useState<RadarFilter>(DEFAULT_FILTER);
   const [activeTab, setActiveTab] = useState<"overview" | "recommendations" | "rankings">("overview");
 
-  const loadData = async (f: RadarFilter) => {
+  const loadData = async (f: RadarFilter, force = false) => {
     setLoading(true);
     try { 
-      const res = await executeRadar(f); 
-      setData(res); 
+      // 1. 初回かつキャッシュがあればそれを使用
+      if (!force) {
+        const cached = AppPersistence.load<RadarDashboardData>("radar_data", 60 * 60 * 1000); // 1時間キャッシュ
+        if (cached) {
+          console.log("[Radar] Loading from local cache");
+          setData(cached);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const res = await executeRadar(f, force); 
+      setData(res);
+      if (res) {
+        AppPersistence.save("radar_data", res);
+      }
     } catch (e) {
       console.error("Failed to load radar data", e);
     } finally { 
@@ -42,7 +57,9 @@ export const RadarDashboard: React.FC = () => {
     }
   };
 
-  useEffect(() => { loadData(filter); }, []);
+  useEffect(() => { 
+    loadData(filter, false); 
+  }, []);
 
   const handleApplyFilter = (f: RadarFilter) => { 
     setFilter(f); 
@@ -92,7 +109,7 @@ export const RadarDashboard: React.FC = () => {
           </div>
           <div className="flex flex-wrap gap-3">
              <button onClick={() => setShowFilter(true)} className="px-6 py-3 bg-white text-slate-900 rounded-2xl text-[11px] font-black transition-all hover:scale-105 shadow-xl shadow-white/10 flex items-center gap-2 uppercase tracking-widest"><Filter size={16} /> Filter</button>
-             <button onClick={() => loadData(filter)} disabled={loading} className="px-6 py-3 bg-slate-800 text-white border border-slate-700 rounded-2xl text-[11px] font-black transition-all hover:bg-slate-700 flex items-center gap-2 uppercase tracking-widest"><RefreshCw size={16} className={cn(loading && "animate-spin")} /> Re-Scan</button>
+             <button onClick={() => loadData(filter, true)} disabled={loading} className="px-6 py-3 bg-slate-800 text-white border border-slate-700 rounded-2xl text-[11px] font-black transition-all hover:bg-slate-700 flex items-center gap-2 uppercase tracking-widest"><RefreshCw size={16} className={cn(loading && "animate-spin")} /> Re-Scan</button>
           </div>
         </div>
       </div>

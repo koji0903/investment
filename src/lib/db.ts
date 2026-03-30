@@ -627,6 +627,26 @@ export const updateStockSyncingStatus = async (uid: string, portfolioId: string,
   }, { merge: true });
 };
 
+/**
+ * 複数の銘柄判断を一括保存する (WriteBatch)
+ */
+export const saveStockJudgmentsBatch = async (uid: string, portfolioId: string, judgments: any[]) => {
+  if (uid === DEMO_USER_ID || !judgments.length) return;
+  
+  const batch = writeBatch(db);
+  const colPath = `users/${uid}/portfolios/${portfolioId}/stock_judgments`;
+  
+  judgments.forEach(data => {
+    const docRef = doc(db, colPath, data.ticker);
+    batch.set(docRef, data);
+  });
+  
+  return batch.commit().catch(err => {
+    console.error("[Firestore] saveStockJudgmentsBatch failed:", err.message);
+    throw err;
+  });
+};
+
 export const getStockJudgment = async (uid: string, portfolioId: string, ticker: string) => {
   const docRef = doc(db, "users", uid, "portfolios", portfolioId, "stock_judgments", ticker);
   const snap = await getDoc(docRef);

@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { RadarResult, RadarFilter, RadarCategory, RadarDashboardData } from "@/types/radar";
 import { categorizeStock, generateRadarComment } from "@/utils/stock/radarLogic";
 import { 
@@ -24,7 +24,27 @@ const MAJOR_TICKERS = [
   "4503", "6301", "7267", "6902", "8053", "8308", "8309", "8766", "8802", "9433"
 ];
 
-export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardData> {
+export async function executeRadar(filter: RadarFilter, forceRefresh = false): Promise<RadarDashboardData> {
+  // 1. 鮮度チェック (1時間以内のデータがあれば再利用)
+  if (!forceRefresh) {
+    try {
+      const latestDoc = doc(db, "market_radar", "latest");
+      const snap = await getDoc(latestDoc);
+      if (snap.exists()) {
+        const data = snap.data() as any;
+        const lastScanned = new Date(data.lastScannedAt || 0).getTime();
+        const oneHour = 60 * 60 * 1000;
+        
+        if (Date.now() - lastScanned < oneHour && data.fullResults) {
+          console.log("[Radar] Returning fresh data from Firestore");
+          return data.fullResults as RadarDashboardData;
+        }
+      }
+    } catch (e) {
+      console.warn("[Radar] Failed to check freshness:", e);
+    }
+  }
+
   const results: RadarResult[] = [];
   const end = new Date();
   const start = new Date();
@@ -132,24 +152,9 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
   const sentimentScore = Math.min(100, Math.max(0, 50 + (totalScoreAvg * 1.5)));
   const sentimentLabel = sentimentScore > 70 ? "強気" : sentimentScore > 40 ? "中立" : "弱気";
 
-  // 結果の保存 (最新スキャンとして保存) - 権限エラーで全体が止まらないようtry-catch
-  try {
-    if (screened.length > 0) {
-      const latestDoc = doc(db, "market_radar", "latest");
-      await (setDoc as any)(latestDoc, {
-        screenedCount: screened.length,
-        sentiment: { score: sentimentScore, label: sentimentLabel, bullishCount, bearishCount, neutralCount },
-        sectors,
-        lastScannedAt: new Date().toISOString()
-      }, { merge: true });
-    }
-  } catch (err) {
-    console.warn("[Radar] Failed to save latest summary to Firestore:", err);
-  }
-
   const getCat = (cat: RadarCategory) => screened.filter(r => r.categoryTags.includes(cat)).slice(0, 6);
 
-  return {
+  const dashboardData: RadarDashboardData = {
     recommendations: { growth: getCat("growth"), value: getCat("value"), dividend: getCat("dividend"), trend: getCat("trend"), rebound: getCat("rebound") },
     rankings: {
       total: [...screened].sort((a, b) => b.totalScore - a.totalScore).slice(0, 5),
@@ -167,4 +172,38 @@ export async function executeRadar(filter: RadarFilter): Promise<RadarDashboardD
     },
     lastScannedAt: new Date().toISOString()
   };
+
+  // 結果の保存 (最新スキャンとして保存)
+  try {
+    if (screened.length > 0) {
+      const latestDoc = doc(db, "market_radar", "latest");
+      await setDoc(latestDoc, {
+        screenedCount: screened.length,
+        sentiment: { score: sentimentScore, label: sentimentLabel, bullishCount, bearishCount, neutralCount },
+        sectors,
+        lastScannedAt: dashboardData.lastScannedAt,
+        fullResults: dashboardData
+      }, { merge: true });
+    }
+  } catch (err) {
+    console.warn("[Radar] Failed to save latest summary to Firestore:", err);
+  }
+
+  return dashboardData;
+}
+
+/**
+ * Firestore から最新のレーダーデータを取得（スキャンは行わない）
+ */
+export async function getLatestRadarAction(): Promise<RadarDashboardData | null> {
+  try {
+    const latestDoc = doc(db, "market_radar", "latest");
+    const snap = await getDoc(latestDoc);
+    if (snap.exists()) {
+      return (snap.data() as any).fullResults || null;
+    }
+  } catch (e) {
+    console.error("[Radar] Failed to fetch latest radar:", e);
+  }
+  return null;
 }
