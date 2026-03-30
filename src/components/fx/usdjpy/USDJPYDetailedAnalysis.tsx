@@ -86,20 +86,38 @@ export const USDJPYDetailedAnalysis = ({ conditionAnalysis, backtestComparisons 
                       </div>
                    </div>
 
-                   <div className="flex items-center gap-8">
-                       <div className="text-right">
-                          <p className="text-[9px] font-black text-slate-500 uppercase">勝率</p>
-                          <p className="text-sm font-black text-emerald-400">{bt.winRate}%</p>
-                       </div>
-                       <div className="text-right">
-                          <p className="text-[9px] font-black text-slate-500 uppercase">PF</p>
-                          <p className="text-sm font-black text-indigo-400">{bt.profitFactor}</p>
-                       </div>
-                       <div className="text-right">
-                          <p className="text-[9px] font-black text-slate-500 uppercase">安定性</p>
-                          <p className="text-sm font-black text-slate-200">{bt.stabilityScore}/100</p>
-                       </div>
-                   </div>
+                    <div className="flex items-center gap-8">
+                        <div className="text-right group relative cursor-help">
+                           <p className="text-[9px] font-black text-slate-500 uppercase">勝率</p>
+                           <p className="text-sm font-black text-emerald-400">{bt.winRate}%</p>
+                           <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+                             <p className="text-[10px] font-bold text-slate-200 leading-relaxed">
+                               全トレード数に対する勝ちトレードの割合です。
+                             </p>
+                             <div className="absolute top-full right-4 border-8 border-transparent border-t-slate-800" />
+                           </div>
+                        </div>
+                        <div className="text-right group relative cursor-help">
+                           <p className="text-[9px] font-black text-slate-500 uppercase font-sans">PF</p>
+                           <p className="text-sm font-black text-indigo-400">{bt.profitFactor}</p>
+                           <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none text-left">
+                             <p className="text-[10px] font-bold text-slate-200 leading-relaxed uppercase">
+                               Profit Factor: 総利益÷総損失。数値が高いほど収益性が高いことを示します。
+                             </p>
+                             <div className="absolute top-full right-4 border-8 border-transparent border-t-slate-800" />
+                           </div>
+                        </div>
+                        <div className="text-right group relative cursor-help">
+                           <p className="text-[9px] font-black text-slate-500 uppercase">安定性</p>
+                           <p className="text-sm font-black text-slate-200">{bt.stabilityScore}/100</p>
+                           <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none text-left">
+                             <p className="text-[10px] font-bold text-slate-200 leading-relaxed font-sans">
+                               資産曲線の滑らかさを示す指標。100に近いほどリスク管理が徹底されています。
+                             </p>
+                             <div className="absolute top-full right-4 border-8 border-transparent border-t-slate-800" />
+                           </div>
+                        </div>
+                    </div>
                 </div>
 
                 {bt.overfittingWarning && (
@@ -129,12 +147,18 @@ const AnalysisCard = ({ title, data, icon: Icon }: { title: string, data: Record
              <div key={key} className="space-y-1.5">
                 <div className="flex items-center justify-between text-[10px]">
                    <span className="font-black text-slate-400 uppercase tracking-tighter">{key}</span>
-                   <div className="flex gap-3 font-bold">
-                      <span className={cn(val.profit >= 0 ? "text-emerald-500" : "text-rose-500")}>
-                        {val.profit > 0 ? "+" : ""}{val.profit.toFixed(1)} pips
-                      </span>
-                      <span className="text-slate-500">{val.winRate.toFixed(1)}% WR</span>
-                   </div>
+                    <div className="flex gap-3 font-bold group relative cursor-help">
+                       <span className={cn(val.profit >= 0 ? "text-emerald-500" : "text-rose-500")}>
+                         {val.profit > 0 ? "+" : ""}{val.profit.toFixed(1)} pips
+                       </span>
+                       <span className="text-slate-500 font-sans">{val.winRate.toFixed(1)}% WR</span>
+                       <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none text-left">
+                         <p className="text-[10px] font-bold text-slate-200 leading-relaxed uppercase">
+                           Win Rate (WR): 勝率。この条件下での過去のトレード成功率です。
+                         </p>
+                         <div className="absolute top-full right-4 border-8 border-transparent border-t-slate-800" />
+                       </div>
+                    </div>
                 </div>
                 <div className="h-1 w-full bg-slate-900 rounded-full overflow-hidden">
                    <motion.div 

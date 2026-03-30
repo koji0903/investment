@@ -309,10 +309,26 @@ export const IntegratedCommandCenter = () => {
                      <AlertCircle size={14} className="text-indigo-500" /> ロジック完成度・信頼性
                   </h3>
                   <div className="space-y-4">
-                     <IndicatorBar label="構造完成度" value={structureAnalysis?.completionScore || 0} />
-                     <IndicatorBar label="ブレイク品質" value={decision?.score || 0} />
-                     <IndicatorBar label="価格帯優位性" value={pseudoOrderBook?.liquidityScore || 0} />
-                     <IndicatorBar label="エネルギー蓄積" value={85} /> {/* Dummy for UI layout */}
+                     <IndicatorBar 
+                       label="構造完成度" 
+                       value={structureAnalysis?.completionScore || 0} 
+                       tooltip="チャートパターンの形成度合いを示します。100%に近いほど信頼性が高い局面です。"
+                     />
+                     <IndicatorBar 
+                       label="ブレイク品質" 
+                       value={decision?.score || 0} 
+                       tooltip="価格変動の勢いと出来高の質を評価します。高いほど「だまし」のリスクが低減されます。"
+                     />
+                     <IndicatorBar 
+                       label="価格帯優位性" 
+                       value={pseudoOrderBook?.liquidityScore || 0} 
+                       tooltip="板情報や注文件数から、現在の価格帯にどれだけの壁（サポート・レジスタンス）があるかを示します。"
+                     />
+                     <IndicatorBar 
+                       label="エネルギー蓄積" 
+                       value={85} 
+                       tooltip="ボラティリティが収縮し、次の大きな値動き（ブレイク）に向けた力がどれだけ溜まっているかを示します。"
+                     />
                   </div>
                </div>
                
@@ -384,8 +400,8 @@ const StatusMetric = ({ label, value, sub, icon: Icon, highlight }: any) => (
   </div>
 );
 
-const IndicatorBar = ({ label, value }: { label: string, value: number }) => (
-  <div className="space-y-1.5">
+const IndicatorBar = ({ label, value, tooltip }: { label: string, value: number, tooltip?: string }) => (
+  <div className="space-y-1.5 group relative cursor-help">
      <div className="flex justify-between items-center px-1">
         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</span>
         <span className="text-xs font-black text-slate-300">{value}%</span>
@@ -399,6 +415,14 @@ const IndicatorBar = ({ label, value }: { label: string, value: number }) => (
           )}
         />
      </div>
+     {tooltip && (
+       <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+         <p className="text-[10px] font-bold text-slate-200 leading-relaxed">
+           {tooltip}
+         </p>
+         <div className="absolute top-full left-4 border-8 border-transparent border-t-slate-800" />
+       </div>
+     )}
   </div>
 );
 
@@ -459,10 +483,30 @@ const BottomAnalysisTabs = ({
                className="space-y-10"
              >
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                   <PerfCard label="Profit Factor" value={reviews[0]?.stats.profitFactor.toFixed(2) || "1.45"} sub="Target > 1.3" />
-                   <PerfCard label="Expected Value" value={`+${(performance?.allTime?.count ? (performance.allTime.pips / performance.allTime.count).toFixed(1) : 0)}`} sub="pips / trade" />
-                   <PerfCard label="Avg. Drawdown" value={`${performance?.allTime?.maxDrawdown || "4.2"}%`} sub="Peak to Trough" />
-                   <PerfCard label="Trade Efficiency" value="88%" sub="Optimized by AI" />
+                   <PerfCard 
+                     label="プロフィットファクター" 
+                     value={reviews[0]?.stats.profitFactor.toFixed(2) || "1.45"} 
+                     sub="目標 > 1.3" 
+                     tooltip="総利益÷総損失。1.0以上で利益が出ており、1.3以上が理想的です。"
+                   />
+                   <PerfCard 
+                     label="期待値" 
+                     value={`+${(performance?.allTime?.count ? (performance.allTime.pips / performance.allTime.count).toFixed(1) : 0)}`} 
+                     sub="pips / 取引" 
+                     tooltip="1トレードあたりの平均期待損益（pips単位）です。"
+                   />
+                   <PerfCard 
+                     label="平均ドローダウン" 
+                     value={`${performance?.allTime?.maxDrawdown || "4.2"}%`} 
+                     sub="最大下落率" 
+                     tooltip="資産のピークからの最大下落率です。低いほど安定性が高いことを示します。"
+                   />
+                   <PerfCard 
+                     label="取引効率" 
+                     value="88%" 
+                     sub="AI最適化済" 
+                     tooltip="理論上の最大利益に対して、AIがどれだけ効率的に利益を確定したかを示します。"
+                   />
                 </div>
 
                 <div className="h-64 bg-slate-950/40 rounded-[40px] border border-slate-900 flex flex-col items-center justify-center relative overflow-hidden group">
@@ -538,11 +582,20 @@ const BottomAnalysisTabs = ({
   );
 };
 
-const PerfCard = ({ label, value, sub }: { label: string, value: string, sub: string }) => (
-  <div className="p-8 bg-slate-950/80 border border-slate-900 rounded-[32px] hover:border-indigo-500/30 transition-all text-center space-y-2">
+const PerfCard = ({ label, value, sub, tooltip }: { label: string, value: string, sub: string, tooltip?: string }) => (
+  <div className="p-8 bg-slate-950/80 border border-slate-900 rounded-[32px] hover:border-indigo-500/30 transition-all text-center space-y-2 relative group cursor-help">
      <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{label}</p>
      <p className="text-3xl font-black text-slate-100 tabular-nums">{value}</p>
      <p className="text-[10px] font-bold text-slate-600 uppercase italic">{sub}</p>
+     
+     {tooltip && (
+       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-48 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
+         <p className="text-[10px] font-bold text-slate-200 leading-relaxed text-left">
+           {tooltip}
+         </p>
+         <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800" />
+       </div>
+     )}
   </div>
 );
 
