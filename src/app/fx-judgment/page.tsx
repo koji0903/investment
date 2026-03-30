@@ -63,7 +63,7 @@ function TradingProCard({
               <div className="flex items-center gap-3">
                 {/* Price Display */}
                 <div className="flex flex-col items-end">
-                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Price</span>
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">現在価格</span>
                   <span className="text-sm font-black tabular-nums text-slate-300">
                     {quote?.price.toFixed(3) || "---"}
                   </span>
@@ -85,7 +85,7 @@ function TradingProCard({
                 </div>
               </div>
               <div className="flex items-center gap-2 mr-1">
-                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">Confidence</span>
+                <span className="text-[9px] font-bold text-slate-600 uppercase tracking-widest">信頼度</span>
                 <span className="text-[10px] font-black text-indigo-400">{decision?.confidence || 0}%</span>
               </div>
             </>
@@ -125,14 +125,14 @@ export default function FXJudgmentPage() {
           <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8">
             <TradingProCard 
               pairCode="USD/JPY"
-              title="Day Trading Pro"
+              title="デイトレード・プロ"
               href="/fx/usdjpy"
               themeColor="indigo"
               iconColor="indigo"
             />
             <TradingProCard 
               pairCode="EUR/USD"
-              title="Day Trading Pro"
+              title="デイトレード・プロ"
               href="/fx/eurusd"
               themeColor="emerald"
               iconColor="emerald"
