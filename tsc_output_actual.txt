@@ -1,0 +1,3 @@
+﻿src/components/TriggerDetailModal.tsx(48,9): error TS7022: 'typeMap' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+src/components/TriggerDetailModal.tsx(48,19): error TS7053: Element implicitly has an 'any' type because expression of type 'string | number | symbol' can't be used to index type '{ opportunity: { label: string; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; color: string; bg: string; border: string; description: string; }; warning: { ...; }; strategic: { ...; }; }'.
+src/components/TriggerDetailModal.tsx(73,46): error TS2448: Block-scoped variable 'typeMap' used before its declaration.

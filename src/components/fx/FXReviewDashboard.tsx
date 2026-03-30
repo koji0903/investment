@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { FXTradingReview } from "@/types/fx";
 import { generateFXReviewAction, getFXReviewsAction } from "@/lib/actions/fxReview";
 import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
-  Trophy, 
   Trophy, 
   AlertCircle, 
   CheckCircle2, 
@@ -29,7 +28,7 @@ export const FXReviewDashboard = () => {
   const loadReviews = useCallback(async () => {
     if (!user?.uid) return;
     setLoading(true);
-    const data = await getFXReviewsAction(user.uid);
+    const data = await getFXReviewsAction(user.uid, 10, "USD/JPY");
     setReviews(data);
     if (data.length > 0) setSelectedReview(data[0]);
     setLoading(false);
@@ -44,7 +43,7 @@ export const FXReviewDashboard = () => {
   const handleGenerateReview = async (period: "daily" | "weekly") => {
     if (!user?.uid) return;
     setGenerating(true);
-    const result = await generateFXReviewAction(user.uid, period);
+    const result = await generateFXReviewAction(user.uid, period, "USD/JPY");
     if (result.success && result.data) {
       setReviews(prev => [result.data!, ...prev.filter(r => r.id !== result.data!.id)]);
       setSelectedReview(result.data);

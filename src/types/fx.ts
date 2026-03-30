@@ -470,7 +470,7 @@ export interface FXEconomicEvent {
   name: string;
   timestamp: string;          // ISO
   importance: "high" | "medium" | "low";
-  currency: "USD" | "JPY" | "ALL";
+  currency: "USD" | "JPY" | "EUR" | "ALL";
   actual?: string;
   forecast?: string;
   previous?: string;

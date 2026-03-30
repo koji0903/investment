@@ -140,10 +140,16 @@ export const EURUSDSimulationPanel = ({
           timestamp: new Date().toISOString(),
           timezone: decision.session.name,
           price: currentPrice,
-          trends: decision.trends,
+          trends: {
+            "1m": (decision?.trends["1m"] || "neutral") as TechnicalTrend,
+            "5m": (decision?.trends["5m"] || "neutral") as TechnicalTrend,
+            "15m": (decision?.trends["15m"] || "neutral") as TechnicalTrend,
+            "1h": (decision?.trends["1h"] || "neutral") as TechnicalTrend,
+            alignment: decision?.alignmentLevel || 0
+          },
           volatility: {
-            atr: decision.volatilityATR,
-            status: decision.volatilityATR > 0.0015 ? "high" : decision.volatilityATR < 0.0005 ? "low" : "normal"
+            atr: decision?.volatilityATR || 0,
+            status: (decision?.volatilityATR || 0) > 0.0015 ? "high" : (decision?.volatilityATR || 0) < 0.0005 ? "low" : "normal"
           },
           levels: {
             distToSupport: decision.supportResistance?.support ? (currentPrice - decision.supportResistance.support) * 10000 : 0,

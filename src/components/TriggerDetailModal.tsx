@@ -70,9 +70,11 @@ export const TriggerDetailModal = ({
       border: "border-indigo-500/20",
       description: "ポートフォリオの重心を最適化するタイミングです。"
     }
-  }[trigger.type as keyof typeof typeMap];
+  };
 
-  const Icon = typeMap.icon;
+  const currentMetadata = typeMap[trigger.type as keyof typeof typeMap] || typeMap.strategic;
+
+  const Icon = currentMetadata.icon;
   
   // 遷移先の決定
   const href = trigger.assetName === "USD/JPY" || trigger.assetName.includes("円") 
@@ -103,13 +105,13 @@ export const TriggerDetailModal = ({
             {/* Header */}
             <div className="p-8 pb-4 flex items-start justify-between">
               <div className="flex gap-5">
-                <div className={cn("w-16 h-16 rounded-3xl flex items-center justify-center shrink-0 shadow-lg", typeMap.bg, typeMap.color)}>
+                <div className={cn("w-16 h-16 rounded-3xl flex items-center justify-center shrink-0 shadow-lg", currentMetadata.bg, currentMetadata.color)}>
                   <Icon size={32} />
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className={cn("text-[10px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-md", typeMap.bg, typeMap.color)}>
-                      {typeMap.label}
+                    <span className={cn("text-[10px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-md", currentMetadata.bg, currentMetadata.color)}>
+                      {currentMetadata.label}
                     </span>
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
                       AI Logic v2.4

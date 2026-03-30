@@ -116,6 +116,7 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
           icon={Target} 
           type="winRate"
           isGood={metrics.winRate >= 50}
+          metrics={metrics}
         />
         <MetricCard 
           title="平均リターン" 
@@ -124,6 +125,7 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
           icon={TrendingUp} 
           type="averageReturn"
           isGood={metrics.averageReturn > 0}
+          metrics={metrics}
         />
         <MetricCard 
           title="最大ドローダウン" 
@@ -132,6 +134,7 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
           icon={AlertTriangle} 
           type="maxDrawdown"
           isGood={metrics.maxDrawdown <= 15}
+          metrics={metrics}
         />
         <MetricCard 
           title="シャープレシオ" 
@@ -139,6 +142,7 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
           unit="" 
           icon={Activity} 
           type="sharpeRatio"
+          isGood={metrics.sharpeRatio > 1.5}
           metrics={metrics}
         />
       </div>

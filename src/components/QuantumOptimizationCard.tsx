@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
 import { 
   quantumAnnealingOptimization, 

@@ -12,7 +12,7 @@ import { getJpyRate, getBaseCurrency } from "@/lib/fxUtils";
 
 // 数値のカンマ区切り入力をサポートするヘルパーコンポーネント
 interface NumberInputProps {
-  value: string | number;
+  value: string | number | undefined;
   onChange: (val: string) => void;
   className?: string;
   placeholder?: string;
@@ -20,7 +20,7 @@ interface NumberInputProps {
   required?: boolean;
 }
 
-const NumberInput = ({ value, onChange, className, placeholder, suffix, required }: NumberInputProps) => {
+const NumberInput = ({ value = "", onChange, className, placeholder, suffix, required }: NumberInputProps) => {
   const formatValue = (v: string | number) => {
     if (v === 0 || v === "0") return "0";
     if (!v) return "";
@@ -236,7 +236,11 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
   };
 
   const updateRow = (id: string, field: keyof AssetRow, value: string | number) => {
-    let newRows = rows.map(r => r.id === id ? { ...r, [field]: value } : r);
+    // 数値型のフィールドには数値を、それ以外には文字列を適用
+    const numericFields: (keyof AssetRow)[] = ["quantity", "currentPrice", "averageCost", "requiredMargin", "swapPoints", "depositMargin", "lotUnit"];
+    const finalValue = numericFields.includes(field) ? Number(value) : value;
+
+    let newRows = rows.map(r => r.id === id ? { ...r, [field]: finalValue } : r);
     
     // Auto-sync symbol if name matches a suggestion (case insensitive)
     if (field === "name" && typeof value === "string") {

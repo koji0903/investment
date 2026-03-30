@@ -5,6 +5,18 @@ import { useIntegratedCommandCenter } from "@/hooks/useIntegratedCommandCenter";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { 
+  FXSimulation, 
+  FXTradingReview, 
+  FXWeightProfile,
+  FXConditionAnalysis,
+  FXBacktestComparison
+} from "@/types/fx";
+import { 
+  FXTuningConfig,
+  FXDriftAnalysis,
+  FXTuningLog
+} from "@/types/fxTuning";
+import { 
   Zap, 
   Target, 
   Activity, 

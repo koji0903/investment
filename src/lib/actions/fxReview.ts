@@ -20,7 +20,8 @@ import { FXSimulationService } from "@/services/fxSimulationService";
  */
 export async function generateFXReviewAction(
   userId: string, 
-  period: "daily" | "weekly"
+  period: "daily" | "weekly",
+  pairCode: string = "USD/JPY"
 ): Promise<{ success: boolean; data?: FXTradingReview; message?: string }> {
   try {
     if (!userId) return { success: false, message: "User ID is required" };
@@ -38,14 +39,15 @@ export async function generateFXReviewAction(
     const startISO = start.toISOString();
     const endISO = now.toISOString();
 
-    const trades = await FXSimulationService.getSimulationsByDateRange(userId, startISO, endISO);
+    const trades = await FXSimulationService.getSimulationsByDateRange(userId, startISO, endISO, pairCode);
     
     const review = generateTradingReview(trades, period, startISO, endISO);
     review.userId = userId;
 
     // Firestore に保存
+    const prefix = pairCode.toLowerCase().replace("/", "_");
     const reviewId = `${period}-${startISO.split('T')[0]}`;
-    const docRef = doc(db, `users/${userId}/fx_usdjpy_reviews`, reviewId);
+    const docRef = doc(db, `users/${userId}/fx_${prefix}_reviews`, reviewId);
     await setDoc(docRef, {
       ...review,
       updatedAt: new Date().toISOString()
@@ -63,11 +65,13 @@ export async function generateFXReviewAction(
  */
 export async function getFXReviewsAction(
   userId: string,
-  limitCount: number = 10
+  limitCount: number = 10,
+  pairCode: string = "USD/JPY"
 ): Promise<FXTradingReview[]> {
   try {
+    const prefix = pairCode.toLowerCase().replace("/", "_");
     const q = query(
-      collection(db, `users/${userId}/fx_usdjpy_reviews`),
+      collection(db, `users/${userId}/fx_${prefix}_reviews`),
       orderBy("startDate", "desc")
     );
     const snap = await getDocs(q);

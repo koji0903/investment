@@ -207,6 +207,23 @@ export const FXSimulationService = {
     }
   },
 
+  async getSimulationsByDateRange(userId: string, startISO: string, endISO: string, pairCode: string = "USD/JPY"): Promise<FXSimulation[]> {
+    try {
+      const prefix = getCollPrefix(pairCode);
+      const q = query(
+        collection(db, `users/${userId}/${prefix}_simulations`),
+        where("status", "==", "closed"),
+        where("exitTimestamp", ">=", startISO),
+        where("exitTimestamp", "<=", endISO)
+      );
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
+    } catch (error) {
+      console.error("Error fetching simulations by date range:", error);
+      return [];
+    }
+  },
+
   async getRiskMetrics(userId: string, pairCode: string = "USD/JPY"): Promise<FXRiskMetrics> {
     try {
       const prefix = getCollPrefix(pairCode);
@@ -462,13 +479,6 @@ export const FXSimulationService = {
       { id: "ma_crossover", name: "MAクロス候補", winRate: 58.2, expectedValue: 3.1, profitFactor: 1.34, maxDrawdown: 8.5, tradeCount: 210, stabilityScore: 65, overfittingWarning: false },
       { id: "aggressive_momentum", name: "アグレッシブ", winRate: 45.1, expectedValue: 8.5, profitFactor: 1.48, maxDrawdown: 12.4, tradeCount: 88, stabilityScore: 45, overfittingWarning: true },
     ];
-  }
-};
-      });
-    } catch (error) {
-       console.error("Error fetching violation logs:", error);
-       return [];
-    }
   },
 
   /**

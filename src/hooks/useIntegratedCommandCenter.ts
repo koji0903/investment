@@ -64,7 +64,7 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
         tConfig, tLogs
       ] = await Promise.all([
         getMarketSentimentAction(),
-        getFXReviewsAction(user.uid),
+        getFXReviewsAction(user.uid, 10, pairCode),
         FXSimulationService.getRiskMetrics(user.uid, pairCode),
         FXSimulationService.getActiveSimulations(user.uid, pairCode),
         FXSimulationService.getAggregatedPerformance(user.uid, pairCode),

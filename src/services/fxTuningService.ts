@@ -203,8 +203,6 @@ export const FXTuningService = {
     return suggestions;
   },
 
-    return suggestions;
-  },
 
   /**
    * チューニング履歴の取得
