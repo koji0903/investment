@@ -133,6 +133,7 @@ export const TriggerDetailModal = ({
                   icon={<Activity size={16} />}
                   description={trigger.marketScore && trigger.marketScore > 60 ? "強気相場継続" : "警戒・中立"}
                   progress={(trigger.marketScore || 50)}
+                  decimals={0}
                 />
                 <MetricCard 
                   label="銘柄騰落（判定時）" 
@@ -141,6 +142,7 @@ export const TriggerDetailModal = ({
                   icon={<TrendingUp size={16} />}
                   description={trigger.assetChange && trigger.assetChange < 0 ? "安値圏の変動" : "堅調に推移"}
                   isPercent
+                  decimals={2}
                 />
                 <MetricCard 
                   label="保有占有率" 
@@ -149,6 +151,7 @@ export const TriggerDetailModal = ({
                   icon={<PieChart size={16} />}
                   description="目標比率とのギャップ"
                   progress={(trigger.currentWeight || 0) * 10} // 雑なスケーリング
+                  decimals={1}
                 />
               </div>
 
