@@ -57,6 +57,8 @@ export default function FXJudgmentPage() {
               <ArrowRight size={20} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
             </a>
           </div>
+
+          <div className="mt-12">
             <FXJudgmentDashboard />
           </div>
         </div>
