@@ -22,12 +22,15 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { TriggerDetailModal } from "@/components/TriggerDetailModal";
 
 export const ActionTriggerPanel = () => {
   const { calculatedAssets, addTransaction } = usePortfolio();
   const { notify } = useNotify();
   const [selectedTrigger, setSelectedTrigger] = useState<ActionTrigger | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedTriggerForDetail, setSelectedTriggerForDetail] = useState<ActionTrigger | null>(null);
   
   const triggers = useMemo(() => {
     const market = calculateMarketCondition(4.0, 0.8, 0.2); // デモ用
@@ -39,6 +42,11 @@ export const ActionTriggerPanel = () => {
   const handleOpenModal = (trigger: ActionTrigger) => {
     setSelectedTrigger(trigger);
     setIsModalOpen(true);
+  };
+
+  const handleOpenDetailModal = (trigger: ActionTrigger) => {
+    setSelectedTriggerForDetail(trigger);
+    setIsDetailModalOpen(true);
   };
 
   const handleConfirmOrder = async (autoExecuteNextTime: boolean) => {
@@ -113,9 +121,15 @@ export const ActionTriggerPanel = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <AnimatePresence>
+            <AnimatePresence mode="popLayout">
               {triggers.map((trigger, idx) => (
-                <TriggerCard key={trigger.id} trigger={trigger} index={idx} onClick={() => handleOpenModal(trigger)} />
+                <TriggerCard 
+                  key={trigger.id} 
+                  trigger={trigger} 
+                  index={idx} 
+                  onClick={() => handleOpenModal(trigger)} 
+                  onDetailClick={() => handleOpenDetailModal(trigger)}
+                />
               ))}
             </AnimatePresence>
           </div>
@@ -142,11 +156,17 @@ export const ActionTriggerPanel = () => {
         onConfirm={handleConfirmOrder} 
         triggerContext={selectedTrigger} 
       />
+
+      <TriggerDetailModal 
+        isOpen={isDetailModalOpen} 
+        onClose={() => setIsDetailModalOpen(false)} 
+        trigger={selectedTriggerForDetail} 
+      />
     </div>
   );
 };
 
-const TriggerCard = ({ trigger, index, onClick }: { trigger: ActionTrigger, index: number, onClick: () => void }) => {
+const TriggerCard = ({ trigger, index, onClick, onDetailClick }: { trigger: ActionTrigger, index: number, onClick: () => void, onDetailClick: () => void }) => {
   const isHigh = trigger.urgency === "high";
   const colors = {
     opportunity: "bg-emerald-500/10 border-emerald-500/20 text-emerald-500",
@@ -226,11 +246,15 @@ const TriggerCard = ({ trigger, index, onClick }: { trigger: ActionTrigger, inde
               発注
             </button>
           )}
-          <Link href={href}>
-            <button className="p-2 text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
-              <ArrowRight size={18} />
-            </button>
-          </Link>
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              onDetailClick();
+            }}
+            className="p-2 text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors"
+          >
+            <Sparkles size={18} />
+          </button>
         </div>
       </div>
     </motion.div>

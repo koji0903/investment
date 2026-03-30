@@ -602,6 +602,9 @@ export interface ActionTrigger {
   action: string;
   reason: string;
   urgency: "high" | "medium" | "low";
+  marketScore?: number;
+  assetChange?: number;
+  currentWeight?: number;
 }
 
 export const evaluateActionTriggers = (
@@ -623,7 +626,10 @@ export const evaluateActionTriggers = (
         assetName: asset.name,
         action: "買い増しを検討",
         reason: "力強い強気相場の中での一時的な調整局面です。ポートフォリオの重心を目標へ戻す絶好のタイミングと言えます。",
-        urgency: "high"
+        urgency: "high",
+        marketScore: market.score,
+        assetChange: asset.dailyChangePercentage,
+        currentWeight: ratio
       });
     }
 
@@ -636,7 +642,10 @@ export const evaluateActionTriggers = (
         assetName: asset.name,
         action: "一部利益確定（利食い）",
         reason: "市場の警戒感が高まる中、含み益の乗った資産が過剰に膨らんでいます。キャッシュポジションの確保を優先すべきです。",
-        urgency: "medium"
+        urgency: "medium",
+        marketScore: market.score,
+        assetChange: asset.profitPercentage, // 利益確定の場合は含み益
+        currentWeight: ratio
       });
     }
 
@@ -649,7 +658,10 @@ export const evaluateActionTriggers = (
         assetName: asset.name,
         action: "ポジションの縮小を検討",
         reason: "弱気相場での急激な下落は、さらなる深掘りのリスクを孕んでいます。資産保全を最優先に、損切りを含めた検討が必要です。",
-        urgency: "high"
+        urgency: "high",
+        marketScore: market.score,
+        assetChange: asset.dailyChangePercentage,
+        currentWeight: ratio
       });
     }
   });
