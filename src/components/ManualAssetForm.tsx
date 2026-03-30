@@ -11,19 +11,33 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getJpyRate, getBaseCurrency } from "@/lib/fxUtils";
 
 // 数値のカンマ区切り入力をサポートするヘルパーコンポーネント
-const NumberInput = ({ value, onChange, className, placeholder, suffix, required }: any) => {
-  const [displayValue, setDisplayValue] = useState(value?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") || "");
+interface NumberInputProps {
+  value: string | number;
+  onChange: (val: string) => void;
+  className?: string;
+  placeholder?: string;
+  suffix?: string;
+  required?: boolean;
+}
 
-  useEffect(() => {
-    if (value === 0 || value === "0") setDisplayValue("0");
-    else if (!value) setDisplayValue("");
-    else {
-      // カンマ区切りに変換
-      const parts = value.toString().split(".");
-      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-      setDisplayValue(parts.join("."));
-    }
-  }, [value]);
+const NumberInput = ({ value, onChange, className, placeholder, suffix, required }: NumberInputProps) => {
+  const formatValue = (v: string | number) => {
+    if (v === 0 || v === "0") return "0";
+    if (!v) return "";
+    const parts = v.toString().split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.join(".");
+  };
+
+  // 内部状態を使わず、表示時にのみフォーマットを適用する手法を検討したが、
+  // 入力中のカーソル位置保持などのため、以前のロジックを最適化して維持。
+  const [displayValue, setDisplayValue] = useState(() => formatValue(value));
+  const [prevValue, setPrevValue] = useState(value);
+
+  if (value !== prevValue) {
+    setDisplayValue(formatValue(value));
+    setPrevValue(value);
+  }
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value.replace(/,/g, "");
@@ -353,16 +367,24 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
   }, []);
 
   // FXの数量・単位が変更されたら合計証拠金を自動計算
+  // 以前のロジックはuseEffect内でupdateRowを呼び出しており、カスケードレンダリングの原因となっていたため改善。
+  // 本来はupdateRow関数内で連動させるのが望ましいが、既存構成を維持しつつ警告回避。
   useEffect(() => {
     if (category === "FX") {
-      rows.forEach(row => {
+      let changed = false;
+      const nextRows = rows.map(row => {
         const totalRequired = Math.round(Number(row.quantity || 0) * Number(row.requiredMargin || 0));
         if (totalRequired > 0 && Number(row.depositMargin) !== totalRequired) {
-          updateRow(row.id, "depositMargin", totalRequired.toString());
+          changed = true;
+          return { ...row, depositMargin: totalRequired };
         }
+        return row;
       });
+      if (changed) {
+        setRows(nextRows);
+      }
     }
-  }, [category, JSON.stringify(rows.map(r => ({ q: r.quantity, m: r.requiredMargin })))]);
+  }, [category, rows]);
 
   if (!mounted) return null;
 

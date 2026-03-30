@@ -7,9 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Trophy, 
-  Target, 
-  TrendingUp, 
-  TrendingDown, 
+  Trophy, 
   AlertCircle, 
   CheckCircle2, 
   Calendar, 
@@ -20,7 +18,6 @@ import {
   Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 export const FXReviewDashboard = () => {
   const { user } = useAuth();
@@ -29,20 +26,20 @@ export const FXReviewDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    if (user?.uid) {
-      loadReviews();
-    }
-  }, [user?.uid]);
-
-  const loadReviews = async () => {
+  const loadReviews = useCallback(async () => {
     if (!user?.uid) return;
     setLoading(true);
     const data = await getFXReviewsAction(user.uid);
     setReviews(data);
     if (data.length > 0) setSelectedReview(data[0]);
     setLoading(false);
-  };
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (user?.uid) {
+      loadReviews();
+    }
+  }, [user?.uid, loadReviews]);
 
   const handleGenerateReview = async (period: "daily" | "weekly") => {
     if (!user?.uid) return;

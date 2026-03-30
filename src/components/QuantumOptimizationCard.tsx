@@ -26,7 +26,7 @@ export const QuantumOptimizationCard = () => {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [result, setResult] = useState<QuantumOptimizationResult | null>(null);
 
-  const runOptimization = () => {
+  const runOptimization = useCallback(() => {
     setIsOptimizing(true);
     // 量子アニーリングのシミュレーション（意図的な遅延）
     setTimeout(() => {
@@ -34,13 +34,13 @@ export const QuantumOptimizationCard = () => {
       setResult(res);
       setIsOptimizing(false);
     }, 2000);
-  };
+  }, [calculatedAssets]);
 
   useEffect(() => {
     if (calculatedAssets.length > 0 && !result) {
       runOptimization();
     }
-  }, [calculatedAssets]);
+  }, [calculatedAssets, result, runOptimization]);
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] overflow-hidden shadow-sm relative group min-h-[500px]">
@@ -193,7 +193,7 @@ export const QuantumOptimizationCard = () => {
   );
 };
 
-const StatBox = ({ label, value, icon: Icon, color }: { label: string, value: string, icon: any, color: string }) => (
+const StatBox = ({ label, value, icon: Icon, color }: { label: string, value: string, icon: React.ElementType, color: string }) => (
   <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-1">
     <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
       <Icon size={12} />

@@ -79,13 +79,13 @@ export const IntegratedCommandCenter = () => {
   } = useIntegratedCommandCenter();
 
   const [showEntryForm, setShowEntryForm] = React.useState(false);
-  const [editingPos, setEditingPos] = React.useState<any>(null);
+  const [editingPos, setEditingPos] = React.useState<any>(null); // TODO: Define Position type if available
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = React.useCallback(async (id: string) => {
     if (window.confirm("このポジションを履歴に残さず完全に消去しますか？")) {
       await deletePosition(id);
     }
-  };
+  }, [deletePosition]);
 
   if (isLoading) {
     return (
@@ -486,7 +486,15 @@ export const IntegratedCommandCenter = () => {
   );
 };
 
-const ActionCard = ({ label, value, sub, icon: Icon, color }: any) => (
+interface ActionCardProps {
+  label: string;
+  value: string | number;
+  sub: string;
+  icon: React.ElementType;
+  color: string;
+}
+
+const ActionCard = ({ label, value, sub, icon: Icon, color }: ActionCardProps) => (
   <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-[32px] space-y-1 hover:border-indigo-500/30 transition-all">
     <div className="flex items-center gap-2 text-slate-500 mb-1">
        <Icon size={12} className={color} />
@@ -497,7 +505,15 @@ const ActionCard = ({ label, value, sub, icon: Icon, color }: any) => (
   </div>
 );
 
-const StatusMetric = ({ label, value, sub, icon: Icon, highlight }: any) => (
+interface StatusMetricProps {
+  label: string;
+  value: string | number;
+  sub?: string;
+  icon: React.ElementType;
+  highlight?: boolean;
+}
+
+const StatusMetric = ({ label, value, sub, icon: Icon, highlight }: StatusMetricProps) => (
   <div className="flex items-center gap-3">
     <div className={cn(
       "w-10 h-10 rounded-xl flex items-center justify-center text-slate-500",

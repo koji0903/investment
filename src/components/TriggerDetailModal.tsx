@@ -20,6 +20,17 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { ActionTrigger } from "@/lib/analyticsUtils";
 import Link from "next/link";
 
+interface MetricCardProps {
+  label: string;
+  value: number | string;
+  unit: string;
+  icon: React.ReactNode;
+  description: string;
+  progress?: number;
+  isPercent?: boolean;
+  decimals?: number;
+}
+
 interface TriggerDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -59,7 +70,7 @@ export const TriggerDetailModal = ({
       border: "border-indigo-500/20",
       description: "ポートフォリオの重心を最適化するタイミングです。"
     }
-  }[trigger.type];
+  }[trigger.type as keyof typeof typeMap];
 
   const Icon = typeMap.icon;
   
@@ -196,7 +207,19 @@ export const TriggerDetailModal = ({
   );
 };
 
-const MetricCard = ({ label, value, unit, icon, description, progress, isPercent }: any) => {
+const MetricCard = ({ 
+  label, 
+  value, 
+  unit, 
+  icon, 
+  description, 
+  progress, 
+  isPercent, 
+  decimals = 0 
+}: MetricCardProps) => {
+  const formattedValue = typeof value === "number" ? value.toFixed(decimals) : value;
+  const numValue = typeof value === "number" ? value : parseFloat(String(value));
+
   return (
     <div className="p-5 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl space-y-3 shadow-sm">
       <div className="flex items-center justify-between text-slate-400">
@@ -207,9 +230,9 @@ const MetricCard = ({ label, value, unit, icon, description, progress, isPercent
         <div className="flex items-baseline gap-1">
           <span className={cn(
             "text-2xl font-black tabular-nums",
-            isPercent && value > 0 ? "text-emerald-500" : isPercent && value < 0 ? "text-rose-500" : "text-slate-800 dark:text-white"
+            isPercent && numValue > 0 ? "text-emerald-500" : isPercent && numValue < 0 ? "text-rose-500" : "text-slate-800 dark:text-white"
           )}>
-            {isPercent && value > 0 ? "+" : ""}{value}
+            {isPercent && numValue > 0 ? "+" : ""}{formattedValue}
           </span>
           <span className="text-[10px] font-bold text-slate-400">{unit}</span>
         </div>

@@ -3,15 +3,6 @@ import * as admin from "firebase-admin";
 
 admin.initializeApp();
 
-/**
- * 取引データが更新された際に、ポートフォリオ分析を再計算する
- */
-export const onTransactionUpdate = onDocumentWritten(
-  "users/{userId}/portfolios/{portfolioId}/transactions/{txId}",
-  async (event) => {
-    const { userId, portfolioId } = event.params;
-    const db = admin.firestore();
-
 interface Transaction {
   assetId: string;
   type: "buy" | "sell";
@@ -25,6 +16,15 @@ interface ClosedPosition {
   holdingDays: number;
   profit: number;
   profitRate: number;
+}
+
+interface Asset {
+  id: string;
+  symbol: string;
+  name: string;
+  quantity: number;
+  averageCost: number;
+  currentPrice?: number;
 }
 
 /**
@@ -172,15 +172,6 @@ export const onTransactionUpdate = onDocumentWritten(
     });
 
     console.log(`Behavior analysis updated for user: ${userId}`);
-
-    interface Asset {
-      id: string;
-      symbol: string;
-      name: string;
-      quantity: number;
-      averageCost: number;
-      currentPrice?: number;
-    }
 
     // 6. 投資戦略の生成 (Strategy)
     // ユーザー設定 (リスク許容度) の取得

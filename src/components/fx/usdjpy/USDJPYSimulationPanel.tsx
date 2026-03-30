@@ -104,7 +104,7 @@ export const USDJPYSimulationPanel = ({
     );
   }, [riskMetrics, decision, activeSims, user]);
 
-  const fetchSims = async () => {
+  const fetchSims = React.useCallback(async () => {
     if (!user) return;
     try {
       const active = await FXSimulationService.getActiveSimulations(user.uid);
@@ -114,11 +114,11 @@ export const USDJPYSimulationPanel = ({
     } catch (err) {
       console.error("Failed to fetch simulations:", err);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchSims();
-  }, [user]);
+  }, [fetchSims]);
 
   const handleEntry = async () => {
     if (!user || !decision) return;
@@ -172,9 +172,10 @@ export const USDJPYSimulationPanel = ({
       }, executionProfile);
       fetchSims();
       setShowEntryForm(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      alert(`注文の執行に失敗しました: ${err.message || "予期せぬエラーが発生しました"}`);
+      const errMessage = err instanceof Error ? err.message : "予期せぬエラーが発生しました";
+      alert(`注文の執行に失敗しました: ${errMessage}`);
     } finally {
       setIsSubmitting(false);
     }

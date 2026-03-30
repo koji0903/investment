@@ -18,7 +18,7 @@ export default function MasterSyncPage() {
   const [message, setMessage] = useState("");
   const [stats, setStats] = useState({ totalDocs: 0, cached: false });
 
-  const loadStats = async (forceRemote = false) => {
+  const loadStats = React.useCallback(async (forceRemote = false) => {
     try {
       const list = await StockService.getMasterList(forceRemote);
       setStats(prev => ({ ...prev, totalDocs: list.length }));
@@ -30,11 +30,11 @@ export default function MasterSyncPage() {
     } catch (err) {
       console.error("Failed to load stats:", err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadStats();
-  }, []);
+  }, [loadStats]);
 
   const handleSeed = async () => {
     if (!confirm("Firestoreの銘柄マスタを更新しますか？\n(src/data/tse_prime_all.json から読み込まれます)")) return;
@@ -52,9 +52,10 @@ export default function MasterSyncPage() {
         setStatus("error");
         setMessage(res.message || "シード処理に失敗しました。");
       }
-    } catch (err: any) {
+    } catch (err) {
       setStatus("error");
-      setMessage(err.message || "不明なエラーが発生しました。");
+      const errMessage = err instanceof Error ? err.message : "不明なエラーが発生しました。";
+      setMessage(errMessage);
     }
   };
 
@@ -145,7 +146,16 @@ export default function MasterSyncPage() {
   );
 }
 
-const AdminCard = ({ title, description, icon, onClick, variant, disabled }: any) => (
+interface AdminCardProps {
+  title: string;
+  description: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  variant: "indigo" | "slate";
+  disabled?: boolean;
+}
+
+const AdminCard = ({ title, description, icon, onClick, variant, disabled }: AdminCardProps) => (
   <button 
     onClick={onClick}
     disabled={disabled}
@@ -158,7 +168,7 @@ const AdminCard = ({ title, description, icon, onClick, variant, disabled }: any
     <div className={`p-4 rounded-2xl mb-8 shadow-xl transition-transform group-hover:scale-110 ${
       variant === "indigo" ? "bg-white/20" : "bg-slate-50 dark:bg-slate-800 group-hover:bg-indigo-50"
     }`}>
-      {React.cloneElement(icon as React.ReactElement<any>, { size: 32 })}
+      {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<{ size: number }>, { size: 32 }) : icon}
     </div>
     <h3 className="text-xl font-black mb-3">{title}</h3>
     <p className={`text-xs font-bold leading-relaxed opacity-70 ${
@@ -169,7 +179,13 @@ const AdminCard = ({ title, description, icon, onClick, variant, disabled }: any
   </button>
 );
 
-const StatRow = ({ label, value, highlight }: any) => (
+interface StatRowProps {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}
+
+const StatRow = ({ label, value, highlight }: StatRowProps) => (
   <div className="flex flex-col gap-2 p-6 bg-slate-50 dark:bg-slate-950/50 rounded-3xl border border-slate-100 dark:border-slate-800">
     <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{label}</span>
     <span className={`text-xl font-black ${highlight ? "text-indigo-600" : "text-slate-800 dark:text-white"}`}>{value}</span>

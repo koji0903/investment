@@ -7,6 +7,26 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { TrendingUp } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: { value: number }[];
+  label?: string;
+}
+
+const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg">
+        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">{label}</p>
+        <p className="font-bold text-indigo-600 dark:text-indigo-400 text-lg">
+          {formatCurrency(payload[0].value)}
+        </p>
+      </div>
+    );
+  }
+  return null;
+};
+
 export const AssetTrendChart = () => {
   const { totalAssetsValue } = usePortfolio();
   const [hasMounted, setHasMounted] = useState(false);
@@ -18,20 +38,6 @@ export const AssetTrendChart = () => {
   const data = useMemo(() => {
     return generateTrendData(totalAssetsValue, 30);
   }, [totalAssetsValue]);
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-3 rounded-xl shadow-lg">
-          <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">{label}</p>
-          <p className="font-bold text-indigo-600 dark:text-indigo-400 text-lg">
-            {formatCurrency(payload[0].value)}
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   const minVal = data.length > 0 ? Math.min(...data.map(d => d.value)) * 0.95 : 0;
   const maxVal = data.length > 0 ? Math.max(...data.map(d => d.value)) * 1.05 : 100;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useSyncExternalStore } from "react";
 import {
   BarChart,
   Bar,
@@ -10,7 +10,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  Cell,
 } from "recharts";
 import { CompanyInfo } from "@/types/market";
 
@@ -18,12 +17,14 @@ interface CompanyPerformanceChartProps {
   company: CompanyInfo;
 }
 
-export const CompanyPerformanceChart: React.FC<CompanyPerformanceChartProps> = ({ company }) => {
-  const [hasMounted, setHasMounted] = useState(false);
+const emptySubscribe = () => () => {};
 
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+export const CompanyPerformanceChart: React.FC<CompanyPerformanceChartProps> = ({ company }) => {
+  const hasMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   const data = company.revenue.map((rev, i) => ({
     year: `${new Date().getFullYear() - (company.revenue.length - 1 - i)}年度`,

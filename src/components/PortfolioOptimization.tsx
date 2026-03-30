@@ -2,8 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { usePortfolio } from "@/context/PortfolioContext";
-import { useAuth } from "@/context/AuthContext";
-import { calculateOptimalPortfolio, OptimizationSegment } from "@/lib/analyticsUtils";
+import { calculateOptimalPortfolio } from "@/lib/analyticsUtils";
 import { formatCurrency, cn } from "@/lib/utils";
 import { 
   PieChart, 
@@ -13,13 +12,14 @@ import {
   Tooltip
 } from "recharts";
 import { Cpu, Repeat, ArrowRight as ArrowRightIcon, Zap, Target, TrendingUp } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 export const PortfolioOptimization = () => {
   const { calculatedAssets } = usePortfolio();
   const [hasMounted, setHasMounted] = useState(false);
 
   useEffect(() => {
+    // Hydration check for Next.js
     setHasMounted(true);
   }, []);
   // 注意: 本来はFirestoreなどからユーザーのリスク許容度を取得するが、

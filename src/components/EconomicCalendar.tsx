@@ -37,9 +37,9 @@ const DataCell = ({ label, value, isActual }: { label: string; value: string | n
 );
 
 export const EconomicCalendar = () => {
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const todayStr = now.toISOString().slice(0, 10);
-  const events = useMemo(() => getThisWeekEvents(now), []);
+  const events = useMemo(() => getThisWeekEvents(now), [now]);
 
   // 日付ごとにグループ化
   const grouped = useMemo(() => {
@@ -62,7 +62,7 @@ export const EconomicCalendar = () => {
     const friday = new Date(monday);
     friday.setDate(monday.getDate() + 4);
     return { start: monday, end: friday };
-  }, []);
+  }, [now]);
 
   // 月〜金の日付一覧を生成
   const weekDays = useMemo(() => {

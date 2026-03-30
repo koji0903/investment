@@ -39,18 +39,18 @@ export const TradingAutomation = () => {
       }
     });
     return () => unsubscribe();
-  }, [user]);
+  }, [user, activeRuleId]);
 
   const activeRule = useMemo(() => 
     rules.find(r => r.id === activeRuleId) || rules[0]
   , [rules, activeRuleId]);
 
-  // モック用の価格データ (直近30日分)
+  // モック用の価格データ (直近30日分) - 決定論的な計算に変更して純粋性を維持
   const mockPrices = useMemo(() => {
     const base = 150;
     return Array.from({ length: 50 }, (_, i) => ({
       date: `Day ${i + 1}`,
-      price: base + Math.sin(i * 0.3) * 10 + i * 0.5 + Math.random() * 2
+      price: base + Math.sin(i * 0.3) * 10 + i * 0.5 + (i % 7) * 0.3
     }));
   }, []);
 
@@ -69,7 +69,7 @@ export const TradingAutomation = () => {
         title: "設定を更新しました",
         message: "売買ルールを保存しました。",
       });
-    } catch (error) {
+    } catch (_error) {
       notify({
         type: "error",
         title: "保存失敗",

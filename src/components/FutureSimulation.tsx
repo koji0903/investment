@@ -19,6 +19,34 @@ import { formatCurrency, cn } from "@/lib/utils";
 import { TrendingUp, Target, PlusCircle, Info, Calculator, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
 
+interface MilestoneData {
+  total: number;
+  contributions: number;
+  earnings: number;
+}
+
+const MilestoneCard = ({ year, data }: { year: string, data: MilestoneData }) => (
+  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
+    <div className="flex items-center gap-2 mb-2">
+      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
+        <Calendar size={16} />
+      </div>
+      <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{year}</span>
+    </div>
+    <div className="space-y-1">
+      <p className="text-xl font-black text-slate-800 dark:text-white">{formatCurrency(data.total)}</p>
+      <div className="flex items-center justify-between text-[10px] font-bold">
+        <span className="text-slate-400">元本合計</span>
+        <span className="text-slate-600 dark:text-slate-300">{formatCurrency(data.contributions)}</span>
+      </div>
+      <div className="flex items-center justify-between text-[10px] font-bold">
+        <span className="text-emerald-500">運用益</span>
+        <span className="text-emerald-500">+{formatCurrency(data.earnings)}</span>
+      </div>
+    </div>
+  </div>
+);
+
 export const FutureSimulation = () => {
   const { totalAssetsValue } = usePortfolio();
   
@@ -29,28 +57,6 @@ export const FutureSimulation = () => {
   const projection = useMemo(() => {
     return calculateFutureProjection(initialCapital, monthlyContribution, annualYield);
   }, [initialCapital, monthlyContribution, annualYield]);
-
-  const MilestoneCard = ({ year, data }: { year: string, data: any }) => (
-    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 border border-slate-100 dark:border-slate-800">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-          <Calendar size={16} />
-        </div>
-        <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{year}</span>
-      </div>
-      <div className="space-y-1">
-        <p className="text-xl font-black text-slate-800 dark:text-white">{formatCurrency(data.total)}</p>
-        <div className="flex items-center justify-between text-[10px] font-bold">
-          <span className="text-slate-400">元本合計</span>
-          <span className="text-slate-600 dark:text-slate-300">{formatCurrency(data.contributions)}</span>
-        </div>
-        <div className="flex items-center justify-between text-[10px] font-bold">
-          <span className="text-emerald-500">運用益</span>
-          <span className="text-emerald-500">+{formatCurrency(data.earnings)}</span>
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[32px] p-6 md:p-8 shadow-sm overflow-hidden">

@@ -21,36 +21,43 @@ interface FXPositionSizingBentoProps {
   sizing: PositionSizingAnalysis;
 }
 
+interface FactorBarProps {
+  label: string;
+  value: number;
+  icon: React.ElementType;
+  color: string;
+}
+
+const FactorBar = ({ label, value, icon: Icon, color }: FactorBarProps) => {
+  // 表示用のパーセンテージ化（0.5 = 0%, 1.15 = 100% など大まかなスケール）
+  const minScale = 0.50;
+  const maxScale = 1.15;
+  const percent = Math.max(0, Math.min(100, ((value - minScale) / (maxScale - minScale)) * 100)); 
+  const isGood = value >= 1.0;
+  
+  return (
+    <div className="flex items-center justify-between text-sm py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+      <div className="flex items-center gap-2">
+        <Icon size={14} className={color} />
+        <span className="font-bold text-slate-600 dark:text-slate-300 text-[11px] uppercase tracking-wider">{label}</span>
+      </div>
+      <div className="flex items-center gap-2 w-1/2 justify-end">
+        <div className="flex-1 max-w-[60px] h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex items-center">
+          <div 
+            className={cn("h-full rounded-full transition-all", isGood ? "bg-emerald-500" : "bg-orange-400")}
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+        <span className={cn("font-black text-xs w-8 text-right tabular-nums", isGood ? "text-emerald-500" : "text-orange-500")}>
+          x{value.toFixed(2)}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export const FXPositionSizingBento: React.FC<FXPositionSizingBentoProps> = ({ sizing }) => {
   const formatJPY = (val: number) => new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(val);
-
-  const FactorBar = ({ label, value, icon: Icon, color }: { label: string, value: number, icon: any, color: string }) => {
-    // 表示用のパーセンテージ化（0.5 = 0%, 1.15 = 100% など大まかなスケール）
-    const minScale = 0.50;
-    const maxScale = 1.15;
-    const percent = Math.max(0, Math.min(100, ((value - minScale) / (maxScale - minScale)) * 100)); 
-    const isGood = value >= 1.0;
-    
-    return (
-      <div className="flex items-center justify-between text-sm py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-        <div className="flex items-center gap-2">
-          <Icon size={14} className={color} />
-          <span className="font-bold text-slate-600 dark:text-slate-300 text-[11px] uppercase tracking-wider">{label}</span>
-        </div>
-        <div className="flex items-center gap-2 w-1/2 justify-end">
-          <div className="flex-1 max-w-[60px] h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex items-center">
-            <div 
-              className={cn("h-full rounded-full transition-all", isGood ? "bg-emerald-500" : "bg-orange-400")}
-              style={{ width: `${percent}%` }}
-            />
-          </div>
-          <span className={cn("font-black text-xs w-8 text-right tabular-nums", isGood ? "text-emerald-500" : "text-orange-500")}>
-            x{value.toFixed(2)}
-          </span>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <motion.div 

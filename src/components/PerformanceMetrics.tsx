@@ -8,6 +8,45 @@ import { Target, TrendingUp, AlertTriangle, Activity, CheckCircle2 } from "lucid
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./ui/Skeleton";
 
+interface MetricCardProps {
+  title: string;
+  value: string;
+  unit: string;
+  icon: React.ElementType;
+  type: string;
+  isGood: boolean;
+  metrics: any;
+}
+
+const MetricCard = ({ 
+  title, 
+  value, 
+  unit, 
+  icon: Icon, 
+  type,
+  isGood,
+  metrics
+}: MetricCardProps) => {
+  return (
+    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 flex flex-col justify-between gap-3 border border-slate-100 dark:border-slate-800 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-colors">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+          <Icon className="w-4 h-4 text-indigo-400" />
+          {title}
+        </span>
+        <CheckCircle2 className={cn("w-4 h-4", isGood ? "text-emerald-500" : "text-slate-300 dark:text-slate-600")} />
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-2xl md:text-3xl font-extrabold text-slate-800 dark:text-slate-100">{value}</span>
+        <span className="text-sm font-bold text-slate-400">{unit}</span>
+      </div>
+      <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1.5 rounded-lg w-fit text-left">
+        {getMetricComment(type as any, (metrics as any)[type])}
+      </div>
+    </div>
+  );
+};
+
 export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filterAssetId?: string, hideHeader?: boolean }) => {
   const { calculatedAssets, totalAssetsValue, analysis, isFetching } = usePortfolio();
   
@@ -56,40 +95,6 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
     );
   }
 
-  const MetricCard = ({ 
-    title, 
-    value, 
-    unit, 
-    icon: Icon, 
-    type,
-    isGood
-  }: { 
-    title: string; 
-    value: string; 
-    unit: string; 
-    icon: any; 
-    type: keyof typeof metrics;
-    isGood: boolean;
-  }) => {
-    return (
-      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 flex flex-col justify-between gap-3 border border-slate-100 dark:border-slate-800 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-colors">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-            <Icon className="w-4 h-4 text-indigo-400" />
-            {title}
-          </span>
-          <CheckCircle2 className={cn("w-4 h-4", isGood ? "text-emerald-500" : "text-slate-300 dark:text-slate-600")} />
-        </div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-2xl md:text-3xl font-extrabold text-slate-800 dark:text-slate-100">{value}</span>
-          <span className="text-sm font-bold text-slate-400">{unit}</span>
-        </div>
-        <div className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1.5 rounded-lg w-fit text-left">
-          {getMetricComment(type, metrics[type])}
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className={cn(
@@ -134,7 +139,7 @@ export const PerformanceMetrics = ({ filterAssetId, hideHeader = false }: { filt
           unit="" 
           icon={Activity} 
           type="sharpeRatio"
-          isGood={metrics.sharpeRatio >= 1.0}
+          metrics={metrics}
         />
       </div>
     </div>

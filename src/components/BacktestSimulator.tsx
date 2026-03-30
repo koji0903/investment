@@ -96,7 +96,7 @@ export const BacktestSimulator = () => {
     const res = runBacktest(config);
     setResult(res);
     setIsLoading(false);
-  }, [asset, strategyType, periodDays]);
+  }, [asset, strategyType, periodDays, shortWindow, longWindow, takeProfitPct, stopLossPct]);
 
   const selectedPreset = STRATEGY_PRESETS.find(p => p.id === strategyType)!;
 
