@@ -120,7 +120,7 @@ export function useIntegratedCommandCenter() {
   // Real-time calculation based on market data
   const derivedData = useMemo(() => {
     if (!ohlcData["1m"].length) {
-      return { decision: null, executionProfile: null, structureAnalysis: null, pseudoOrderBook: null };
+      return { decision: null, profile: null, structure: null, orderBook: null };
     }
 
     const profile = FXExecutionService.calculateExecutionProfile(
@@ -151,8 +151,29 @@ export function useIntegratedCommandCenter() {
       tuningConfig
     );
 
-    return { decision, executionProfile: profile, structureAnalysis: structure, pseudoOrderBook: orderBook };
+    return { profile, structure, orderBook, decision };
   }, [ohlcData, quote, weightProfile, indicatorStatus, riskMetrics, tuningConfig]);
+
+  // Actions
+  const deletePosition = useCallback(async (id: string) => {
+    if (!user) return;
+    try {
+      await FXSimulationService.deleteSimulation(user.uid, id);
+      await refreshData();
+    } catch (e) {
+      console.error("Failed to delete position", e);
+    }
+  }, [user, refreshData]);
+
+  const updatePosition = useCallback(async (id: string, updates: Partial<FXSimulation>) => {
+    if (!user) return;
+    try {
+      await FXSimulationService.updateSimulation(user.uid, id, updates);
+      await refreshData();
+    } catch (e) {
+      console.error("Failed to update position", e);
+    }
+  }, [user, refreshData]);
 
   // Periodic position management
   useEffect(() => {
@@ -173,9 +194,9 @@ export function useIntegratedCommandCenter() {
     weightProfile,
     indicatorStatus,
     decision: derivedData.decision,
-    executionProfile: derivedData.executionProfile,
-    structureAnalysis: derivedData.structureAnalysis,
-    pseudoOrderBook: derivedData.pseudoOrderBook,
+    executionProfile: derivedData.profile,
+    structureAnalysis: derivedData.structure,
+    pseudoOrderBook: derivedData.orderBook,
     conditionAnalysis,
     backtestComparisons,
     violationLogs,
@@ -185,7 +206,12 @@ export function useIntegratedCommandCenter() {
     tuningLogs,
     isLoading: isMarketLoading || isDataLoading,
     refreshData,
-    updateTuning: (updates: Partial<FXTuningConfig>, reason: string) => 
-      FXTuningService.updateTuningConfig(user?.uid || "", updates, reason)
+    updateTuning: async (u: any, r: string) => {
+      if (!user) return;
+      await FXTuningService.updateTuningConfig(user.uid, u, r);
+      await refreshData();
+    },
+    deletePosition,
+    updatePosition
   };
 }

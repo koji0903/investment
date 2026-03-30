@@ -29,7 +29,10 @@ import {
   AlertTriangle,
   Timer,
   Settings2,
-  Plus
+  Plus,
+  Pencil,
+  Trash2,
+  X as CloseIcon
 } from "lucide-react";
 import { 
   USDJPYStructureMonitor 
@@ -69,10 +72,19 @@ export const IntegratedCommandCenter = () => {
     tuningLogs,
     isLoading,
     refreshData,
-    updateTuning
+    updateTuning,
+    deletePosition,
+    updatePosition
   } = useIntegratedCommandCenter();
 
   const [showEntryForm, setShowEntryForm] = React.useState(false);
+  const [editingPos, setEditingPos] = React.useState<any>(null);
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("このポジションを履歴に残さず完全に消去しますか？")) {
+      await deletePosition(id);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -266,7 +278,7 @@ export const IntegratedCommandCenter = () => {
                   ) : (
                     <div className="space-y-4">
                        {activePositions.map((pos) => (
-                         <div key={pos.id} className="p-6 bg-slate-950/40 border border-slate-800 rounded-[32px] flex items-center justify-between">
+                         <div key={pos.id} className="p-6 bg-slate-950/40 border border-slate-800 rounded-[32px] flex items-center justify-between group hover:border-slate-700 transition-all">
                             <div className="flex items-center gap-6">
                                <div className={cn(
                                  "w-12 h-12 rounded-2xl flex items-center justify-center font-black",
@@ -279,16 +291,34 @@ export const IntegratedCommandCenter = () => {
                                   <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Entry: {pos.entryPrice.toFixed(3)}</p>
                                </div>
                             </div>
-                            <div className="text-right">
-                               <p className={cn(
-                                 "text-2xl font-black tabular-nums",
-                                 pos.pnl >= 0 ? "text-emerald-400" : "text-rose-400"
-                               )}>
-                                 {pos.pnl >= 0 ? "+" : ""}{(pos.pnl * 100).toFixed(1)} <span className="text-sm">PIPS</span>
-                               </p>
-                               <span className="text-[9px] font-black bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded uppercase">
-                                 AI提言: {pos.pnl * 100 > 10 ? "利確準備" : "継続保有"}
-                               </span>
+                            <div className="flex items-center gap-8">
+                               <div className="text-right">
+                                  <p className={cn(
+                                    "text-2xl font-black tabular-nums",
+                                    pos.pnl >= 0 ? "text-emerald-400" : "text-rose-400"
+                                  )}>
+                                    {pos.pnl >= 0 ? "+" : ""}{(pos.pnl * 100).toFixed(1)} <span className="text-sm">PIPS</span>
+                                  </p>
+                                  <span className="text-[9px] font-black bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded uppercase">
+                                    AI提言: {pos.pnl * 100 > 10 ? "利確準備" : "継続保有"}
+                                  </span>
+                               </div>
+                               <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={() => setEditingPos(pos)}
+                                    className="p-3 bg-slate-800 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-400 rounded-2xl transition-all"
+                                    title="修正"
+                                  >
+                                    <Pencil size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDelete(pos.id)}
+                                    className="p-3 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-2xl transition-all"
+                                    title="削除"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                               </div>
                             </div>
                          </div>
                        ))}
@@ -367,6 +397,89 @@ export const IntegratedCommandCenter = () => {
          executionProfile={executionProfile || undefined}
          tuningConfig={tuningConfig}
        />
+
+      <AnimatePresence>
+        {editingPos && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-950/80 backdrop-blur-md">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-[48px] p-10 space-y-8 relative overflow-hidden"
+            >
+              <button 
+                onClick={() => setEditingPos(null)}
+                className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"
+              >
+                <CloseIcon size={24} />
+              </button>
+
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black text-white italic">ポジション修正</h3>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">パラメータの個別調整を行います</p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-2">取引数量 (Lots)</label>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    defaultValue={editingPos.quantity}
+                    onChange={(e) => setEditingPos({...editingPos, quantity: parseFloat(e.target.value)})}
+                    className="w-full h-14 bg-slate-800 border border-slate-700 rounded-2xl px-6 text-xl font-black text-white focus:border-indigo-500 focus:outline-none transition-all"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-2">利確価格 (TP)</label>
+                    <input 
+                      type="number" 
+                      step="0.001"
+                      defaultValue={editingPos.takeProfit}
+                      onChange={(e) => setEditingPos({...editingPos, takeProfit: parseFloat(e.target.value)})}
+                      className="w-full h-14 bg-slate-800 border border-slate-700 rounded-2xl px-6 text-lg font-black text-emerald-400 focus:border-emerald-500 focus:outline-none transition-all"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block ml-2">損切価格 (SL)</label>
+                    <input 
+                      type="number" 
+                      step="0.001"
+                      defaultValue={editingPos.stopLoss}
+                      onChange={(e) => setEditingPos({...editingPos, stopLoss: parseFloat(e.target.value)})}
+                      className="w-full h-14 bg-slate-800 border border-slate-700 rounded-2xl px-6 text-lg font-black text-rose-400 focus:border-rose-500 focus:outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 flex gap-4">
+                <button 
+                  onClick={() => setEditingPos(null)}
+                  className="flex-1 h-16 rounded-[24px] bg-slate-800 text-slate-400 font-black uppercase tracking-widest hover:bg-slate-700 transition-all"
+                >
+                  キャンセル
+                </button>
+                <button 
+                  onClick={async () => {
+                    await updatePosition(editingPos.id, {
+                      quantity: editingPos.quantity,
+                      takeProfit: editingPos.takeProfit,
+                      stopLoss: editingPos.stopLoss
+                    });
+                    setEditingPos(null);
+                  }}
+                  className="flex-[2] h-16 rounded-[24px] bg-indigo-600 text-white font-black uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(79,70,229,0.3)] hover:scale-[1.02] active:scale-95 transition-all"
+                >
+                  変更を確定する
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

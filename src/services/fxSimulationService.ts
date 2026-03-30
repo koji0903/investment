@@ -106,6 +106,34 @@ export const FXSimulationService = {
       throw error;
     }
   },
+  
+  /**
+   * シミュレーションの完全削除 (履歴に残さない)
+   */
+  async deleteSimulation(userId: string, id: string): Promise<void> {
+    try {
+      const { deleteDoc } = await import("firebase/firestore");
+      await deleteDoc(doc(db, `users/${userId}/fx_usdjpy_simulations`, id));
+    } catch (error) {
+      console.error("Error deleting simulation:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * シミュレーションの更新 (SL/TP/ロットの変更など)
+   */
+  async updateSimulation(userId: string, id: string, updates: Partial<FXSimulation>): Promise<void> {
+    try {
+      await updateDoc(doc(db, `users/${userId}/fx_usdjpy_simulations`, id), {
+        ...updates,
+        updatedAt: serverTimestamp()
+      });
+    } catch (error) {
+      console.error("Error updating simulation:", error);
+      throw error;
+    }
+  },
 
   /**
    * ポジションのリスク管理（オートクローズ、トレーリングストップ）
