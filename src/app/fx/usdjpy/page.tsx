@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useUSDJPYData } from "@/hooks/useUSDJPYData";
+import { useIntegratedCommandCenter } from "@/hooks/useIntegratedCommandCenter";
 import { calculateUSDJPYDecision } from "@/utils/fx/usdjpyDecision";
 import { 
   USDJPYPriceBoard, 
@@ -55,8 +56,27 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 
 export default function USDJPYDashboardPage() {
+  const { 
+    indicatorStatus, 
+    upcomingEvents 
+  } = useIntegratedCommandCenter("USD/JPY");
+
+  const nextEvent = upcomingEvents && upcomingEvents.length > 0 ? upcomingEvents[0] : undefined;
+  const minutesToEvent = nextEvent ? 15 : undefined; // Simplified for now
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500/30">
+      {/* 
+          市場アラートインジケーター 
+          - 最上部に配置し、即座の状況把握を可能にする
+      */}
+      <USDJPYIndicatorBanner 
+        status={indicatorStatus?.status || "normal"} 
+        message={indicatorStatus?.message || "通常運用"} 
+        nextEvent={nextEvent}
+        minutesToEvent={minutesToEvent}
+      />
+
       {/* 
           Premium Header Section 
           - Adds "breathing room" (padding)

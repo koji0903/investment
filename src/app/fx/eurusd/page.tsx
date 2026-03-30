@@ -46,8 +46,8 @@ export default function EURUSDDashboardPage() {
     <main className="min-h-screen bg-[#020617] text-slate-200">
       {/* EUR/USD 専用のインジケーターバナー */}
       <EURUSDIndicatorBanner 
-        status={indicatorStatus?.status} 
-        message={indicatorStatus?.message} 
+        status={indicatorStatus?.status || "normal"} 
+        message={indicatorStatus?.message || "通常運用"} 
         nextEvent={nextEvent}
         minutesToEvent={minutesToEvent}
       />
