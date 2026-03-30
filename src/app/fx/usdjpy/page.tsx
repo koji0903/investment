@@ -81,7 +81,7 @@ export default function USDJPYDashboardPage() {
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-8 bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
-                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white uppercase italic">
+                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white uppercase italic pr-4">
                   USD/JPY <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-indigo-600">デイトレード・プロ</span>
                 </h1>
               </div>
