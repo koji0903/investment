@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export const ActionTriggerPanel = () => {
   const { calculatedAssets, addTransaction } = usePortfolio();
@@ -172,6 +173,11 @@ const TriggerCard = ({ trigger, index, onClick }: { trigger: ActionTrigger, inde
       Rebalance: "リバランス",
       Review: "確認"
     }[trigger.action as string] || trigger.action;
+    
+    // 遷移先の決定
+    const href = trigger.assetName === "USD/JPY" || trigger.assetName.includes("円") 
+      ? "/fx/usdjpy" 
+      : "/stock-judgment";
 
   return (
     <motion.div 
@@ -208,19 +214,23 @@ const TriggerCard = ({ trigger, index, onClick }: { trigger: ActionTrigger, inde
           </p>
         </div>
 
-        <div className="flex items-center pl-2">
-          {['Buy', 'Sell', 'Rebalance'].includes(trigger.action as string) ? (
+        <div className="flex items-center gap-2 pl-2 border-l border-slate-100 dark:border-slate-800 ml-2">
+          {['Buy', 'Sell', 'Rebalance'].includes(trigger.action as string) && (
             <button 
-              onClick={onClick} 
-              className="flex items-center justify-center whitespace-nowrap px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-black transition-colors"
+              onClick={(e) => {
+                e.preventDefault();
+                onClick();
+              }} 
+              className="flex items-center justify-center whitespace-nowrap px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black transition-all shadow-lg shadow-indigo-500/20 active:scale-95"
             >
-              注文へ進む
-            </button>
-          ) : (
-            <button className="h-full flex items-center p-2 text-slate-300 hover:text-indigo-500 transition-colors">
-              <ArrowRight size={20} />
+              発注
             </button>
           )}
+          <Link href={href}>
+            <button className="p-2 text-slate-300 hover:text-indigo-500 dark:hover:text-indigo-400 transition-colors">
+              <ArrowRight size={18} />
+            </button>
+          </Link>
         </div>
       </div>
     </motion.div>
