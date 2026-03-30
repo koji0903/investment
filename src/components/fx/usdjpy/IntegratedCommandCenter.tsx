@@ -401,7 +401,7 @@ const StatusMetric = ({ label, value, sub, icon: Icon, highlight }: any) => (
 );
 
 const IndicatorBar = ({ label, value, tooltip }: { label: string, value: number, tooltip?: string }) => (
-  <div className="space-y-1.5 group relative cursor-help">
+  <div className="space-y-1.5 group relative cursor-help hover:z-50">
      <div className="flex justify-between items-center px-1">
         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</span>
         <span className="text-xs font-black text-slate-300">{value}%</span>
@@ -583,7 +583,7 @@ const BottomAnalysisTabs = ({
 };
 
 const PerfCard = ({ label, value, sub, tooltip }: { label: string, value: string, sub: string, tooltip?: string }) => (
-  <div className="p-8 bg-slate-950/80 border border-slate-900 rounded-[32px] hover:border-indigo-500/30 transition-all text-center space-y-2 relative group cursor-help">
+  <div className="p-8 bg-slate-950/80 border border-slate-900 rounded-[32px] hover:border-indigo-500/30 transition-all text-center space-y-2 relative group cursor-help hover:z-[60]">
      <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{label}</p>
      <p className="text-3xl font-black text-slate-100 tabular-nums">{value}</p>
      <p className="text-[10px] font-bold text-slate-600 uppercase italic">{sub}</p>

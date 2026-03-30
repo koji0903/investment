@@ -71,7 +71,7 @@ export const USDJPYDetailedAnalysis = ({ conditionAnalysis, backtestComparisons 
       {activeSubTab === "backtests" && (
         <div className="space-y-4">
            {backtestComparisons.map((bt) => (
-             <div key={bt.id} className="p-6 bg-slate-950/40 border border-slate-800 rounded-[32px] hover:border-indigo-500/30 transition-all group overflow-hidden relative">
+             <div key={bt.id} className="p-6 bg-slate-950/40 border border-slate-800 rounded-[32px] hover:border-indigo-500/30 transition-all group relative hover:z-50">
                 <div className="flex items-center justify-between relative z-10">
                    <div className="flex items-center gap-4">
                       <div className={cn(
