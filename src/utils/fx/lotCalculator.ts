@@ -136,8 +136,24 @@ export function calculateAdjustedLot(
     executionStatus !== "critical" &&
     structureScore >= 70; // 構造完成度70%未満は原則禁止
 
+  const criticalReasons: string[] = [];
   if (metrics.drawdownPercent >= 15) {
-    reasons.push("ドローダウン15%超過により新規取引停止");
+    criticalReasons.push("ドローダウン15%超過により新規取引停止");
+  }
+  if (multipliers.confidence <= 0) {
+    criticalReasons.push("信頼度不足により取引見送り");
+  }
+  if (indicatorStatus === "prohibited") {
+    criticalReasons.push("経済指標の制限期間のため取引禁止");
+  }
+  if (executionStatus === "critical") {
+    criticalReasons.push("執行品質が悪いため取引禁止");
+  }
+  if (structureScore < 70) {
+    criticalReasons.push("構造完成度不足（70%未満）により取引禁止");
+  }
+  if (adjustedLot <= 0 && criticalReasons.length === 0) {
+    criticalReasons.push("計算ロットが0となったため取引不可");
   }
 
   // 小数点第2位までに丸める
@@ -151,7 +167,7 @@ export function calculateAdjustedLot(
     adjustedLot,
     maxLossAmount: finalMaxLoss,
     multipliers,
-    reason: reasons[0] || "標準リスク運用中",
+    reason: criticalReasons[0] || reasons[0] || "標準リスク運用中",
     isExecutionAllowed
   };
 }

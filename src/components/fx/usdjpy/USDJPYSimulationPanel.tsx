@@ -168,8 +168,9 @@ export const USDJPYSimulationPanel = ({
       }, executionProfile);
       fetchSims();
       setShowEntryForm(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      alert(`注文の執行に失敗しました: ${err.message || "予期せぬエラーが発生しました"}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -437,10 +438,16 @@ export const USDJPYSimulationPanel = ({
 
                  <button 
                   disabled={isSubmitting || !decision || !permission.isAllowed || (useAutoLot && !lotResult?.isExecutionAllowed)}
-                  onClick={handleEntry}
+                  onClick={() => {
+                    if (useAutoLot && !lotResult?.isExecutionAllowed) {
+                      alert("環境条件が整っていないため、エントリーできません。");
+                      return;
+                    }
+                    handleEntry();
+                  }}
                   className={cn(
                     "w-full py-5 rounded-[24px] font-black text-sm uppercase tracking-[0.2em] shadow-2xl active:scale-[0.98] transition-all",
-                    !permission.isAllowed ? "bg-slate-800 text-slate-500 cursor-not-allowed" :
+                    (!permission.isAllowed || (useAutoLot && !lotResult?.isExecutionAllowed)) ? "bg-slate-800 text-slate-500 cursor-not-allowed" :
                     useAutoLot ? "bg-indigo-500 hover:bg-indigo-600 text-white shadow-indigo-500/20" : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20"
                   )}
                  >
