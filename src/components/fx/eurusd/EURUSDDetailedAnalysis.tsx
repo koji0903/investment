@@ -89,7 +89,7 @@ export const EURUSDDetailedAnalysis = ({ conditionAnalysis, backtestComparisons 
                     <div className="flex items-center gap-8">
                         <div className="text-right group relative cursor-help">
                            <p className="text-[9px] font-black text-slate-500 uppercase">勝率</p>
-                           <p className="text-sm font-black text-emerald-400">{bt.winRate}%</p>
+                           <p className="text-sm font-black text-emerald-400">{Math.round(bt.winRate)}%</p>
                            <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
                              <p className="text-[10px] font-bold text-slate-200 leading-relaxed">
                                全トレード数に対する勝ちトレードの割合です。

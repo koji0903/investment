@@ -152,7 +152,7 @@ export const EURUSDPseudoOrderBook = ({
                 <Info size={8} className="opacity-0 group-hover:opacity-40 transition-opacity" />
               </p>
               <div className="flex items-baseline gap-2">
-                 <h4 className="text-lg font-black text-white">{orderBook.liquidityScore}%</h4>
+                 <h4 className="text-lg font-black text-white">{Math.round(orderBook.liquidityScore)}%</h4>
                  <span className="text-[10px] font-bold text-slate-500 italic">
                    {orderBook.liquidityScore >= 80 ? "執行に最適な状態" : "薄い市場を検出"}
                  </span>

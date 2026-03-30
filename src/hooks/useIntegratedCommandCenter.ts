@@ -21,7 +21,10 @@ import {
   FXRiskMetrics, 
   FXWeightProfile,
   FXConditionAnalysis,
-  FXBacktestComparison
+  FXBacktestComparison,
+  FXPerformanceResult,
+  FXViolationLog,
+  FXEconomicEvent
 } from "@/types/fx";
 import { FXExecutionService } from "@/services/fxExecutionService";
 import { FXStructureService } from "@/services/fxStructureService";
@@ -39,13 +42,13 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
   const [reviews, setReviews] = useState<FXTradingReview[]>(() => AppPersistence.load(cacheKey("reviews")) || []);
   const [riskMetrics, setRiskMetrics] = useState<FXRiskMetrics | null>(() => AppPersistence.load(cacheKey("riskMetrics")));
   const [activePositions, setActivePositions] = useState<FXSimulation[]>(() => AppPersistence.load(cacheKey("activePositions")) || []);
-  const [performance, setPerformance] = useState<any>(() => AppPersistence.load(cacheKey("performance"))); 
+  const [performance, setPerformance] = useState<FXPerformanceResult | null>(() => AppPersistence.load(cacheKey("performance"))); 
   const [weightProfile, setWeightProfile] = useState<FXWeightProfile | null>(() => AppPersistence.load(cacheKey("weightProfile")));
   const [indicatorStatus, setIndicatorStatus] = useState<{ status: "normal" | "caution" | "prohibited", message: string } | null>(() => AppPersistence.load(cacheKey("indicatorStatus")));
   const [conditionAnalysis, setConditionAnalysis] = useState<FXConditionAnalysis | null>(() => AppPersistence.load(cacheKey("conditionAnalysis")));
   const [backtestComparisons, setBacktestComparisons] = useState<FXBacktestComparison[]>(() => AppPersistence.load(cacheKey("backtestComparisons")) || []);
-  const [violationLogs, setViolationLogs] = useState<any[]>(() => AppPersistence.load(cacheKey("violationLogs")) || []);
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>(() => AppPersistence.load(cacheKey("upcomingEvents")) || []);
+  const [violationLogs, setViolationLogs] = useState<FXViolationLog[]>(() => AppPersistence.load(cacheKey("violationLogs")) || []);
+  const [upcomingEvents, setUpcomingEvents] = useState<FXEconomicEvent[]>(() => AppPersistence.load(cacheKey("upcomingEvents")) || []);
   const [tuningConfig, setTuningConfig] = useState<FXTuningConfig | null>(() => AppPersistence.load(cacheKey("tuningConfig")));
   const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(() => AppPersistence.load(cacheKey("driftAnalysis")));
   const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>(() => AppPersistence.load(cacheKey("tuningLogs")) || []);

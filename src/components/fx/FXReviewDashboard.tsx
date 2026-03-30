@@ -38,7 +38,7 @@ export const FXReviewDashboard = () => {
     if (user?.uid) {
       loadReviews();
     }
-  }, [user?.uid, loadReviews]);
+  }, [loadReviews]);
 
   const handleGenerateReview = async (period: "daily" | "weekly") => {
     if (!user?.uid) return;

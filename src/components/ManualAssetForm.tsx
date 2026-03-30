@@ -279,7 +279,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
         const currentPrice = isInvestment ? Number(row.currentPrice) : 1;
         const averageCost = isInvestment ? Number(row.averageCost) : 1;
 
-        const updateData: any = {
+        const updateData: any = { // eslint-disable-line @typescript-eslint/no-explicit-any
           name: row.name,
           category,
           symbol: isInvestment ? row.symbol : "",
@@ -311,7 +311,7 @@ export const ManualAssetForm = ({ onClose, initialCategory = "銀行", asset }: 
           const currentPrice = isInvestment ? Number(row.currentPrice) : 1;
           const averageCost = isInvestment ? Number(row.averageCost) : 1;
           
-          const newData: any = {
+          const newData: any = { // eslint-disable-line @typescript-eslint/no-explicit-any
             name: row.name,
             category,
             symbol: isInvestment ? (row.symbol || "") : "",

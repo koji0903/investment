@@ -147,8 +147,8 @@ export const EURUSDTuningMaster = ({ config, drift, logs, onUpdate, onRefresh, o
            <div className="space-y-4">
               <h3 className="text-xs font-black text-indigo-400 uppercase tracking-widest">現在の適用ロジック設定</h3>
               <div className="space-y-3">
-                 <ConfigItem label="信頼度閾値" value={`${config.confidenceThreshold}%`} />
-                 <ConfigItem label="トレンド一致" value={`${config.minAlignmentLevel}%`} />
+                 <ConfigItem label="信頼度閾値" value={`${Math.round(config.confidenceThreshold)}%`} />
+                 <ConfigItem label="トレンド一致" value={`${Math.round(config.minAlignmentLevel)}%`} />
                  <ConfigItem label="リスク倍率" value={`x${config.riskMultiplier.toFixed(2)}`} />
                  <ConfigItem label="トレーリング幅" value={`${config.trailingStopWidth} pips`} />
               </div>
@@ -199,7 +199,19 @@ export const EURUSDTuningMaster = ({ config, drift, logs, onUpdate, onRefresh, o
   );
 };
 
-const ModeCard = ({ mode, active, label, desc, onClick }: any) => (
+const ModeCard = ({ 
+  mode, 
+  active, 
+  label, 
+  desc, 
+  onClick 
+}: { 
+  mode: string; 
+  active: boolean; 
+  label: string; 
+  desc: string; 
+  onClick: () => void; 
+}) => (
   <button 
     onClick={onClick}
     className={cn(
@@ -226,7 +238,17 @@ const ModeCard = ({ mode, active, label, desc, onClick }: any) => (
   </button>
 );
 
-const DriftMetric = ({ label, score, action, icon: Icon }: any) => (
+const DriftMetric = ({ 
+  label, 
+  score, 
+  action, 
+  icon: Icon 
+}: { 
+  label: string; 
+  score: number; 
+  action: string; 
+  icon: React.ElementType; 
+}) => (
   <div className="space-y-4">
     <div className="flex items-center justify-between">
        <div className="flex items-center gap-2">

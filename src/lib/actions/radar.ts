@@ -25,18 +25,17 @@ const MAJOR_TICKERS = [
 ];
 
 export async function executeRadar(filter: RadarFilter, forceRefresh = false): Promise<RadarDashboardData> {
-  // 1. 鮮度チェック (1時間以内のデータがあれば再利用)
+  // 1. 鮮度チェック (1 hour check)
   if (!forceRefresh) {
     try {
       const latestDoc = doc(db, "market_radar", "latest");
       const snap = await getDoc(latestDoc);
       if (snap.exists()) {
-        const data = snap.data() as any;
+        const data = snap.data() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
         const lastScanned = new Date(data.lastScannedAt || 0).getTime();
         const oneHour = 60 * 60 * 1000;
         
         if (Date.now() - lastScanned < oneHour && data.fullResults) {
-          console.log("[Radar] Returning fresh data from Firestore");
           return data.fullResults as RadarDashboardData;
         }
       }
@@ -50,21 +49,21 @@ export async function executeRadar(filter: RadarFilter, forceRefresh = false): P
   const start = new Date();
   start.setDate(end.getDate() - 150);
 
-  // 1. 限定された対象を手動スキャン (リアルタイム性を担保)
   const fetchTasks = MAJOR_TICKERS.map(async (ticker) => {
     try {
       const sym = ticker + ".T";
-      
-      // 日本語名の取得先を確認
       const masterInfo = TSE_PRIME_MASTER.find(m => m.ticker === ticker);
       
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const tick: any = await yf.quote(sym).catch(() => null);
       if (!tick) return null;
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const summs: any = await yf.quoteSummary(sym, {
         modules: ["defaultKeyStatistics", "financialData", "summaryDetail"]
       }).catch(() => null);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const hist: any[] = await yf.historical(sym, {
         period1: start, period2: end, interval: "1d"
       }).catch(() => []);
@@ -92,22 +91,21 @@ export async function executeRadar(filter: RadarFilter, forceRefresh = false): P
         updatedAt: new Date().toISOString()
       };
 
-      // 基本的なスクリーニング
       const capInOkuyen = stockData.marketCap * 10000;
       if (capInOkuyen < filter.minMarketCap) return null;
 
       const prices = hist.map(h => h.close).filter(p => typeof p === "number");
       const tech = analyzeStockTechnical(prices, stockData.currentPrice);
-      const fund = analyzeStockFundamental(stockData as any);
-      const val = analyzeStockValuation(stockData as any);
-      const divReturn = analyzeStockShareholderReturn(stockData as any);
+      const fund = analyzeStockFundamental(stockData as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      const val = analyzeStockValuation(stockData as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+      const divReturn = analyzeStockShareholderReturn(stockData as any); // eslint-disable-line @typescript-eslint/no-explicit-any
       
       const judgment = calculateStockTotalJudgment(
         ticker, stockData.companyName, stockData.sector, stockData.currentPrice,
         tech, fund, val, divReturn
       );
 
-      const tags = categorizeStock({ ...stockData, ...tech, totalScore: judgment.totalScore } as any);
+      const tags = categorizeStock({ ...stockData, ...tech, totalScore: judgment.totalScore } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
       const comm = generateRadarComment(tags, judgment.totalScore);
 
       return { 
@@ -126,7 +124,6 @@ export async function executeRadar(filter: RadarFilter, forceRefresh = false): P
   const allFetched = await Promise.all(fetchTasks);
   const screened = allFetched.filter(r => r !== null) as RadarResult[];
 
-  // 2. セクター別の集計計算
   const sectorMap: Record<string, { totalReturn: number; count: number; marketCap: number }> = {};
   screened.forEach(s => {
     const sec = s.sector || "その他";
@@ -143,7 +140,6 @@ export async function executeRadar(filter: RadarFilter, forceRefresh = false): P
     marketCap: data.marketCap
   })).sort((a, b) => b.marketCap - a.marketCap);
 
-  // 3. マーケットセンチメントの算出
   const totalScoreAvg = screened.reduce((sum, r) => sum + r.totalScore, 0) / (screened.length || 1);
   const bullishCount = screened.filter(r => r.totalScore > 20).length;
   const bearishCount = screened.filter(r => r.totalScore < -20).length;
@@ -173,7 +169,6 @@ export async function executeRadar(filter: RadarFilter, forceRefresh = false): P
     lastScannedAt: new Date().toISOString()
   };
 
-  // 結果の保存 (最新スキャンとして保存)
   try {
     if (screened.length > 0) {
       const latestDoc = doc(db, "market_radar", "latest");
@@ -192,15 +187,12 @@ export async function executeRadar(filter: RadarFilter, forceRefresh = false): P
   return dashboardData;
 }
 
-/**
- * Firestore から最新のレーダーデータを取得（スキャンは行わない）
- */
 export async function getLatestRadarAction(): Promise<RadarDashboardData | null> {
   try {
     const latestDoc = doc(db, "market_radar", "latest");
     const snap = await getDoc(latestDoc);
     if (snap.exists()) {
-      return (snap.data() as any).fullResults || null;
+      return (snap.data() as any).fullResults || null; // eslint-disable-line @typescript-eslint/no-explicit-any
     }
   } catch (e) {
     console.error("[Radar] Failed to fetch latest radar:", e);

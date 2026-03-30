@@ -9,7 +9,9 @@ import {
   FXTradingReview, 
   FXWeightProfile,
   FXConditionAnalysis,
-  FXBacktestComparison
+  FXBacktestComparison,
+  FXPerformanceResult,
+  FXViolationLog
 } from "@/types/fx";
 import { 
   FXTuningConfig,
@@ -27,10 +29,8 @@ import {
   Layers, 
   MousePointer2,
   LayoutDashboard,
-  Calendar,
   History,
   Info,
-  AlertTriangle,
   Timer,
   Settings2,
   Plus,
@@ -46,7 +46,6 @@ import { EURUSDDetailedAnalysis } from "./EURUSDDetailedAnalysis";
 import { EURUSDOperationLogs } from "./EURUSDOperationLogs";
 import { EURUSDTuningMaster } from "./EURUSDTuningMaster";
 import { EURUSDSimulationPanel } from "./EURUSDSimulationPanel";
-import { FXSentimentWidget } from "../FXSentimentWidget";
 
 
 export const IntegratedCommandCenter = () => {
@@ -81,7 +80,7 @@ export const IntegratedCommandCenter = () => {
   } = useIntegratedCommandCenter("EUR/USD");
 
   const [showEntryForm, setShowEntryForm] = React.useState(false);
-  const [editingPos, setEditingPos] = React.useState<any>(null);
+  const [editingPos, setEditingPos] = React.useState<FXSimulation | null>(null);
 
   const handleDelete = React.useCallback(async (id: string) => {
     if (window.confirm("このポジションを履歴に残さず完全に消去しますか？")) {
@@ -260,7 +259,7 @@ export const IntegratedCommandCenter = () => {
            <div className="space-y-1">
               <p className="text-[10px] font-black text-indigo-400/60 uppercase tracking-widest">主要な判断根拠 / Reasoning Context</p>
               <p className="text-xl font-bold text-slate-200 italic leading-relaxed">
-                 "{rec?.reason || "EUR/USDのモメンタムとボラティリティを解析しています。"}"
+                 &quot;{rec?.reason || "EUR/USDのモメンタムとボラティリティを解析しています。"}&quot;
               </p>
            </div>
         </div>
@@ -547,22 +546,17 @@ const IndicatorBar = ({ label, value }: { label: string, value: number, tooltip?
 );
 
 interface BottomAnalysisTabsProps {
-  performance: {
-    today: any;
-    weekly: any;
-    monthly: any;
-    allTime: any;
-  } | null;
+  performance: FXPerformanceResult | null;
   reviews: FXTradingReview[];
   weightProfile: FXWeightProfile | null;
   conditionAnalysis: FXConditionAnalysis | null;
   backtestComparisons: FXBacktestComparison[];
-  violationLogs: any[];
+  violationLogs: FXViolationLog[];
   simulations: FXSimulation[];
   tuningConfig: FXTuningConfig | null;
   driftAnalysis: FXDriftAnalysis | null;
   tuningLogs: FXTuningLog[];
-  onUpdateTuning: (config: any, reason: string) => Promise<void>;
+  onUpdateTuning: (config: Partial<FXTuningConfig>, reason: string) => Promise<void>;
   onRefreshTuning: () => Promise<void>;
   onAnalyzeDrift: () => Promise<void>;
 }
@@ -676,7 +670,7 @@ const BottomAnalysisTabs = ({
            {activeTab === "reviews" && (
              <motion.div key="rev" className="space-y-6">
                 <div className="p-8 bg-slate-950/60 border border-slate-900 rounded-[48px] text-center italic text-slate-500">
-                  EUR/USD の週次レビューは十分なデータ蓄積後に生成されます
+                   EUR/USD の週次レビューは十分なデータ蓄積後に生成されます
                 </div>
              </motion.div>
            )}

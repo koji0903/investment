@@ -1,13 +1,13 @@
 "use client";
 
 import React from "react";
-import { FXSimulation } from "@/types/fx";
+import { FXSimulation, FXViolationLog } from "@/types/fx";
 import { History, ShieldAlert, List, ArrowUpRight, ArrowDownRight, Clock, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Props {
   simulations: FXSimulation[];
-  violations: any[];
+  violations: FXViolationLog[];
 }
 
 export const EURUSDOperationLogs = ({ simulations, violations }: Props) => {

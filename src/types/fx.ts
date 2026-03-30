@@ -608,6 +608,31 @@ export interface FXBacktestComparison {
   overfittingWarning: boolean;
 }
 
+export interface FXViolationLog {
+  id: string;
+  reason: string;
+  context?: any;
+  timestamp: {
+    toDate: () => Date;
+    seconds: number;
+    nanoseconds: number;
+  };
+}
+
+export interface FXPerformancePeriod {
+  pips: number;
+  yen: number;
+  count: number;
+  winRate: number;
+}
+
+export interface FXPerformanceResult {
+  today: FXPerformancePeriod;
+  weekly: FXPerformancePeriod;
+  monthly: FXPerformancePeriod;
+  allTime: FXPerformancePeriod;
+}
+
 export type USDJPYDashboardSection = 
   | "STATUS" | "MARKET" | "DECISION" | "POSITION" 
   | "CONTEXT" | "RISK" | "PERFORMANCE" | "REVIEW" 

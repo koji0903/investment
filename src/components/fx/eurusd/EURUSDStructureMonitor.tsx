@@ -57,7 +57,7 @@ export const EURUSDStructureMonitor = ({
             "text-2xl font-black tabular-nums tracking-tighter",
             structure.completionScore >= 75 ? "text-indigo-400" : "text-slate-300"
           )}>
-            {structure.completionScore}%
+            {Math.round(structure.completionScore)}%
           </span>
         </div>
         
@@ -98,7 +98,7 @@ export const EURUSDStructureMonitor = ({
                 エネルギー蓄積
                 <Info size={10} className="opacity-0 group-hover:opacity-40 transition-opacity" />
               </span>
-              <span className="text-slate-300">{structure.energyLevel}%</span>
+              <span className="text-slate-300">{Math.round(structure.energyLevel)}%</span>
            </div>
            <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
               <motion.div 
