@@ -25,13 +25,17 @@ import { FXSimulationService } from "./fxSimulationService";
 /**
  * 実戦運用チューニング (Pragmatic Tuning) サービス
  */
+
+const getCollPrefix = (pair: string) => `fx_${pair.toLowerCase().replace("/", "_")}`;
+
 export const FXTuningService = {
   /**
    * 現在のチューニング設定を取得
    */
-  async getTuningConfig(userId: string): Promise<FXTuningConfig> {
+  async getTuningConfig(userId: string, pairCode: string = "USD/JPY"): Promise<FXTuningConfig> {
     try {
-      const docRef = doc(db, `users/${userId}/fx_usdjpy_tuning_config/default`);
+      const prefix = getCollPrefix(pairCode);
+      const docRef = doc(db, `users/${userId}/${prefix}_tuning_config/default`);
       const snap = await getDoc(docRef);
       
       if (snap.exists()) {
@@ -67,15 +71,16 @@ export const FXTuningService = {
   /**
    * チューニング設定を更新
    */
-  async updateTuningConfig(userId: string, updates: Partial<FXTuningConfig>, reason: string): Promise<void> {
+  async updateTuningConfig(userId: string, updates: Partial<FXTuningConfig>, reason: string, pairCode: string = "USD/JPY"): Promise<void> {
     try {
-      const current = await this.getTuningConfig(userId);
+      const prefix = getCollPrefix(pairCode);
+      const current = await this.getTuningConfig(userId, pairCode);
       const updated = { ...current, ...updates, updatedAt: new Date().toISOString() };
       
-      await setDoc(doc(db, `users/${userId}/fx_usdjpy_tuning_config/default`), updated);
+      await setDoc(doc(db, `users/${userId}/${prefix}_tuning_config/default`), updated);
       
       // ログの記録
-      await addDoc(collection(db, `users/${userId}/fx_usdjpy_tuning_logs`), {
+      await addDoc(collection(db, `users/${userId}/${prefix}_tuning_logs`), {
         userId,
         changeReason: reason,
         oldConfig: current,
@@ -91,11 +96,12 @@ export const FXTuningService = {
   /**
    * ズレ（Drift）の分析を実行
    */
-  async analyzeDrift(userId: string): Promise<FXDriftAnalysis> {
+  async analyzeDrift(userId: string, pairCode: string = "USD/JPY"): Promise<FXDriftAnalysis> {
     try {
+      const prefix = getCollPrefix(pairCode);
       // 直近50トレードを分析
-      const trades = await FXSimulationService.getSimulationHistory(userId, 50);
-      const metrics = await FXSimulationService.getRiskMetrics(userId);
+      const trades = await FXSimulationService.getSimulationHistory(userId, 50, pairCode);
+      const metrics = await FXSimulationService.getRiskMetrics(userId, pairCode);
       
       // 1. シグナルズレ分析 (期待勝率 vs 実勝率)
       const highConfidenceTrades = trades.filter(t => (t.context?.setup?.score || 0) > 75);
@@ -104,14 +110,15 @@ export const FXTuningService = {
         : 0.5;
       
       const signalScore = hcWinRate > 0.6 ? 100 : hcWinRate > 0.45 ? 70 : 40;
-      const signalImpact = highConfidenceTrades.reduce((acc, t) => acc + (t.pnl < 0 ? t.pnl : 0), 0) * 100;
+      const isJPY = pairCode.endsWith("JPY");
+      const pipFactor = isJPY ? 100 : 10000;
+      const signalImpact = highConfidenceTrades.reduce((acc, t) => acc + (t.pnl < 0 ? t.pnl : 0), 0) * pipFactor;
 
-      // 2. 利確ズレ分析 (早すぎ利確の損失機会)
-      // シンプルな擬似ロジック: 利確後に価格がさらに利益方向に伸びた割合を分析 (本来はtick分析が必要)
+      // 2. 利確ズレ分析
       const earlyExitCount = trades.filter(t => t.exitReason?.includes("Auto-Close") && t.pnl > 0).length;
       const profitDriftScore = Math.max(0, 100 - (earlyExitCount * 5));
 
-      // 3. ロットズレ分析 (連敗時の資金減少インパクト)
+      // 3. ロットズレ分析
       const lotDriftScore = Math.max(0, 100 - (metrics.consecutiveLosses * 15));
 
       // 4. 執行ズレ分析 (滑り・スプレッド)
@@ -129,7 +136,7 @@ export const FXTuningService = {
         profitDrift: {
           score: profitDriftScore,
           frequency: earlyExitCount / (trades.length || 1) * 100,
-          impact: profitDriftScore < 80 ? -15.5 : 0, // 期待値取りこぼし(pips)
+          impact: profitDriftScore < 80 ? -15.5 : 0,
           suggestedAction: profitDriftScore < 80 ? "トレーリングストップ幅の拡大を提案" : "適正です"
         },
         lotDrift: {
@@ -145,7 +152,7 @@ export const FXTuningService = {
           suggestedAction: executionScore < 70 ? "スプレッド許容値の引き下げ、または時間帯制限を推奨" : "良好です"
         },
         regimeDrift: {
-          score: 85, // Dummy for initial integration
+          score: 85,
           frequency: 10,
           impact: -5.0,
           suggestedAction: "レジーム判定は安定しています"
@@ -154,7 +161,7 @@ export const FXTuningService = {
         updatedAt: new Date().toISOString()
       };
 
-      await setDoc(doc(db, `users/${userId}/fx_usdjpy_drift_analysis/latest`), analysis);
+      await setDoc(doc(db, `users/${userId}/${prefix}_drift_analysis/latest`), analysis);
       return analysis;
     } catch (error) {
       console.error("Error analyzing drift:", error);
@@ -169,7 +176,7 @@ export const FXTuningService = {
     const suggestions: Partial<FXTuningConfig> = {};
     const mode = current.mode;
     
-    // モード別の調整感度
+    // モール別の調整感度
     const sensitivity = mode === "aggressive" ? 0.2 : mode === "standard" ? 0.1 : 0.05;
 
     // シグナル調整
@@ -196,13 +203,17 @@ export const FXTuningService = {
     return suggestions;
   },
 
+    return suggestions;
+  },
+
   /**
    * チューニング履歴の取得
    */
-  async getTuningLogs(userId: string): Promise<FXTuningLog[]> {
+  async getTuningLogs(userId: string, pairCode: string = "USD/JPY"): Promise<FXTuningLog[]> {
     try {
+      const prefix = getCollPrefix(pairCode);
       const q = query(
-        collection(db, `users/${userId}/fx_usdjpy_tuning_logs`),
+        collection(db, `users/${userId}/${prefix}_tuning_logs`),
         orderBy("appliedAt", "desc"),
         limit(10)
       );

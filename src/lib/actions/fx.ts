@@ -352,3 +352,67 @@ export async function getUSDJPYOHLCAction(interval: "1m" | "5m" | "15m" | "1h"):
     return [];
   }
 }
+
+/**
+ * 任意の通貨ペアのリアルタイムクオートを取得
+ */
+export async function getFXQuoteAction(pairCode: string): Promise<{ price: number; bid: number; ask: number; changePercent: number; updatedAt: string }> {
+  try {
+    const symbol = toYahooSymbol(pairCode);
+    const quote = await yf.quote(symbol);
+    const price = quote.regularMarketPrice || 0;
+    // スプレッド定義 (Pips単位)
+    const isJPY = pairCode.endsWith("JPY");
+    const spreadValue = isJPY ? 0.003 : 0.00003; // 0.3 pips
+    
+    return {
+      price,
+      bid: price - (spreadValue / 2),
+      ask: price + (spreadValue / 2),
+      changePercent: quote.regularMarketChangePercent || 0,
+      updatedAt: new Date().toISOString()
+    };
+  } catch (error) {
+    console.error(`Error fetching ${pairCode} quote:`, error);
+    throw error;
+  }
+}
+
+/**
+ * 任意の通貨ペアの各時間足の OHLC データを取得
+ */
+export async function getFXOHLCAction(pairCode: string, interval: "1m" | "5m" | "15m" | "1h"): Promise<any[]> {
+  const end = new Date();
+  const start = new Date();
+  const symbol = toYahooSymbol(pairCode);
+  
+  switch (interval) {
+    case "1m": start.setHours(end.getHours() - 2); break;
+    case "5m": start.setHours(end.getHours() - 10); break;
+    case "15m": start.setDate(end.getDate() - 2); break;
+    case "1h": start.setDate(end.getDate() - 7); break;
+  }
+
+  try {
+    const result = await yf.chart(symbol, {
+      period1: start,
+      period2: end,
+      interval: interval as any
+    });
+    
+    if (result && result.quotes) {
+      return result.quotes.filter(q => q.close !== null).map(q => ({
+        timestamp: new Date(q.date).getTime(),
+        open: q.open,
+        high: q.high,
+        low: q.low,
+        close: q.close,
+        volume: q.volume
+      }));
+    }
+    return [];
+  } catch (error) {
+    console.error(`Error fetching ${pairCode} OHLC (${interval}):`, error);
+    return [];
+  }
+}

@@ -12,10 +12,11 @@ export const FXLiquidityService = {
     currentPrice: number,
     bid: number,
     ask: number,
-    ohlc1m: any[]
+    ohlc1m: any[],
+    pairCode: string = "USD/JPY"
   ): FXPseudoOrderBook {
-    const step = 0.01; // USDJPY 1pips刻み
-    const range = 0.10; // 前後10pips
+    const isJPY = pairCode.endsWith("JPY");
+    const step = isJPY ? 0.01 : 0.0001; 
     
     // 1. 直近の値動きから「注文の厚み」を密度推定
     const densityMap = this.calculateDensity(ohlc1m, step);
@@ -25,11 +26,13 @@ export const FXLiquidityService = {
     const resistance: number[] = [];
     const support: number[] = [];
 
+    const precision = isJPY ? 2 : 5;
+
     // 指定レンジ内の価格帯を走査
     for (let i = -10; i <= 10; i++) {
-        const price = Math.round((currentPrice + i * step) * 100) / 100;
-        const size = densityMap.get(price) || (Math.random() * 5 + 5); // 基礎流動性 + 停滞密度
-        const isWall = size > 25; // 閾値超えで「壁」判定
+        const price = parseFloat((currentPrice + i * step).toFixed(precision));
+        const size = densityMap.get(price) || (Math.random() * 5 + 5); 
+        const isWall = size > 25; 
 
         const entry: FXOrderBookEntry = { price, size, isWall };
         
@@ -48,10 +51,10 @@ export const FXLiquidityService = {
     const imbalance = (bidTotal - askTotal) / (bidTotal + askTotal);
 
     // 流動性スコアリング
-    const spreadPips = (ask - bid) * 100;
+    const spreadPips = isJPY ? (ask - bid) * 100 : (ask - bid) * 10000;
     let liquidityScore = 100;
-    if (spreadPips > 0.3) liquidityScore -= 30; // 通常より広い
-    if (spreadPips > 0.8) liquidityScore -= 50; // 危険な広さ
+    if (spreadPips > 0.3) liquidityScore -= 30; 
+    if (spreadPips > 0.8) liquidityScore -= 50; 
     liquidityScore = Math.max(0, liquidityScore);
 
     return {
@@ -64,19 +67,18 @@ export const FXLiquidityService = {
   },
 
   /**
-   * 価格帯ごとの滞留密度（過去の出来高に近い概念）を算出
+   * 価格帯ごとの滞留密度を算出
    */
   calculateDensity(data: any[], step: number): Map<number, number> {
     const map = new Map<number, number>();
+    const precision = step < 0.001 ? 5 : 2;
     
-    // 直近50本の1分足を分析
     data.slice(-50).forEach(bar => {
-        // High-Low間の価格はすべて「触れた」とみなしてカウント
-        const low = Math.round(bar.low / step) * step;
-        const high = Math.round(bar.high / step) * step;
-        
-        for (let p = low; p <= high; p += step) {
-            const price = Math.round(p * 100) / 100;
+        const startIdx = Math.round(bar.low / step);
+        const endIdx = Math.round(bar.high / step);
+
+        for (let idx = startIdx; idx <= endIdx; idx++) {
+            const price = parseFloat((idx * step).toFixed(precision));
             map.set(price, (map.get(price) || 0) + 1);
         }
     });

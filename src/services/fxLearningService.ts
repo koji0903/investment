@@ -19,13 +19,19 @@ import { FXSimulation, LearningMetric, FXTradeContext, FXWeightProfile } from "@
 /**
  * 自己学習・精度改善エンジン サービス (V2: 自己進化型)
  */
+
+const getCollPrefix = (pair: string) => `fx_${pair.toLowerCase().replace("/", "_")}`;
+
 export const FXLearningService = {
   /**
    * トレード終了時に生データを保存
    */
   async recordTradeHistory(userId: string, simulation: FXSimulation): Promise<void> {
     try {
-      await addDoc(collection(db, `users/${userId}/fx_usdjpy_learning_history`), {
+      const pair = simulation.pairCode || "USD/JPY";
+      const prefix = getCollPrefix(pair);
+      
+      await addDoc(collection(db, `users/${userId}/${prefix}_learning_history`), {
         ...simulation,
         recordedAt: serverTimestamp()
       });
@@ -38,15 +44,17 @@ export const FXLearningService = {
   },
 
   /**
-   * 基本パターンの勝率集計 (既存互換)
+   * 基本パターンの勝率集計
    */
   async updateBasicMetrics(userId: string, simulation: FXSimulation): Promise<void> {
     try {
+      const pair = simulation.pairCode || "USD/JPY";
+      const prefix = getCollPrefix(pair);
       const isWin = simulation.pnl > 0;
       const patterns = this.identifyPatterns(simulation);
       
       for (const patternId of patterns) {
-        const docRef = doc(db, `users/${userId}/fx_usdjpy_learning_metrics`, patternId);
+        const docRef = doc(db, `users/${userId}/${prefix}_learning_metrics`, patternId);
         const snap = await getDoc(docRef);
         
         if (!snap.exists()) {
@@ -85,6 +93,7 @@ export const FXLearningService = {
   identifyPatterns(sim: FXSimulation): string[] {
     const patterns: string[] = [];
     const ctx = sim.context;
+    if (!ctx) return [];
 
     // トレンド一致パターン
     if (sim.side === "buy" && ctx.trends["1h"] === "bullish" && ctx.trends["15m"] === "bullish") {
@@ -95,7 +104,7 @@ export const FXLearningService = {
     }
 
     // ブレイクアウト
-    if (ctx.levels.isBreakout) {
+    if (ctx.levels?.isBreakout) {
       patterns.push("breakout_momentum");
     }
 
@@ -137,13 +146,13 @@ export const FXLearningService = {
   /**
    * 最新の環境プロファイルを取得
    */
-  async getWeightProfile(userId: string, profileId: string = "DEFAULT"): Promise<FXWeightProfile | null> {
+  async getWeightProfile(userId: string, pairCode: string = "USD/JPY", profileId: string = "DEFAULT"): Promise<FXWeightProfile | null> {
     try {
-      const docRef = doc(db, `users/${userId}/fx_usdjpy_weight_profiles`, profileId);
+      const prefix = getCollPrefix(pairCode);
+      const docRef = doc(db, `users/${userId}/${prefix}_weight_profiles`, profileId);
       const snap = await getDoc(docRef);
       if (snap.exists()) return snap.data() as FXWeightProfile;
       
-      // デフォルト初期値
       return {
         id: "DEFAULT",
         name: "Standard AI Model",
@@ -163,9 +172,10 @@ export const FXLearningService = {
     }
   },
 
-  async getAllMetrics(userId: string): Promise<LearningMetric[]> {
+  async getAllMetrics(userId: string, pairCode: string = "USD/JPY"): Promise<LearningMetric[]> {
     try {
-      const q = query(collection(db, `users/${userId}/fx_usdjpy_learning_metrics`));
+      const prefix = getCollPrefix(pairCode);
+      const q = query(collection(db, `users/${userId}/${prefix}_learning_metrics`));
       const snap = await getDocs(q);
       return snap.docs.map(d => d.data() as LearningMetric);
     } catch (error) {

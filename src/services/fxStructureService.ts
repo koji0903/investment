@@ -9,7 +9,7 @@ export const FXStructureService = {
   /**
    * 現在の相場構造を解析
    */
-  analyzeStructure(ohlcData: Record<string, any[]>): FXStructureAnalysis {
+  analyzeStructure(ohlcData: Record<string, any[]>, pairCode: string = "USD/JPY"): FXStructureAnalysis {
     const data1m = ohlcData["1m"];
     const data5m = ohlcData["5m"];
     
@@ -17,14 +17,12 @@ export const FXStructureService = {
       return this.unknown();
     }
 
-    const currentPrice = data1m[data1m.length - 1].close;
-    
     // 1. 保ち合い・エネルギー蓄積度の判定
-    const energyLevel = this.calculateEnergyLevel(data5m);
+    const energyLevel = this.calculateEnergyLevel(data5m, pairCode);
     
     // 2. 各構造パターンのスコアリング
-    const pullback = this.scorePullback(ohlcData);
-    const breakout = this.scoreBreakout(ohlcData, energyLevel);
+    const pullback = this.scorePullback(ohlcData, pairCode);
+    const breakout = this.scoreBreakout(ohlcData, energyLevel, pairCode);
     const rangeComp = this.scoreRangeCompression(ohlcData, energyLevel);
 
     // 最もスコアの高い構造を選択
@@ -52,7 +50,7 @@ export const FXStructureService = {
   /**
    * エネルギー蓄積度（ボラティリティ収縮）を算出
    */
-  calculateEnergyLevel(data: any[]): number {
+  calculateEnergyLevel(data: any[], pairCode: string): number {
     const atr = calculateATR({
       high: data.map(d => d.high),
       low: data.map(d => d.low),
@@ -60,12 +58,14 @@ export const FXStructureService = {
     }, 14);
     
     const lastATR = atr[atr.length - 1];
-    const prevATR = atr[atr.length - 10]; // 10本前と比較
+    const prevATR = atr[atr.length - 10]; 
     
-    // ATRが低下しているほどエネルギーが蓄積されていると判断
+    const isJPY = pairCode.endsWith("JPY");
+    const lowVolThreshold = isJPY ? 0.05 : 0.0005;
+
     let score = 50;
     if (lastATR < prevATR) score += 20;
-    if (lastATR < 0.05) score += 30; // USDJPYで 5pips以下の極小ボラ
+    if (lastATR < lowVolThreshold) score += 30; // 極小ボラ
     
     return Math.min(100, score);
   },
@@ -73,7 +73,7 @@ export const FXStructureService = {
   /**
    * 押し目・戻りの完成度をスコアリング
    */
-  scorePullback(ohlc: Record<string, any[]>) {
+  scorePullback(ohlc: Record<string, any[]>, pairCode: string) {
     const reasons: string[] = [];
     let score = 0;
     
@@ -83,17 +83,19 @@ export const FXStructureService = {
 
     if (trend1h === "neutral") return { completionScore: 0, label: "方向感なし", reasons: [] };
 
-    // トレンドに対する乖離
+    const isJPY = pairCode.endsWith("JPY");
     const dist = Math.abs(price - ema25);
-    if (dist < 0.1) {
+    const softThreshold = isJPY ? 0.1 : 0.001;
+    const hardThreshold = isJPY ? 0.2 : 0.002;
+
+    if (dist < softThreshold) {
       score += 60;
       reasons.push("主要EMA付近への理想的な押し");
-    } else if (dist < 0.2) {
+    } else if (dist < hardThreshold) {
       score += 40;
       reasons.push("浅い押し目");
     }
 
-    // 反転の兆し
     const last3 = ohlc["1m"].slice(-3);
     const isReversing = trend1h === "bullish" ? last3[2].close > last3[1].close : last3[2].close < last3[1].close;
     if (isReversing) {
@@ -111,17 +113,19 @@ export const FXStructureService = {
   /**
    * ブレイクアウトの完成度をスコアリング
    */
-  scoreBreakout(ohlc: Record<string, any[]>, energy: number) {
+  scoreBreakout(ohlc: Record<string, any[]>, energy: number, pairCode: string) {
     const reasons: string[] = [];
-    let score = energy * 0.5; // エネルギーが高いほど有利
+    let score = energy * 0.5; 
     
     const data15m = ohlc["15m"];
     const high = Math.max(...data15m.slice(-20).map(d => d.high));
     const low = Math.min(...data15m.slice(-20).map(d => d.low));
     const price = ohlc["1m"][ohlc["1m"].length - 1].close;
 
-    const distToHigh = (high - price) * 100;
-    const distToLow = (price - low) * 100;
+    const isJPY = pairCode.endsWith("JPY");
+    const pipFactor = isJPY ? 100 : 10000;
+    const distToHigh = (high - price) * pipFactor;
+    const distToLow = (price - low) * pipFactor;
 
     if (distToHigh < 2 || distToLow < 2) {
       score += 40;
@@ -141,7 +145,7 @@ export const FXStructureService = {
 
   scoreRangeCompression(ohlc: Record<string, any[]>, energy: number) {
     return {
-      completionScore: energy, // 収縮＝エネルギー
+      completionScore: energy, 
       label: "値幅収縮（レンジ）",
       reasons: ["ボラティリティ低下", "均衡状態"]
     };

@@ -254,7 +254,7 @@ export interface FXJudgment {
 export interface FXSimulation {
   id: string;
   userId: string;
-  pairCode: "USD/JPY";
+  pairCode: string; // e.g. "USD/JPY", "EUR/USD"
   status: "open" | "closed";
   side: "buy" | "sell";
   entryPrice: number;
