@@ -38,7 +38,7 @@ export const USDJPYPriceBoard = ({ quote }: { quote: any }) => {
       </div>
       <div className="flex flex-col gap-6 relative z-10">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">USD/JPY Price Action</span>
+          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">USD/JPY 価格アクション</span>
           <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-emerald-500 text-[10px] font-black animate-pulse">
             <Zap size={10} fill="currentColor" />
             LIVE
@@ -47,17 +47,17 @@ export const USDJPYPriceBoard = ({ quote }: { quote: any }) => {
         
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-slate-500 uppercase">Bid</span>
+            <span className="text-[9px] font-black text-slate-500 uppercase">売値 (Bid)</span>
             <div className="text-3xl font-black text-slate-200 tabular-nums">{quote.bid.toFixed(3)}</div>
           </div>
           <div className="space-y-1 text-right">
-            <span className="text-[9px] font-black text-slate-500 uppercase">Ask</span>
+            <span className="text-[9px] font-black text-slate-500 uppercase">買値 (Ask)</span>
             <div className="text-3xl font-black text-slate-200 tabular-nums">{quote.ask.toFixed(3)}</div>
           </div>
         </div>
 
         <div className="py-3 bg-slate-950/50 rounded-2xl border border-slate-800/50 flex items-center justify-between px-6">
-           <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Spread</span>
+           <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">スプレッド</span>
            <span className="text-sm font-black text-indigo-400 tabular-nums">{spreadPips} <span className="text-[9px] opacity-70">pips</span></span>
         </div>
       </div>
@@ -80,7 +80,7 @@ export const USDJPYTrendMonitor = ({ trends, alignmentLevel }: { trends: any, al
            <div className="p-1.5 bg-indigo-500 rounded-lg text-white">
              <Clock size={14} />
            </div>
-           <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Trend Alignment</h3>
+           <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">トレンド一致度</h3>
         </div>
         <div className={cn(
           "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border",
@@ -88,7 +88,7 @@ export const USDJPYTrendMonitor = ({ trends, alignmentLevel }: { trends: any, al
           alignmentLevel && alignmentLevel >= 66 ? "bg-amber-500/10 text-amber-500 border-amber-500/30" :
           "bg-slate-800 text-slate-500 border-slate-700"
         )}>
-           {alignmentLevel === 100 ? "Strong" : alignmentLevel && alignmentLevel >= 66 ? "Mid" : "Weak"}
+           {alignmentLevel === 100 ? "一致（強）" : alignmentLevel && alignmentLevel >= 66 ? "一致（中）" : "乖離（弱）"}
         </div>
       </div>
 
@@ -130,13 +130,13 @@ export const USDJPYFilterStatus = ({ decision }: { decision: USDJPYDecisionResul
   return (
     <div className="p-6 bg-slate-900/50 border border-slate-900 rounded-[32px] space-y-4">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Neural Filters</h3>
+        <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">ニューラル・フィルター</h3>
         <span className={cn(
           "text-[9px] font-black px-2 py-0.5 rounded flex items-center gap-1",
           decision.isEnvironmentOk ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
         )}>
           {decision.isEnvironmentOk ? <CheckCircle2 size={10} /> : <XCircle size={10} />}
-          ENV {decision.isEnvironmentOk ? "OK" : "NG"}
+          環境 {decision.isEnvironmentOk ? "OK" : "NG"}
         </span>
       </div>
       
@@ -155,7 +155,7 @@ export const USDJPYFilterStatus = ({ decision }: { decision: USDJPYDecisionResul
       </div>
 
       <div className="mt-4 pt-4 border-t border-slate-800 flex justify-between items-center">
-         <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Current Session</span>
+         <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">現在のセッション</span>
          <span className={cn(
            "text-[10px] font-black px-2 py-1 rounded bg-slate-950 border border-slate-800",
            decision.session.isOk ? "text-indigo-400" : "text-slate-600"
@@ -215,7 +215,7 @@ export const USDJPYDecisionMonitor = ({ decision }: { decision: USDJPYDecisionRe
              className="flex items-center gap-2"
            >
               <StatusIcon size={14} className="animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Mission Decision Engine v2.0</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">意思決定エンジン v2.0</span>
            </motion.div>
            <div className="h-px flex-1 bg-current opacity-10" />
         </div>
@@ -227,11 +227,11 @@ export const USDJPYDecisionMonitor = ({ decision }: { decision: USDJPYDecisionRe
              initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
              className="text-7xl md:text-9xl font-black tracking-tighter uppercase tabular-nums leading-none"
            >
-             {rec.action.replace(/_/g, " ")}
+             {rec.action === "BUY" ? "BUY" : rec.action === "SELL" ? "SELL" : rec.action.replace(/_/g, " ")}
            </motion.h2>
            <div className="flex items-center justify-center gap-3">
               <span className="px-4 py-1 bg-white/5 rounded-full text-sm font-black tracking-widest text-white/40">
-                ALPHA CONFIDENCE: {decision.confidence}%
+                信頼度: {decision.confidence}%
               </span>
            </div>
         </div>
@@ -239,10 +239,10 @@ export const USDJPYDecisionMonitor = ({ decision }: { decision: USDJPYDecisionRe
         {/* Recommended Strategy Detail Grid */}
         <div className="w-full grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
            {[
-             { label: "Target Lot", value: `${rec.lot} L`, icon: Zap },
-             { label: "Stop Loss", value: rec.sl.toFixed(3), icon: ShieldCheck },
-             { label: "Take Profit", value: rec.tp.toFixed(3), icon: Target },
-             { label: "Risk Reward", value: `1:${rec.rr}`, icon: ChevronRightSquare },
+             { label: "推奨ロット", value: `${rec.lot} L`, icon: Zap },
+             { label: "損切り (SL)", value: rec.sl.toFixed(3), icon: ShieldCheck },
+             { label: "利確 (TP)", value: rec.tp.toFixed(3), icon: Target },
+             { label: "リスクリワード", value: `1:${rec.rr}`, icon: ChevronRightSquare },
            ].map((item, i) => (
              <div key={i} className="p-5 bg-black/20 border border-white/5 rounded-[32px] flex flex-col items-center gap-1 group/item hover:bg-black/40 transition-all">
                 <item.icon size={14} className="text-white/20 mb-1" />
@@ -256,7 +256,7 @@ export const USDJPYDecisionMonitor = ({ decision }: { decision: USDJPYDecisionRe
         <div className="max-w-xl p-6 bg-white/5 rounded-[40px] border border-white/5 space-y-2">
            <div className="flex items-center justify-center gap-2 text-[9px] font-black text-white/20 uppercase tracking-[0.2em] mb-1">
               <Search size={10} />
-              Reasoning Context
+              判断根拠 / Reasoning Context
            </div>
            <p className="text-sm font-bold text-white/80 leading-relaxed italic">
              "{rec.reason}"
@@ -264,7 +264,7 @@ export const USDJPYDecisionMonitor = ({ decision }: { decision: USDJPYDecisionRe
            <div className="flex flex-wrap justify-center gap-2 pt-2">
               {decision.reasons.slice(1, 4).map((r, i) => (
                 <span key={i} className="px-2 py-0.5 bg-black/20 rounded text-[9px] font-bold text-white/40">
-                  # {r}
+                   {r}
                 </span>
               ))}
            </div>

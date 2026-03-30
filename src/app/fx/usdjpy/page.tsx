@@ -75,21 +75,21 @@ export default function USDJPYDashboardPage() {
               className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-indigo-400 transition-colors group mb-2"
             >
               <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" />
-              <span>Back to Judgment</span>
+              <span>判定一覧に戻る</span>
             </Link>
             
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3">
                 <div className="w-2 h-8 bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
                 <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white uppercase italic">
-                  USD/JPY <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-indigo-600">Day Trading Pro</span>
+                  USD/JPY <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-indigo-600">デイトレード・プロ</span>
                 </h1>
               </div>
               <p className="text-xs md:text-sm font-bold text-slate-500 tracking-[0.2em] uppercase flex items-center gap-3 mt-2">
                 <Cpu size={14} className="text-indigo-500/50" />
-                Integrated Neural Command Center v2.5
+                統合ニューラル・コマンドセンター v2.5
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] text-emerald-500/80">System Active</span>
+                <span className="text-[10px] text-emerald-500/80">システム稼働中</span>
               </p>
             </div>
           </div>
@@ -100,8 +100,8 @@ export default function USDJPYDashboardPage() {
                   <ShieldCheck size={20} />
                </div>
                <div>
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">Risk Logic</p>
-                  <p className="text-xs font-bold text-slate-200">Verified & Secure</p>
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">リスク・ロジック</p>
+                  <p className="text-xs font-bold text-slate-200">検証済み・安全</p>
                </div>
             </div>
           </div>
@@ -153,7 +153,7 @@ function USDJPYNeuralMessage({ permission }: { permission: any }) {
         <MessageSquare size={24} />
       </div>
       <div>
-        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Neural Guidance</p>
+        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">ニューラル・ガイダンス</p>
         <p className="text-xs font-bold text-slate-300 leading-relaxed italic">
            {permission?.status === "stop" ? permission.reason : `"${messages[index]}"`}
         </p>

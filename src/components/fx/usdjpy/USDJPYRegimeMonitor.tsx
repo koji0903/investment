@@ -52,12 +52,12 @@ export const USDJPYRegimeMonitor = ({ regime }: { regime: FXMarketRegime | null 
                <Compass size={18} className="text-indigo-400" />
             </div>
             <div>
-               <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Market Regime</h3>
-               <p className="text-[10px] text-indigo-400 font-black uppercase">Real-time Classification</p>
+               <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">相場レジーム</h3>
+               <p className="text-[10px] text-indigo-400 font-black uppercase">リアルタイム判定</p>
             </div>
          </div>
          <div className={cn("px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter border", getStatusColor())}>
-            Confidence {regime.confidence}%
+            信頼度 {regime.confidence}%
          </div>
       </div>
 
@@ -77,19 +77,19 @@ export const USDJPYRegimeMonitor = ({ regime }: { regime: FXMarketRegime | null 
 
          <div className="grid grid-cols-3 gap-3">
             <div className="p-3 bg-slate-950/30 rounded-2xl border border-slate-800/30 text-center space-y-1 hover:bg-slate-800/30 transition-colors">
-               <span className="text-[8px] font-black text-slate-500 uppercase">Trend Slope</span>
+               <span className="text-[8px] font-black text-slate-500 uppercase">トレンド傾斜</span>
                <div className="text-xs font-black text-slate-300 tabular-nums">
                   {regime.metrics.maSlope > 0 ? "+" : ""}{regime.metrics.maSlope.toFixed(2)}
                </div>
             </div>
             <div className="p-3 bg-slate-950/30 rounded-2xl border border-slate-800/30 text-center space-y-1 hover:bg-slate-800/30 transition-colors">
-               <span className="text-[8px] font-black text-slate-500 uppercase">ATR Level</span>
+               <span className="text-[8px] font-black text-slate-500 uppercase">ATRレベル</span>
                <div className="text-xs font-black text-slate-300 tabular-nums">
                   {regime.metrics.atrLevel.toFixed(3)}
                </div>
             </div>
             <div className="p-3 bg-slate-950/30 rounded-2xl border border-slate-800/30 text-center space-y-1 hover:bg-slate-800/30 transition-colors">
-               <span className="text-[8px] font-black text-slate-500 uppercase">BB Width</span>
+               <span className="text-[8px] font-black text-slate-500 uppercase">BB幅 (%)</span>
                <div className="text-xs font-black text-slate-300 tabular-nums">
                   {regime.metrics.bbWidth.toFixed(2)}%
                </div>

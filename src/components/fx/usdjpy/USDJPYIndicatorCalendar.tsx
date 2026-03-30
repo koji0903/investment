@@ -24,7 +24,7 @@ export const USDJPYIndicatorCalendar = ({ events }: Props) => {
     <div className="bg-slate-900/60 border border-slate-800 p-6 rounded-[32px] space-y-4">
       <div className="flex items-center gap-2 mb-2">
         <Calendar size={18} className="text-indigo-400" />
-        <h3 className="text-sm font-black text-slate-200 uppercase tracking-widest">Economic Calendar</h3>
+        <h3 className="text-sm font-black text-slate-200 uppercase tracking-widest">経済指標カレンダー</h3>
       </div>
 
       <div className="space-y-6">
@@ -59,7 +59,7 @@ export const USDJPYIndicatorCalendar = ({ events }: Props) => {
                   
                   {evt.importance === "high" && (
                     <div className="px-2 py-0.5 bg-rose-500/10 border border-rose-500/20 rounded-md">
-                      <span className="text-[8px] font-black text-rose-400 uppercase">High Risk</span>
+                      <span className="text-[8px] font-black text-rose-400 uppercase">高重要度 / ハイリスク</span>
                     </div>
                   )}
                 </div>

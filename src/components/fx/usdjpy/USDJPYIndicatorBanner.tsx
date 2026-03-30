@@ -38,7 +38,7 @@ export const USDJPYIndicatorBanner = ({
              status === "caution" ? <AlertCircle size={16} className="animate-bounce" /> :
              <ShieldCheck size={16} className="text-emerald-500" />}
             <span className="text-[11px] font-black uppercase tracking-widest">
-              {status === "normal" ? "System Safe" : "Market Alert"}
+              {status === "normal" ? "システム正常" : "市場アラート"}
             </span>
           </div>
           
@@ -54,7 +54,7 @@ export const USDJPYIndicatorBanner = ({
             <div className="flex items-center gap-2">
               <BellRing size={14} className={cn(status !== "normal" && "animate-ring")} />
               <span className="text-[10px] font-black opacity-80 uppercase tracking-tighter">
-                Next: {nextEvent.name}
+                次回の指標: {nextEvent.name}
               </span>
             </div>
 
@@ -64,7 +64,7 @@ export const USDJPYIndicatorBanner = ({
             )}>
               <Timer size={12} />
               <span className="tabular-nums">
-                {minutesToEvent && minutesToEvent > 0 ? `IN ${minutesToEvent}m` : "LIVE NOW"}
+                {minutesToEvent && minutesToEvent > 0 ? `${minutesToEvent}分後` : "進行中"}
               </span>
             </div>
           </div>

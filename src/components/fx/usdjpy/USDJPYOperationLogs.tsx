@@ -23,7 +23,7 @@ export const USDJPYOperationLogs = ({ simulations, violations }: Props) => {
             activeTab === "trades" ? "text-indigo-400" : "text-slate-500 hover:text-slate-300"
           )}
         >
-          Trade History
+          トレード履歴
           {activeTab === "trades" && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500" />
           )}
@@ -35,7 +35,7 @@ export const USDJPYOperationLogs = ({ simulations, violations }: Props) => {
             activeTab === "violations" ? "text-rose-400" : "text-slate-500 hover:text-slate-300"
           )}
         >
-          Rule Violations
+          規律違反
           {activeTab === "violations" && (
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-rose-500" />
           )}
@@ -58,7 +58,7 @@ export const USDJPYOperationLogs = ({ simulations, violations }: Props) => {
                     </div>
                     <div>
                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-black text-slate-200">{sim.side === "buy" ? "LONG" : "SHORT"} {sim.quantity} Lots</span>
+                          <span className="text-[11px] font-black text-slate-200">{sim.side === "buy" ? "買い (LONG)" : "売り (SHORT)"} {sim.quantity} ロット</span>
                           <span className="text-[9px] font-bold text-slate-500">{new Date(sim.entryTimestamp).toLocaleString()}</span>
                        </div>
                        <p className="text-[10px] font-bold text-slate-400 mt-0.5 max-w-[300px] truncate">{sim.entryReason}</p>
@@ -72,7 +72,7 @@ export const USDJPYOperationLogs = ({ simulations, violations }: Props) => {
                     )}>
                       {sim.pnl > 0 ? "+" : ""}{(sim.pnl * 100).toFixed(1)} <span className="text-[10px]">pips</span>
                     </p>
-                    <p className="text-[9px] font-black text-slate-600 uppercase mt-0.5">{sim.exitReason || "COMPLETED"}</p>
+                    <p className="text-[9px] font-black text-slate-600 uppercase mt-0.5">{sim.exitReason === "COMPLETED" ? "決済完了" : (sim.exitReason || "決済完了")}</p>
                  </div>
               </div>
             ))
@@ -90,7 +90,7 @@ export const USDJPYOperationLogs = ({ simulations, violations }: Props) => {
                  </div>
                  <div>
                     <div className="flex items-center gap-2">
-                       <span className="text-[11px] font-black text-rose-400 uppercase tracking-tighter">Rule Violation</span>
+                       <span className="text-[11px] font-black text-rose-400 uppercase tracking-tighter">規律違反を検出</span>
                        <span className="text-[9px] font-bold text-slate-500">{new Date(v.timestamp?.toDate() || 0).toLocaleString()}</span>
                     </div>
                     <p className="text-[11px] font-bold text-slate-300 mt-0.5">{v.reason}</p>

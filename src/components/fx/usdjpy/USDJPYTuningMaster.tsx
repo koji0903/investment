@@ -54,7 +54,7 @@ export const USDJPYTuningMaster = ({ config, drift, logs, onUpdate, onRefresh }:
           <h2 className="text-2xl font-black text-slate-100 uppercase tracking-widest flex items-center gap-3">
             <Settings2 className="text-indigo-500" /> 実戦運用チューニング
           </h2>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Pragmatic Optimization & Drift Control</p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">実用的最適化とドリフト制御</p>
         </div>
         <div className="flex items-center gap-2">
            <button 
@@ -69,21 +69,21 @@ export const USDJPYTuningMaster = ({ config, drift, logs, onUpdate, onRefresh }:
       {/* チューニングモード選択 */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ModeCard 
-          mode="conservative" 
+          mode="保守" 
           active={config.mode === "conservative"} 
           label="保守モード" 
           desc="安全性最優先。微小な調整のみを行い、安定性を確保します。"
           onClick={() => handleModeChange("conservative")}
         />
         <ModeCard 
-          mode="standard" 
+          mode="標準" 
           active={config.mode === "standard"} 
           label="標準モード" 
           desc="バランス重視。ズレを的確に検知し、適切な幅で自動調整します。"
           onClick={() => handleModeChange("standard")}
         />
         <ModeCard 
-          mode="aggressive" 
+          mode="積極" 
           active={config.mode === "aggressive"} 
           label="積極モード" 
           desc="収益性追求。ズレに対して敏感に反応し、迅速に最適化を行います。"
@@ -96,11 +96,11 @@ export const USDJPYTuningMaster = ({ config, drift, logs, onUpdate, onRefresh }:
         <div className="lg:col-span-8 p-8 bg-slate-900/30 border border-slate-800 rounded-[40px] space-y-8">
            <div className="flex items-center justify-between">
               <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                 <Activity size={16} className="text-indigo-500" /> ズレ検知 (Drift Detection)
+                 <Activity size={16} className="text-indigo-500" /> ズレ検知（ドリフト検出）
               </h3>
               <div className="flex items-baseline gap-1">
                  <span className="text-2xl font-black text-slate-200">{drift.overallDriftScore.toFixed(0)}</span>
-                 <span className="text-[10px] font-bold text-slate-600 uppercase">Score</span>
+                 <span className="text-[10px] font-bold text-slate-600 uppercase">スコア</span>
               </div>
            </div>
 
@@ -173,7 +173,7 @@ export const USDJPYTuningMaster = ({ config, drift, logs, onUpdate, onRefresh }:
                 </div>
                 <div className="flex items-center gap-6">
                    <div className="flex flex-col items-end">
-                      <span className="text-[9px] font-black text-emerald-500/60 uppercase">Improvement</span>
+                      <span className="text-[9px] font-black text-emerald-500/60 uppercase">改善率</span>
                       <span className="text-xs font-black text-emerald-400 tabular-nums">+5.2%</span>
                    </div>
                    <button className="p-2 opacity-0 group-hover:opacity-100 transition-opacity">

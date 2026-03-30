@@ -193,24 +193,24 @@ export const USDJPYSimulationPanel = ({
             <div className="p-2.5 bg-indigo-500 rounded-2xl text-white shadow-lg shadow-indigo-500/20">
                <Plus size={20} />
             </div>
-            <h3 className="text-xl font-black tracking-tight">Simulator</h3>
+            <h3 className="text-xl font-black tracking-tight">シミュレーター / 仮想トレード</h3>
          </div>
          <button 
            onClick={() => setShowEntryForm(true)}
            className="px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 active:scale-95 transition-all text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/10"
          >
-           New Position
+           新規ポジション
          </button>
       </div>
 
       {/* Active Positions List */}
       <div className="flex-1 space-y-4 overflow-y-auto custom-scrollbar pr-2">
-        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] sticky top-0 bg-slate-950/80 backdrop-blur pb-2 z-10">Active Trades</h4>
+        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] sticky top-0 bg-slate-950/80 backdrop-blur pb-2 z-10">保有中のポジション</h4>
         
         {activeSims.length === 0 ? (
           <div className="p-8 bg-slate-900/30 border border-dashed border-slate-800 rounded-[32px] flex flex-col items-center justify-center gap-3 text-slate-600">
              <History size={32} />
-             <p className="text-[10px] font-black uppercase tracking-widest">No active simulations</p>
+             <p className="text-[10px] font-black uppercase tracking-widest">アクティブなシミュレーションはありません</p>
           </div>
         ) : (
           activeSims.map((sim) => {
@@ -235,9 +235,9 @@ export const USDJPYSimulationPanel = ({
                            "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter",
                            sim.side === "buy" ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
                          )}>
-                           {sim.side}
+                           {sim.side === "buy" ? "買い" : "売り"}
                          </span>
-                         <span className="text-xs font-black text-slate-300">{(sim.quantity).toFixed(2)} Lots</span>
+                         <span className="text-xs font-black text-slate-300">{(sim.quantity).toFixed(2)} ロット</span>
                       </div>
                       <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Entry: {sim.entryPrice.toFixed(3)}</div>
                    </div>
@@ -252,7 +252,7 @@ export const USDJPYSimulationPanel = ({
                         onClick={() => handleClose(sim.id, currentPrice)}
                         className="text-[9px] font-black text-slate-500 hover:text-rose-500 transition-colors uppercase tracking-widest"
                       >
-                        Market Exit
+                        成行決済
                       </button>
                    </div>
                 </div>
@@ -292,8 +292,8 @@ export const USDJPYSimulationPanel = ({
                        <Zap size={24} fill="currentColor" />
                     </div>
                     <div>
-                        <h3 className="text-2xl font-black tracking-tight">Execution Panel</h3>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Setup Virtual Position</p>
+                        <h3 className="text-2xl font-black tracking-tight">注文パネル</h3>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">仮想ポジションの設定</p>
                     </div>
                  </div>
 
@@ -305,7 +305,7 @@ export const USDJPYSimulationPanel = ({
                         side === "buy" ? "bg-emerald-500 border-emerald-400 text-white shadow-2xl shadow-emerald-500/20" : "bg-slate-950 border-slate-800 text-slate-600"
                       )}
                     >
-                      <TrendingUp size={18} /> BUY
+                      <TrendingUp size={18} /> 買い (BUY)
                     </button>
                     <button 
                       onClick={() => setSide("sell")}
@@ -314,32 +314,32 @@ export const USDJPYSimulationPanel = ({
                         side === "sell" ? "bg-rose-500 border-rose-400 text-white shadow-2xl shadow-rose-500/20" : "bg-slate-950 border-slate-800 text-slate-600"
                       )}
                     >
-                      <TrendingDown size={18} /> SELL
+                      <TrendingDown size={18} /> 売り (SELL)
                     </button>
                  </div>
 
                  <div className="space-y-6">
                     <div className="flex items-center justify-between">
                        <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
-                          <Settings2 size={12} /> Risk Parameters
+                          <Settings2 size={12} /> リスク・パラメータ
                        </h4>
                        <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
                           <button 
                             onClick={() => setUseAutoLot(true)}
                             className={cn("px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all", useAutoLot ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/10" : "text-slate-500 hover:text-slate-300")}>
-                            Auto
+                            自動
                           </button>
                           <button 
                             onClick={() => setUseAutoLot(false)}
                             className={cn("px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all", !useAutoLot ? "bg-amber-500 text-white shadow-lg shadow-amber-500/10" : "text-slate-500 hover:text-slate-300")}>
-                            Manual
+                            手動
                           </button>
                        </div>
                     </div>
 
                     <div className="space-y-3">
                        <div className="flex justify-between text-[10px] font-black uppercase text-slate-500">
-                          <span>Account Risk per Trade (%)</span>
+                          <span>1トレードあたりの許容リスク (%)</span>
                           <span className="text-indigo-400 font-black">{riskPercent.toFixed(1)}%</span>
                        </div>
                        <input 
@@ -348,15 +348,15 @@ export const USDJPYSimulationPanel = ({
                         className="w-full h-1.5 bg-slate-800 rounded-full appearance-none accent-indigo-500"
                        />
                        <div className="flex justify-between text-[9px] text-slate-600 font-bold">
-                          <span>Conservative (0.1%)</span>
-                          <span>Max Limit (2.0%)</span>
+                          <span>保守的 (0.1%)</span>
+                          <span>制限 (2.0%)</span>
                        </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-6 pb-2">
                        <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                             <Calculator size={10} /> Stop Loss (Pips)
+                             <Calculator size={10} /> ストップロス (Pips)
                           </label>
                           <input 
                             type="number" value={stopPips} onChange={(e) => setStopPips(parseInt(e.target.value))}
@@ -365,7 +365,7 @@ export const USDJPYSimulationPanel = ({
                        </div>
                        <div className="space-y-2">
                           <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                             <TrendingUp size={10} /> Target (Pips)
+                             <TrendingUp size={10} /> ターゲット (Pips)
                           </label>
                           <input 
                             type="number" value={tpPips} onChange={(e) => setTpPips(parseInt(e.target.value))}
@@ -384,7 +384,7 @@ export const USDJPYSimulationPanel = ({
                        <div className="space-y-4">
                           <div className="flex items-center gap-3 text-rose-500">
                              <ShieldX size={24} />
-                             <span className="text-sm font-black uppercase tracking-widest">Trade Forbidden</span>
+                             <span className="text-sm font-black uppercase tracking-widest">取引禁止</span>
                           </div>
                           <div className="p-4 bg-rose-500/10 rounded-2xl border border-rose-500/20">
                              <p className="text-[11px] font-bold text-rose-400 leading-tight">
@@ -398,7 +398,7 @@ export const USDJPYSimulationPanel = ({
                        </div>
                     ) : !useAutoLot ? (
                        <div className="space-y-3">
-                          <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Manual Lot Execution</label>
+                          <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest">手動ロット入力</label>
                           <input 
                             type="number" step="0.01" value={manualLot} onChange={(e) => setManualLot(parseFloat(e.target.value))}
                             className="w-full bg-slate-900 border border-amber-500/20 rounded-2xl px-5 py-4 text-2xl font-black text-amber-500 outline-none tabular-nums"
@@ -408,9 +408,9 @@ export const USDJPYSimulationPanel = ({
                        <div className="space-y-4">
                           <div className="flex items-start justify-between">
                              <div className="space-y-1">
-                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">AI Suggested Lot</span>
+                                <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">AI推奨ロット</span>
                                 <div className="text-4xl font-black text-white tabular-nums tracking-tighter">
-                                   {lotResult?.adjustedLot} <span className="text-sm text-indigo-400/50 uppercase ml-1">Lots</span>
+                                   {lotResult?.adjustedLot} <span className="text-sm text-indigo-400/50 uppercase ml-1">ロット</span>
                                 </div>
                              </div>
                              <div className="p-3 bg-indigo-500/10 rounded-2xl text-indigo-400 border border-indigo-500/20">
@@ -420,7 +420,7 @@ export const USDJPYSimulationPanel = ({
                           
                           <div className="p-4 bg-slate-950/50 rounded-2xl border border-slate-800/50 space-y-2">
                              <div className="flex items-center gap-2 text-[10px] font-black text-slate-500 uppercase tracking-tighter">
-                                <Info size={12} className="text-indigo-500" /> Sizing Logic
+                                <Info size={12} className="text-indigo-500" /> ロット計算ロジック
                              </div>
                              <p className="text-[11px] font-bold text-slate-300 leading-tight">
                                 {lotResult?.reason}
@@ -428,7 +428,7 @@ export const USDJPYSimulationPanel = ({
                           </div>
                           
                           <div className="flex justify-between items-center px-2">
-                             <span className="text-[10px] font-black text-slate-500 uppercase">Est. Max Loss</span>
+                             <span className="text-[10px] font-black text-slate-500 uppercase">推定最大損失</span>
                              <span className="text-sm font-black text-rose-400 tabular-nums">-{formatCurrency(lotResult?.maxLossAmount || 0)}</span>
                           </div>
                        </div>
@@ -444,9 +444,9 @@ export const USDJPYSimulationPanel = ({
                     useAutoLot ? "bg-indigo-500 hover:bg-indigo-600 text-white shadow-indigo-500/20" : "bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20"
                   )}
                  >
-                   {!decision ? "Analyzing..." : 
-                    isSubmitting ? "Executing..." : 
-                    !permission.isAllowed ? "Governance Blocked" : "Confirm Execution"}
+                   {!decision ? "分析中..." : 
+                    isSubmitting ? "執行中..." : 
+                    !permission.isAllowed ? "統制（ガバナンス）によりブロック" : "注文を確定する"}
                  </button>
               </div>
             </motion.div>

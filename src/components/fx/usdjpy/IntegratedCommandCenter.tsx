@@ -145,7 +145,7 @@ export const IntegratedCommandCenter = () => {
                "bg-slate-900/50 border-slate-800 text-slate-400"
              )}>
                 <div className="absolute top-8 left-0 right-0 flex justify-center opacity-30">
-                  <span className="text-[10px] font-black tracking-[0.5em] uppercase">M-Decision Engine v2.5</span>
+                  <span className="text-[10px] font-black tracking-[0.5em] uppercase">意思決定エンジン v2.5</span>
                 </div>
 
                 <div className="space-y-2">
@@ -230,7 +230,7 @@ export const IntegratedCommandCenter = () => {
               <Info size={24} />
            </div>
            <div className="space-y-1">
-              <p className="text-[10px] font-black text-indigo-400/60 uppercase tracking-widest">判断の主要根拠 / Reasoning Context</p>
+              <p className="text-[10px] font-black text-indigo-400/60 uppercase tracking-widest">主要な判断根拠 / Reasoning Context</p>
               <p className="text-xl font-bold text-slate-200 italic leading-relaxed">
                  "{rec?.reason || "市場データを解析して最適なエントリーポイントを特定しています。"}"
               </p>
@@ -469,10 +469,10 @@ const BottomAnalysisTabs = ({
                    <div className="absolute inset-0 opacity-[0.02] pointer-events-none group-hover:opacity-[0.05] transition-opacity">
                       <BarChart3 size={400} />
                    </div>
-                   <p className="text-[12px] font-black text-slate-700 uppercase tracking-[0.4em]">Integrated Performance Graph</p>
+                   <p className="text-[12px] font-black text-slate-700 uppercase tracking-[0.4em]">統合運用成績グラフ</p>
                    <div className="flex items-center gap-1 mt-4">
                       <TrendingUp size={14} className="text-emerald-500" />
-                      <span className="text-[10px] font-black text-emerald-500/80 uppercase">Upward Trajectory Confirmed</span>
+                      <span className="text-[10px] font-black text-emerald-500/80 uppercase">上昇トレンドの継続を確認</span>
                    </div>
                 </div>
              </motion.div>
@@ -518,15 +518,15 @@ const BottomAnalysisTabs = ({
                            <span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">{rev.period} REVIEW: {rev.startDate} - {rev.endDate}</span>
                         </div>
                         <div className="px-4 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[10px] font-black text-indigo-400">
-                          AUDITED BY AI
+                          AI監査済み
                         </div>
                      </div>
                      <p className="text-xl font-bold text-slate-200 leading-relaxed italic border-l-4 border-indigo-500 pl-8">
                         "{rev.summary}"
                      </p>
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <ReviewBox title="Winning Patterns" items={rev.patterns.winning} success />
-                        <ReviewBox title="Improvement Areas" items={rev.aiRecommendations} />
+                        <ReviewBox title="勝利パターン" items={rev.patterns.winning} success />
+                        <ReviewBox title="改善ポイント" items={rev.aiRecommendations} />
                      </div>
                   </div>
                 ))}

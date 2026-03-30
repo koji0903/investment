@@ -32,26 +32,26 @@ export const FXRegimeService = {
 
     let type: MarketRegimeType = "RANGE";
     let confidence = 70;
-    let reason = "Price is oscillating within a narrow band (Narrow BB).";
+    let reason = "価格は狭いレンジ内で推移しています（BBスクイーズ）。";
 
     // 判定ロジック
     if (Math.abs(maSlope) > 2.0) {
       type = maSlope > 0 ? "TREND_UP" : "TREND_DOWN";
-      reason = maSlope > 0 ? "Strong bullish trend detected (EMA200 rising)." : "Strong bearish trend confirmed (EMA200 falling).";
+      reason = maSlope > 0 ? "強力な上昇トレンドを検出（EMA200が上昇中）。" : "強力な下降トレンドを確認（EMA200が下降中）。";
       confidence = 85;
     } else if (lastATR > 0.15) {
       type = "HIGH_VOLATILITY";
-      reason = "High ATR detected. Expect wild price swings even in range.";
+      reason = "高いATRを検出。レンジ内でも激しい値動きが予想されます。";
       confidence = 80;
     } else if (lastATR < 0.05 && lastBBWidth < 0.2) {
       type = "LOW_VOLATILITY";
-      reason = "Market is in deep consolidation (Squeeze). Low liquidity suspected.";
+      reason = "深いコンソリデーション（スクイーズ）状態。流動性の低下が懸念されます。";
       confidence = 75;
     }
 
     if (lastATR > 0.25) {
       type = "INSTABILITY";
-      reason = "Extreme volatility or news impact. Predictability is low.";
+      reason = "極端なボラティリティまたはニュースの影響。予測可能性が低い状態です。";
       confidence = 60;
     }
 

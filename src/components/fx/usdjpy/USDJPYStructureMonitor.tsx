@@ -33,8 +33,8 @@ export const USDJPYStructureMonitor = ({
              <Layers size={14} />
            </div>
            <div>
-             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Market Structure</h3>
-             <p className="text-[9px] text-slate-500 font-bold uppercase">Pattern Completion Analysis</p>
+             <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">相場構造解析</h3>
+             <p className="text-[9px] text-slate-500 font-bold uppercase">パターン完成度分析</p>
            </div>
         </div>
         <div className={cn(
@@ -48,7 +48,7 @@ export const USDJPYStructureMonitor = ({
       {/* Completion Score */}
       <div className="space-y-3 relative z-10">
         <div className="flex justify-between items-end">
-          <span className="text-[10px] font-black text-slate-500 uppercase">Completion Score</span>
+          <span className="text-[10px] font-black text-slate-500 uppercase">完成スコア</span>
           <span className={cn(
             "text-2xl font-black tabular-nums tracking-tighter",
             structure.completionScore >= 75 ? "text-indigo-400" : "text-slate-300"
@@ -71,11 +71,11 @@ export const USDJPYStructureMonitor = ({
         <div className="flex items-center gap-2 mt-2">
           {structure.isEntryTiming ? (
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400">
-               <CheckCircle2 size={12} /> Structure Ready for Execution
+               <CheckCircle2 size={12} /> 構造完成：執行準備完了
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
-               <Activity size={12} className="animate-pulse" /> Forming Structure...
+               <Activity size={12} className="animate-pulse" /> 構造形成中...
             </div>
           )}
         </div>
@@ -85,7 +85,7 @@ export const USDJPYStructureMonitor = ({
       <div className="grid grid-cols-1 gap-4 relative z-10">
         <div className="space-y-2">
            <div className="flex justify-between items-center text-[9px] font-black text-slate-500 uppercase">
-              <span>Energy Accumulation</span>
+              <span>エネルギー蓄積</span>
               <span className="text-slate-300">{structure.energyLevel}%</span>
            </div>
            <div className="h-1 w-full bg-slate-800 rounded-full overflow-hidden">
@@ -111,7 +111,7 @@ export const USDJPYStructureMonitor = ({
         <div className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-center gap-3">
            <AlertCircle size={14} className="text-amber-500 shrink-0" />
            <p className="text-[9px] font-bold text-slate-500 leading-tight uppercase italic">
-              Wait for structure consolidation. Premature entry yields high fake-out risk.
+              構造の確定を待ってください。早すぎるエントリーはダマシのリスクを高めます。
            </p>
         </div>
       )}

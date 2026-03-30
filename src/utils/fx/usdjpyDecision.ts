@@ -209,10 +209,10 @@ function getTrend(data: any[]): TechnicalTrend {
 function checkMarketSession() {
   const hour = new Date().getHours();
   // 東京: 9-15, ロンドン: 16-24, NY: 21-06
-  if (hour >= 9 && hour <= 15) return { name: "Tokyo", isOk: true, score: 80 };
-  if (hour >= 16 && hour <= 20) return { name: "London", isOk: true, score: 100 };
-  if (hour >= 21 || hour <= 2) return { name: "New York", isOk: true, score: 100 };
-  return { name: "Inter-session", isOk: false, score: 50 };
+  if (hour >= 9 && hour <= 15) return { name: "東京市場 (Tokyo)", isOk: true, score: 80 };
+  if (hour >= 16 && hour <= 20) return { name: "ロンドン市場 (London)", isOk: true, score: 100 };
+  if (hour >= 21 || hour <= 2) return { name: "NY市場 (New York)", isOk: true, score: 100 };
+  return { name: "セッション外 (Inter-session)", isOk: false, score: 50 };
 }
 
 function checkFakeout(data: any[], direction: string, strictness: number) {

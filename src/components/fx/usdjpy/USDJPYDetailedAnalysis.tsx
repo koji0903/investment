@@ -26,7 +26,7 @@ export const USDJPYDetailedAnalysis = ({ conditionAnalysis, backtestComparisons 
             activeSubTab === "conditions" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"
           )}
         >
-          Condition Analysis
+          状況別分析
         </button>
         <button
           onClick={() => setActiveSubTab("backtests")}
@@ -35,7 +35,7 @@ export const USDJPYDetailedAnalysis = ({ conditionAnalysis, backtestComparisons 
             activeSubTab === "backtests" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-500 hover:text-slate-300"
           )}
         >
-          Backtest Comparison
+          バックテスト比較
         </button>
       </div>
 
@@ -43,25 +43,25 @@ export const USDJPYDetailedAnalysis = ({ conditionAnalysis, backtestComparisons 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            {/* Regime Analysis */}
            <AnalysisCard 
-             title="Regime Profitability" 
+             title="レジーム別収益性" 
              data={conditionAnalysis.regime} 
              icon={Zap} 
            />
            {/* Time Analysis */}
            <AnalysisCard 
-             title="Time of Day Performance" 
+             title="時間帯別パフォーマンス" 
              data={conditionAnalysis.timeOfDay} 
              icon={BarChart} 
            />
            {/* Sentiment Analysis */}
            <AnalysisCard 
-             title="Sentiment Sensitivity" 
+             title="センチメント感度" 
              data={conditionAnalysis.sentiment} 
              icon={TrendingUp} 
            />
            {/* Liquidity Analysis */}
            <AnalysisCard 
-             title="Liquidity & Execution" 
+             title="流動性と執行品質" 
              data={conditionAnalysis.liquidity} 
              icon={Shield} 
            />
@@ -82,21 +82,21 @@ export const USDJPYDetailedAnalysis = ({ conditionAnalysis, backtestComparisons 
                       </div>
                       <div>
                          <h4 className="text-sm font-black text-slate-200">{bt.name}</h4>
-                         <p className="text-[10px] font-bold text-slate-500">{bt.tradeCount} Trades Simulated</p>
+                         <p className="text-[10px] font-bold text-slate-500">{bt.tradeCount} 件のトレード試行</p>
                       </div>
                    </div>
 
                    <div className="flex items-center gap-8">
                        <div className="text-right">
-                          <p className="text-[9px] font-black text-slate-500 uppercase">Win Rate</p>
+                          <p className="text-[9px] font-black text-slate-500 uppercase">勝率</p>
                           <p className="text-sm font-black text-emerald-400">{bt.winRate}%</p>
                        </div>
                        <div className="text-right">
-                          <p className="text-[9px] font-black text-slate-500 uppercase">Profit Factor</p>
+                          <p className="text-[9px] font-black text-slate-500 uppercase">PF</p>
                           <p className="text-sm font-black text-indigo-400">{bt.profitFactor}</p>
                        </div>
                        <div className="text-right">
-                          <p className="text-[9px] font-black text-slate-500 uppercase">Stability</p>
+                          <p className="text-[9px] font-black text-slate-500 uppercase">安定性</p>
                           <p className="text-sm font-black text-slate-200">{bt.stabilityScore}/100</p>
                        </div>
                    </div>
@@ -105,7 +105,7 @@ export const USDJPYDetailedAnalysis = ({ conditionAnalysis, backtestComparisons 
                 {bt.overfittingWarning && (
                   <div className="mt-4 p-3 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex items-center gap-3">
                      <Bug size={14} className="text-amber-500" />
-                     <span className="text-[10px] font-bold text-amber-500/80 uppercase">Caution: Potential Overfitting Detected</span>
+                     <span className="text-[10px] font-bold text-amber-500/80 uppercase">警告: 過剰適合（オーバーフィッティング）の可能性あり</span>
                   </div>
                 )}
              </div>
