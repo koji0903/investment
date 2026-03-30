@@ -30,9 +30,10 @@ interface Props {
   logs: FXTuningLog[];
   onUpdate: (updates: Partial<FXTuningConfig>, reason: string) => Promise<void>;
   onRefresh: () => Promise<void>;
+  onAnalyzeDrift?: () => Promise<void>;
 }
 
-export const USDJPYTuningMaster = ({ config, drift, logs, onUpdate, onRefresh }: Props) => {
+export const USDJPYTuningMaster = ({ config, drift, logs, onUpdate, onRefresh, onAnalyzeDrift }: Props) => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const handleModeChange = async (mode: FXTuningMode) => {
@@ -57,12 +58,22 @@ export const USDJPYTuningMaster = ({ config, drift, logs, onUpdate, onRefresh }:
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">実用的最適化とドリフト制御</p>
         </div>
         <div className="flex items-center gap-2">
-           <button 
-             onClick={() => onRefresh()}
-             className="p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors"
-           >
-             <RefreshCw size={18} />
-           </button>
+            <button 
+              onClick={() => onRefresh()}
+              className="p-2 bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors"
+              title="データを更新"
+            >
+              <RefreshCw size={18} />
+            </button>
+            {onAnalyzeDrift && (
+              <button 
+                onClick={() => onAnalyzeDrift()}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                <Activity size={14} />
+                ズレを再分析
+              </button>
+            )}
         </div>
       </div>
 

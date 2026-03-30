@@ -30,31 +30,29 @@ import { FXExecutionService } from "@/services/fxExecutionService";
 import { FXStructureService } from "@/services/fxStructureService";
 import { FXLiquidityService } from "@/services/fxLiquidityService";
 import { USDJPYDecisionResult } from "@/utils/fx/usdjpyDecision";
+import { FXPersistence } from "@/utils/fx/persistence";
 
 export function useIntegratedCommandCenter() {
   const { user } = useAuth();
   const { quote, ohlcData, isLoading: isMarketLoading } = useUSDJPYData(3000);
 
-  // States
-  const [sentiment, setSentiment] = useState<FXMarketSentiment | null>(null);
-  const [reviews, setReviews] = useState<FXTradingReview[]>([]);
-  const [riskMetrics, setRiskMetrics] = useState<FXRiskMetrics | null>(null);
-  const [activePositions, setActivePositions] = useState<FXSimulation[]>([]);
-  const [performance, setPerformance] = useState<any>(null); // TODO: Define Full Performance type
-  const [weightProfile, setWeightProfile] = useState<FXWeightProfile | null>(null);
-  const [indicatorStatus, setIndicatorStatus] = useState<{ status: "normal" | "caution" | "prohibited", message: string } | null>(null);
-  const [executionProfile, setExecutionProfile] = useState<FXExecutionProfile | null>(null);
-  const [structureAnalysis, setStructureAnalysis] = useState<FXStructureAnalysis | null>(null);
-  const [pseudoOrderBook, setPseudoOrderBook] = useState<FXPseudoOrderBook | null>(null);
-  const [conditionAnalysis, setConditionAnalysis] = useState<FXConditionAnalysis | null>(null);
-  const [backtestComparisons, setBacktestComparisons] = useState<FXBacktestComparison[]>([]);
-  const [violationLogs, setViolationLogs] = useState<any[]>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
-  const [tuningConfig, setTuningConfig] = useState<FXTuningConfig | null>(null);
-  const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(null);
-  const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>([]);
+  // States (Initial logic: Load from cache if available)
+  const [sentiment, setSentiment] = useState<FXMarketSentiment | null>(() => FXPersistence.load("sentiment"));
+  const [reviews, setReviews] = useState<FXTradingReview[]>(() => FXPersistence.load("reviews") || []);
+  const [riskMetrics, setRiskMetrics] = useState<FXRiskMetrics | null>(() => FXPersistence.load("riskMetrics"));
+  const [activePositions, setActivePositions] = useState<FXSimulation[]>(() => FXPersistence.load("activePositions") || []);
+  const [performance, setPerformance] = useState<any>(() => FXPersistence.load("performance")); 
+  const [weightProfile, setWeightProfile] = useState<FXWeightProfile | null>(() => FXPersistence.load("weightProfile"));
+  const [indicatorStatus, setIndicatorStatus] = useState<{ status: "normal" | "caution" | "prohibited", message: string } | null>(() => FXPersistence.load("indicatorStatus"));
+  const [conditionAnalysis, setConditionAnalysis] = useState<FXConditionAnalysis | null>(() => FXPersistence.load("conditionAnalysis"));
+  const [backtestComparisons, setBacktestComparisons] = useState<FXBacktestComparison[]>(() => FXPersistence.load("backtestComparisons") || []);
+  const [violationLogs, setViolationLogs] = useState<any[]>(() => FXPersistence.load("violationLogs") || []);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>(() => FXPersistence.load("upcomingEvents") || []);
+  const [tuningConfig, setTuningConfig] = useState<FXTuningConfig | null>(() => FXPersistence.load("tuningConfig"));
+  const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(() => FXPersistence.load("driftAnalysis"));
+  const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>(() => FXPersistence.load("tuningLogs") || []);
   
-  const [isDataLoading, setIsDataLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(!FXPersistence.load("riskMetrics"));
 
   // Data Fetching
   const refreshData = useCallback(async () => {
@@ -89,12 +87,27 @@ export function useIntegratedCommandCenter() {
       setPerformance(perf);
       setWeightProfile(wp);
       setIndicatorStatus(inst);
-      setConditionAnalysis(cond);
+      setConditionAnalysis(cond || { timeOfDay: {}, dayOfWeek: {}, regime: {}, sentiment: {}, liquidity: {} });
       setBacktestComparisons(btest);
       setViolationLogs(logs);
       setUpcomingEvents(evts);
       setTuningConfig(tConfig);
       setTuningLogs(tLogs);
+
+      // Save to cache
+      FXPersistence.save("sentiment", s);
+      FXPersistence.save("reviews", r);
+      FXPersistence.save("riskMetrics", rm);
+      FXPersistence.save("activePositions", ap);
+      FXPersistence.save("performance", perf);
+      FXPersistence.save("weightProfile", wp);
+      FXPersistence.save("indicatorStatus", inst);
+      FXPersistence.save("conditionAnalysis", cond);
+      FXPersistence.save("backtestComparisons", btest);
+      FXPersistence.save("violationLogs", logs);
+      FXPersistence.save("upcomingEvents", evts);
+      FXPersistence.save("tuningConfig", tConfig);
+      FXPersistence.save("tuningLogs", tLogs);
     } catch (e) {
       console.error("Error fetching integrated data", e);
     } finally {
@@ -104,16 +117,20 @@ export function useIntegratedCommandCenter() {
 
   useEffect(() => {
     refreshData();
-    const interval = setInterval(refreshData, 60000); // 60秒おきに最新化（クォータ節約）
+    const interval = setInterval(refreshData, 300000); // 300秒おきに最新化 (コスト削減)
     return () => clearInterval(interval);
   }, [refreshData]);
 
-  // 初期ロード時のみ Drift 分析を実行 (書き込みクォータ節約のため)
-  useEffect(() => {
-    if (user) {
-      FXTuningService.analyzeDrift(user.uid)
-        .then(setDriftAnalysis)
-        .catch(e => console.error("Initial drift analysis failed", e));
+  // analyzeDrift is no longer automatic on mount to save write quota.
+  // We rely on manually triggered analysis or cached values.
+  const triggerDriftAnalysis = useCallback(async () => {
+    if (!user) return;
+    try {
+      const d = await FXTuningService.analyzeDrift(user.uid);
+      setDriftAnalysis(d);
+      FXPersistence.save("driftAnalysis", d);
+    } catch (e) {
+      console.error("Manual drift analysis failed", e);
     }
   }, [user]);
 
@@ -155,6 +172,16 @@ export function useIntegratedCommandCenter() {
   }, [ohlcData, quote, weightProfile, indicatorStatus, riskMetrics, tuningConfig]);
 
   // Actions
+  const closePosition = useCallback(async (id: string, price: number, reason: string) => {
+    if (!user) return;
+    try {
+      await FXSimulationService.closeSimulation(user.uid, id, price, reason);
+      await refreshData();
+    } catch (e) {
+      console.error("Failed to close position", e);
+    }
+  }, [user, refreshData]);
+
   const deletePosition = useCallback(async (id: string) => {
     if (!user) return;
     try {
@@ -175,12 +202,34 @@ export function useIntegratedCommandCenter() {
     }
   }, [user, refreshData]);
 
-  // Periodic position management
+  // Periodic position management (Monitoring price locally in memory)
   useEffect(() => {
-    if (user && quote && quote.price) {
-      FXSimulationService.manageOpenPositions(user.uid, quote.price);
+    if (user && quote && quote.price && activePositions.length > 0) {
+      // Manage open positions locally. If stop loss or take profit is hit, trigger close.
+      activePositions.forEach(pos => {
+        let shouldClose = false;
+        let reason = "";
+
+        if (pos.side === "buy") {
+           if (pos.stopLoss && quote.price <= pos.stopLoss) {
+             shouldClose = true; reason = "Auto-Close: SL (Local)";
+           } else if (pos.takeProfit && quote.price >= pos.takeProfit) {
+             shouldClose = true; reason = "Auto-Close: TP (Local)";
+           }
+        } else {
+           if (pos.stopLoss && quote.price >= pos.stopLoss) {
+             shouldClose = true; reason = "Auto-Close: SL (Local)";
+           } else if (pos.takeProfit && quote.price <= pos.takeProfit) {
+             shouldClose = true; reason = "Auto-Close: TP (Local)";
+           }
+        }
+
+        if (shouldClose) {
+          closePosition(pos.id, quote.price, reason);
+        }
+      });
     }
-  }, [user, quote?.price]);
+  }, [user, quote?.price, activePositions, closePosition]);
 
   return {
     user,
@@ -206,12 +255,14 @@ export function useIntegratedCommandCenter() {
     tuningLogs,
     isLoading: isMarketLoading || isDataLoading,
     refreshData,
+    triggerDriftAnalysis,
     updateTuning: async (u: any, r: string) => {
       if (!user) return;
       await FXTuningService.updateTuningConfig(user.uid, u, r);
       await refreshData();
     },
     deletePosition,
-    updatePosition
+    updatePosition,
+    closePosition
   };
 }

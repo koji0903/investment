@@ -74,7 +74,8 @@ export const IntegratedCommandCenter = () => {
     refreshData,
     updateTuning,
     deletePosition,
-    updatePosition
+    updatePosition,
+    triggerDriftAnalysis
   } = useIntegratedCommandCenter();
 
   const [showEntryForm, setShowEntryForm] = React.useState(false);
@@ -384,6 +385,7 @@ export const IntegratedCommandCenter = () => {
            tuningLogs={tuningLogs}
            onUpdateTuning={updateTuning}
            onRefreshTuning={refreshData}
+           onAnalyzeDrift={triggerDriftAnalysis}
          />
        </section>
 
@@ -551,7 +553,8 @@ const BottomAnalysisTabs = ({
   driftAnalysis, 
   tuningLogs,
   onUpdateTuning,
-  onRefreshTuning
+  onRefreshTuning,
+  onAnalyzeDrift
 }: any) => {
   const [activeTab, setActiveTab] = React.useState("performance");
 
@@ -652,6 +655,7 @@ const BottomAnalysisTabs = ({
                   logs={tuningLogs} 
                   onUpdate={onUpdateTuning}
                   onRefresh={onRefreshTuning}
+                  onAnalyzeDrift={onAnalyzeDrift}
                 />
              </motion.div>
            )}

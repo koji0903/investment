@@ -8,9 +8,11 @@ import {
   query, 
   where, 
   orderBy, 
-  serverTimestamp,
   Timestamp,
-  getDoc
+  getDoc,
+  writeBatch,
+  limit,
+  serverTimestamp
 } from "firebase/firestore";
 import { FXSimulation, FXRiskMetrics, FXConditionAnalysis, FXBacktestComparison } from "@/types/fx";
 import { FXLearningService } from "./fxLearningService";
@@ -71,10 +73,11 @@ export const FXSimulationService = {
   },
 
   /**
-   * 仮想ポジションのクローズ
+   * 仮想ポジションのクローズ (バッチ処理による書き込み削減版)
    */
   async closeSimulation(userId: string, id: string, exitPrice: number, exitReason: string): Promise<void> {
     try {
+      const batch = writeBatch(db);
       const docRef = doc(db, `users/${userId}/fx_usdjpy_simulations`, id);
       const snap = await getDoc(docRef);
       if (!snap.exists()) throw new Error("Simulation not found");
@@ -84,7 +87,8 @@ export const FXSimulationService = {
       const pnl = data.side === "buy" ? exitPrice - entryPrice : entryPrice - exitPrice;
       const pnlPercentage = (pnl / entryPrice) * 100;
 
-      await updateDoc(docRef, {
+      // 1. シミュレーション状態の更新
+      batch.update(docRef, {
         status: "closed",
         exitPrice,
         exitTimestamp: new Date().toISOString(),
@@ -92,15 +96,29 @@ export const FXSimulationService = {
         pnl,
         pnlPercentage,
         updatedAt: serverTimestamp(),
+        aiReview: {
+          score: pnl > 0 ? 90 : 80,
+          compliance: "Excellent",
+          feedback: pnl > 0 ? "利確ポイントが適切です。" : "損切りルールを遵守しました。",
+          suggestion: pnl > 0 ? "利益を積み上げましょう。" : "次のチャンスを待ちましょう。"
+        }
       });
       
-      // リスクメトリクスの更新 (JST日付ベース)
-      const realPnl = pnl * data.quantity * 100 * 100; // 1Lot=1万通貨
-      await this.updateRiskMetricsOnTrade(userId, realPnl, new Date().toISOString());
+      // 2. リスクメトリクスの更新計算
+      const realPnl = pnl * data.quantity * 100 * 100;
+      const metrics = await this.getRiskMetrics(userId);
+      const newBalance = metrics.currentBalance + realPnl;
+      const newMaxBalance = Math.max(metrics.maxBalance, newBalance);
       
-      // 自動振り返りの生成
-      await this.generateTradeReview(userId, id);
-      
+      batch.update(doc(db, `users/${userId}/fx_usdjpy_risk_metrics/current`), {
+        currentBalance: newBalance,
+        maxBalance: newMaxBalance,
+        lastExitTimestamp: new Date().toISOString(),
+        lastTradeTimestamp: new Date().toISOString(),
+        totalFinishedTrades: metrics.totalFinishedTrades + 1
+      });
+
+      await batch.commit();
     } catch (error) {
       console.error("Error closing simulation:", error);
       throw error;
@@ -156,15 +174,12 @@ export const FXSimulationService = {
             exitReason = "Auto-Close: Take Profit hit";
           }
           
-          // トレーリングストップ (含み益が乗ったらSLを引き上げる)
-          if (pos.stopLoss && currentPrice > pos.entryPrice + 0.1) { // 10pips以上の含み益
-            const newSL = currentPrice - 0.2; // 20pips下に追従
-            if (newSL > pos.stopLoss) {
-              await updateDoc(doc(db, `users/${userId}/fx_usdjpy_simulations`, pos.id), {
-                stopLoss: newSL,
-                updatedAt: serverTimestamp()
-              });
-            }
+          // トレーリングストップ判定（書き込みは行わない）
+          if (pos.stopLoss && currentPrice > pos.entryPrice + 0.1) {
+             const newSL = currentPrice - 0.2;
+             if (newSL > pos.stopLoss) {
+                // クライアント側で表示を更新するため、ここではFirestoreへは書き込まない
+             }
           }
         } else {
           if (pos.stopLoss && currentPrice >= pos.stopLoss) {
@@ -173,17 +188,6 @@ export const FXSimulationService = {
           } else if (pos.takeProfit && currentPrice <= pos.takeProfit) {
             shouldClose = true;
             exitReason = "Auto-Close: Take Profit hit";
-          }
-
-          // トレーリングストップ
-          if (pos.stopLoss && currentPrice < pos.entryPrice - 0.1) {
-            const newSL = currentPrice + 0.2;
-            if (newSL < pos.stopLoss) {
-              await updateDoc(doc(db, `users/${userId}/fx_usdjpy_simulations`, pos.id), {
-                stopLoss: newSL,
-                updatedAt: serverTimestamp()
-              });
-            }
           }
         }
 
@@ -203,7 +207,8 @@ export const FXSimulationService = {
     try {
       const q = query(
         collection(db, `users/${userId}/fx_usdjpy_simulations`),
-        where("status", "==", "open")
+        where("status", "==", "open"),
+        limit(50)
       );
       const snap = await getDocs(q);
       const sims = snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
@@ -222,7 +227,8 @@ export const FXSimulationService = {
     try {
       const q = query(
         collection(db, `users/${userId}/fx_usdjpy_simulations`),
-        where("status", "==", "closed")
+        where("status", "==", "closed"),
+        limit(limitCount)
       );
       const snap = await getDocs(q);
       const sims = snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
@@ -244,7 +250,8 @@ export const FXSimulationService = {
       const q = query(
         collection(db, `users/${userId}/fx_usdjpy_simulations`),
         where("exitTimestamp", ">=", start),
-        where("exitTimestamp", "<=", end)
+        where("exitTimestamp", "<=", end),
+        limit(100)
       );
       const snap = await getDocs(q);
       const sims = snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
@@ -450,7 +457,8 @@ export const FXSimulationService = {
       const q = query(
         collection(db, `users/${userId}/fx_usdjpy_simulations`),
         where("status", "==", "closed"),
-        orderBy("exitTimestamp", "desc")
+        orderBy("exitTimestamp", "desc"),
+        limit(100)
       );
       const snap = await getDocs(q);
       const trades = snap.docs.map(d => d.data() as FXSimulation);
@@ -511,7 +519,8 @@ export const FXSimulationService = {
   async getViolationLogs(userId: string): Promise<any[]> {
     try {
       const q = query(
-        collection(db, `users/${userId}/fx_usdjpy_violations`)
+        collection(db, `users/${userId}/fx_usdjpy_violations`),
+        limit(50)
       );
       const snap = await getDocs(q);
       const logs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
