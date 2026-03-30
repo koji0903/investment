@@ -58,7 +58,7 @@ export const FXSimulationService = {
       
       // 直近エントリー時刻の更新
       const metrics = await this.getRiskMetrics(userId);
-      await setDoc(doc(db, `users/${userId}/fx_usdjpy_risk_metrics`), {
+      await setDoc(doc(db, `users/${userId}/fx_usdjpy_risk_metrics/current`), {
         ...metrics,
         lastEntryTimestamp: new Date().toISOString()
       });
@@ -229,7 +229,7 @@ export const FXSimulationService = {
    */
   async getRiskMetrics(userId: string): Promise<FXRiskMetrics> {
     try {
-      const docRef = doc(db, `users/${userId}/fx_usdjpy_risk_metrics`);
+      const docRef = doc(db, `users/${userId}/fx_usdjpy_risk_metrics/current`);
       const snap = await getDoc(docRef);
       
       if (snap.exists()) {
@@ -391,7 +391,7 @@ export const FXSimulationService = {
         lastTradeTimestamp: new Date().toISOString()
       };
 
-      await setDoc(doc(db, `users/${userId}/fx_usdjpy_risk_metrics`), updatedMetrics);
+      await setDoc(doc(db, `users/${userId}/fx_usdjpy_risk_metrics/current`), updatedMetrics);
     } catch (error) {
       console.error("Error updating risk metrics:", error);
     }
