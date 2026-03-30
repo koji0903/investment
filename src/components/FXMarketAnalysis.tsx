@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Globe, Calendar, Zap, TrendingUp, TrendingDown, Info, ArrowRight, Activity } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 import { 
   BarChart, 
   Bar, 
@@ -151,9 +152,12 @@ export const FXMarketAnalysis = () => {
                   key={item.pair}
                   className="group flex flex-col sm:flex-row xl:flex-row items-center gap-4 p-4 bg-slate-50/50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800 transition-all hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:border-indigo-500/20"
                 >
-                  <div className="flex-shrink-0 w-full sm:w-16 h-10 rounded-xl flex items-center justify-center text-xs font-black bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 shadow-sm group-hover:bg-indigo-500 group-hover:text-white group-hover:border-indigo-500 transition-colors">
+                  <Link 
+                    href={item.pair.includes("USDJPY") ? "/fx/usdjpy" : item.pair.includes("EURUSD") ? "/fx/eurusd" : "#"}
+                    className="flex-shrink-0 w-full sm:w-16 h-10 rounded-xl flex items-center justify-center text-xs font-black bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-100 dark:border-slate-700 shadow-sm group-hover:bg-indigo-500 group-hover:text-white group-hover:border-indigo-500 transition-colors cursor-pointer"
+                  >
                     {item.pair.replace("=X", "")}
-                  </div>
+                  </Link>
                   <div className="flex-1 w-full min-w-0 space-y-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-sm font-black text-slate-900 dark:text-white tabular-nums">

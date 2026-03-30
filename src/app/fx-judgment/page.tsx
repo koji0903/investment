@@ -24,19 +24,39 @@ export default function FXJudgmentPage() {
             hideAuth={true}
           />
 
-          <div className="mt-12 space-y-8">
-            <div className="flex justify-start">
-               <a 
-                 href="/fx/usdjpy" 
-                 className="group relative px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-2xl shadow-indigo-500/30 transition-all flex items-center gap-3 active:scale-95"
-               >
-                 <div className="p-2 bg-white/20 rounded-xl">
-                   <Zap size={18} fill="currentColor" />
-                 </div>
-                 <span>USD/JPY Day Trading Pro</span>
-                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-               </a>
-            </div>
+          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <a 
+              href="/fx/usdjpy" 
+              className="group relative px-8 py-6 bg-slate-900 hover:bg-slate-800 text-white rounded-[32px] border border-slate-800 hover:border-indigo-500/50 font-black text-sm uppercase tracking-widest shadow-2xl transition-all flex items-center justify-between active:scale-95"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-indigo-500/20 rounded-2xl text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                  <Zap size={20} fill="currentColor" />
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 mb-0.5 tracking-[0.2em]">USD/JPY</div>
+                  <span className="text-base">Day Trading Pro</span>
+                </div>
+              </div>
+              <ArrowRight size={20} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+            </a>
+
+            <a 
+              href="/fx/eurusd" 
+              className="group relative px-8 py-6 bg-slate-900 hover:bg-slate-800 text-white rounded-[32px] border border-slate-800 hover:border-emerald-500/50 font-black text-sm uppercase tracking-widest shadow-2xl transition-all flex items-center justify-between active:scale-95"
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-emerald-500/20 rounded-2xl text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
+                  <Zap size={20} fill="currentColor" />
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-500 mb-0.5 tracking-[0.2em]">EUR/USD</div>
+                  <span className="text-base">Day Trading Pro</span>
+                </div>
+              </div>
+              <ArrowRight size={20} className="text-slate-600 group-hover:text-white group-hover:translate-x-1 transition-all" />
+            </a>
+          </div>
             <FXJudgmentDashboard />
           </div>
         </div>
