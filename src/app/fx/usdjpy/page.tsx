@@ -61,8 +61,8 @@ export default function USDJPYDashboardPage() {
     upcomingEvents 
   } = useIntegratedCommandCenter("USD/JPY");
 
-  const nextEvent = upcomingEvents && upcomingEvents.length > 0 ? upcomingEvents[0] : undefined;
-  const minutesToEvent = nextEvent ? 15 : undefined; // Simplified for now
+  const nextEvent = indicatorStatus?.nextEvent;
+  const minutesToEvent = indicatorStatus?.minutesToEvent;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-indigo-500/30">

@@ -54,6 +54,13 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
   const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>(() => AppPersistence.load(cacheKey("tuningLogs")) || []);
   
   const [isDataLoading, setIsDataLoading] = useState(!AppPersistence.load(cacheKey("riskMetrics")));
+  const [now, setNow] = useState(new Date());
+
+  // Real-time Clock for status recalculation
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 10000); // 10秒毎に更新
+    return () => clearInterval(timer);
+  }, []);
 
   // Data Fetching
   const refreshData = useCallback(async () => {
@@ -133,6 +140,59 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
     }
   }, [user, pairCode]);
 
+  // Status Calculation based on real-time clock
+  const realTimeStatus = useMemo(() => {
+    if (!upcomingEvents || upcomingEvents.length === 0) {
+      return { status: "normal" as const, message: "対象通貨に関連する制限はありません", minutesToEvent: undefined, nextEvent: undefined };
+    }
+
+    const currentTime = now.getTime();
+    const currencies = pairCode.split("/");
+    const relevantEvents = upcomingEvents.filter(e => 
+      currencies.includes(e.currency) || e.currency === "USD"
+    );
+
+    const futureEvents = relevantEvents
+      .filter(e => new Date(e.timestamp).getTime() > currentTime - 1000 * 60 * 30) 
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    if (futureEvents.length === 0) {
+      return { status: "normal" as const, message: "対象通貨に関連する制限はありません", minutesToEvent: undefined, nextEvent: undefined };
+    }
+
+    const nextEvt = futureEvents[0];
+    const eventTime = new Date(nextEvt.timestamp).getTime();
+    const diffMin = (eventTime - currentTime) / (1000 * 60);
+
+    if (nextEvt.importance === "high" && diffMin <= 30 && diffMin >= -30) {
+      return { 
+        status: "prohibited" as const, 
+        message: `【禁止】${nextEvt.name} の発表直前・直後です`, 
+        nextEvent: nextEvt,
+        minutesToEvent: Math.round(diffMin)
+      };
+    }
+
+    if (
+      (nextEvt.importance === "medium" && diffMin <= 15 && diffMin >= -15) ||
+      (nextEvt.importance === "high" && diffMin <= 60)
+    ) {
+      return { 
+        status: "caution" as const, 
+        message: `【警戒】${nextEvt.name} の発表が近づいています`, 
+        nextEvent: nextEvt,
+        minutesToEvent: Math.round(diffMin)
+      };
+    }
+
+    return { 
+      status: "normal" as const, 
+      message: "通常運用", 
+      nextEvent: nextEvt,
+      minutesToEvent: Math.round(diffMin)
+    };
+  }, [upcomingEvents, pairCode, now]);
+
   // Real-time calculation based on market data
   const derivedData = useMemo(() => {
     if (!ohlcData["1m"].length) {
@@ -162,7 +222,7 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
       [], 
       true, 
       weightProfile, 
-      indicatorStatus || { status: "normal", message: "通常運用" },
+      realTimeStatus,
       profile,
       structure,
       orderBook,
@@ -171,7 +231,7 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
     );
 
     return { profile, structure, orderBook, decision };
-  }, [ohlcData, quote, weightProfile, indicatorStatus, riskMetrics, tuningConfig, pairCode]);
+  }, [ohlcData, quote, weightProfile, realTimeStatus, riskMetrics, tuningConfig, pairCode]);
 
   // Actions
   const closePosition = useCallback(async (id: string, price: number, reason: string) => {
@@ -242,7 +302,7 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
     activePositions,
     performance,
     weightProfile,
-    indicatorStatus,
+    indicatorStatus: realTimeStatus,
     decision: derivedData.decision,
     executionProfile: derivedData.profile,
     structureAnalysis: derivedData.structure,

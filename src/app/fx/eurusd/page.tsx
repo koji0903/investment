@@ -15,9 +15,8 @@ export default function EURUSDDashboardPage() {
     upcomingEvents 
   } = useIntegratedCommandCenter("EUR/USD");
 
-  const nextEvent = upcomingEvents && upcomingEvents.length > 0 ? upcomingEvents[0] : undefined;
-  // 仮の時間は本来は indicatorStatus 等から計算するかフックで提供
-  const minutesToEvent = nextEvent ? 15 : undefined; 
+  const nextEvent = indicatorStatus?.nextEvent;
+  const minutesToEvent = indicatorStatus?.minutesToEvent;
   
   if (loading) return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center">
