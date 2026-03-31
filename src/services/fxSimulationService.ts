@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { FXSimulation, FXRiskMetrics, FXConditionAnalysis, FXBacktestComparison } from "@/types/fx";
 import { setDoc } from "firebase/firestore";
+import { checkTradePermission } from "@/utils/fx/tradeGovernance";
 
 /**
  * FX シミュレーション (仮想トレード) サービス
@@ -52,6 +53,51 @@ export const FXSimulationService = {
       const prefix = getCollPrefix(pair);
       const { isJPY } = getMultipliers(pair);
 
+      // 1. 二重エントリーチェック (物理ブロック)
+      const activePositions = await this.getActiveSimulations(userId, pair);
+      if (activePositions.length > 0) {
+        const msg = `[Governance] ${pair} の未決済ポジションが既に存在するため、新規エントリーは拒否されました。`;
+        await this.logViolation(userId, msg, { pair, action: "double_entry" }, pair);
+        throw new Error(msg);
+      }
+
+      // 2. ガバナンスチェック (クールダウン、日次制限、DD制限)
+      const metrics = await this.getRiskMetrics(userId, pair);
+      const permission = checkTradePermission(metrics, null, false);
+      if (!permission.isAllowed) {
+        const msg = `[Governance] ルール違反により注文が拒否されました: ${permission.reason}`;
+        await this.logViolation(userId, msg, { pair, permission }, pair);
+        throw new Error(msg);
+      }
+
+      // 3. SL / TP の論理チェック
+      if (data.side === "buy") {
+        if (data.stopLoss && data.stopLoss >= data.entryPrice) {
+          throw new Error("[Validation] 買い注文のストップは現在価格より低く設定してください。");
+        }
+        if (data.takeProfit && data.takeProfit <= data.entryPrice) {
+          throw new Error("[Validation] 買い注文のリミットは現在価格より高く設定してください。");
+        }
+      } else {
+        if (data.stopLoss && data.stopLoss <= data.entryPrice) {
+          throw new Error("[Validation] 売り注文のストップは現在価格より高く設定してください。");
+        }
+        if (data.takeProfit && data.takeProfit >= data.entryPrice) {
+          throw new Error("[Validation] 売り注文のリミットは現在価格より低く設定してください。");
+        }
+      }
+
+      // 4. ロットサイズの異常値チェック (あまりに過大なリスクは警告なしに拒絶)
+      // 資金の10%以上の損失を出すようなロットはガバナンス外
+      const diffStop = Math.abs(data.entryPrice - (data.stopLoss || 0));
+      const { yenMultiplier } = getMultipliers(pair);
+      const estimatedLoss = diffStop * data.quantity * yenMultiplier;
+      if (estimatedLoss > metrics.currentBalance * 0.1) {
+        const msg = "[Governance] 1トレードの許容損失が資金の10%を超えているため、注文が実行できませんでした (過剰リスク制限)。";
+        await this.logViolation(userId, msg, { estimatedLoss, currentBalance: metrics.currentBalance }, pair);
+        throw new Error(msg);
+      }
+
       // スリッページのエミュレーション (ボラティリティ急増時に発生)
       let slippagePips = 0;
       if (executionProfile?.volatilitySpike) {
@@ -77,9 +123,9 @@ export const FXSimulationService = {
         updatedAt: serverTimestamp(),
       });
       
-      const metrics = await this.getRiskMetrics(userId, pair);
+      const updatedMetrics = await this.getRiskMetrics(userId, pair);
       await setDoc(doc(db, `users/${userId}/${prefix}_risk_metrics/current`), {
-        ...metrics,
+        ...updatedMetrics,
         lastEntryTimestamp: new Date().toISOString()
       });
       
@@ -103,6 +149,11 @@ export const FXSimulationService = {
       if (!snap.exists()) throw new Error("Simulation not found");
       
       const data = snap.data() as FXSimulation;
+      
+      // 二重決済防止
+      if (data.status === "closed") {
+        throw new Error("[Governance] このポジションは既に決済済みです。");
+      }
       const entryPrice = data.execution?.realizedEntryPrice ?? data.entryPrice;
       const pnl = data.side === "buy" ? exitPrice - entryPrice : entryPrice - exitPrice;
       const pnlPercentage = (pnl / entryPrice) * 100;

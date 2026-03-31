@@ -30,6 +30,8 @@ import { FXExecutionService } from "@/services/fxExecutionService";
 import { FXStructureService } from "@/services/fxStructureService";
 import { FXLiquidityService } from "@/services/fxLiquidityService";
 import { AppPersistence } from "@/utils/common/persistence";
+import { onSnapshot, doc, collection, query, where, limit } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
   const { user } = useAuth();
@@ -53,91 +55,126 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
   const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(() => AppPersistence.load(cacheKey("driftAnalysis")));
   const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>(() => AppPersistence.load(cacheKey("tuningLogs")) || []);
   
-  const [isDataLoading, setIsDataLoading] = useState(!AppPersistence.load(cacheKey("riskMetrics")));
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [now, setNow] = useState(new Date());
 
-  // Real-time Clock for status recalculation
+  // --- 1. Real-time Clock ---
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 10000); // 10秒毎に更新
+    const timer = setInterval(() => setNow(new Date()), 10000);
     return () => clearInterval(timer);
   }, []);
 
-  // Data Fetching
-  const refreshData = useCallback(async () => {
+  // --- 2. リアルタイム購読 (onSnapshot) ---
+  // 有効なポジションとリスクメトリクスはポーリングではなくストリームで取得し読み取り回数を削減
+  useEffect(() => {
+    if (!user) return;
+    const prefix = pairCode.toLowerCase().replace("/", "_");
+    
+    // リスクメトリクス購読
+    const metricsUnsub = onSnapshot(doc(db, `users/${user.uid}/fx_${prefix}_risk_metrics/current`), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data() as FXRiskMetrics;
+        setRiskMetrics(data);
+        AppPersistence.save(cacheKey("riskMetrics"), data);
+      }
+    });
+
+    // アクティブポジション購読
+    const positionsQuery = query(
+      collection(db, `users/${user.uid}/fx_${prefix}_simulations`),
+      where("status", "==", "open"),
+      limit(50)
+    );
+    const positionsUnsub = onSnapshot(positionsQuery, (snap) => {
+      const ap = snap.docs.map(d => ({ id: d.id, ...d.data() } as FXSimulation));
+      setActivePositions(ap.sort((a, b) => new Date(b.entryTimestamp).getTime() - new Date(a.entryTimestamp).getTime()));
+      AppPersistence.save(cacheKey("activePositions"), ap);
+    });
+
+    return () => {
+      metricsUnsub();
+      positionsUnsub();
+    };
+  }, [user, pairCode]);
+
+  // --- 3. データ取得 (Granular Fetching) ---
+  const refreshData = useCallback(async (forceMetadata = false) => {
     if (!user) {
       setIsDataLoading(false);
       return;
     }
     try {
-      const CACHE_TTL = 3 * 60 * 1000; // 3分キャッシュ
-      const lastFetchKey = cacheKey("last_integrated_fetch");
-      const lastFetch = AppPersistence.load<number>(lastFetchKey) || 0;
+      const HIGH_FREQ_TTL = 3 * 60 * 1000;  // 3分
+      const METADATA_TTL = 20 * 60 * 1000; // 20分 (低頻度データ用)
+      const lastHighFreqKey = cacheKey("last_highfreq_fetch");
+      const lastMetaKey = cacheKey("last_metadata_fetch");
       
-      // 直近3分以内にフェッチ済みの場合は、既存のキャッシュを利用しリクエストをスキップ
-      if (Date.now() - lastFetch < CACHE_TTL && sentiment) {
-        console.log(`[Integrated] Using cached data for ${pairCode}`);
-        return;
+      const nowTime = Date.now();
+      const lastHighFreq = AppPersistence.load<number>(lastHighFreqKey) || 0;
+      const lastMeta = AppPersistence.load<number>(lastMetaKey) || 0;
+
+      // a. 高頻度・中頻度データの取得 (経済指標等)
+      if (nowTime - lastHighFreq > HIGH_FREQ_TTL) {
+        console.log(`[Integrated] Fetching High-Freq data for ${pairCode}`);
+        const [inst, evts, perf] = await Promise.all([
+          FXIndicatorService.getEventStatus(pairCode),
+          FXIndicatorService.getUpcomingEvents(pairCode),
+          FXSimulationService.getAggregatedPerformance(user.uid, pairCode)
+        ]);
+        setIndicatorStatus(inst);
+        setUpcomingEvents(evts);
+        setPerformance(perf);
+        
+        AppPersistence.save(cacheKey("indicatorStatus"), inst);
+        AppPersistence.save(cacheKey("upcomingEvents"), evts);
+        AppPersistence.save(cacheKey("performance"), perf);
+        AppPersistence.save(lastHighFreqKey, nowTime);
       }
 
-      console.log(`[Integrated] Fetching fresh data for ${pairCode}`);
-      const [
-        s, r, rm, ap, perf, wp, inst, cond, btest, logs, evts,
-        tConfig, tLogs
-      ] = await Promise.all([
-        getMarketSentimentAction(),
-        getFXReviewsAction(user.uid, 20, pairCode),
-        FXSimulationService.getRiskMetrics(user.uid, pairCode),
-        FXSimulationService.getActiveSimulations(user.uid, pairCode),
-        FXSimulationService.getAggregatedPerformance(user.uid, pairCode),
-        FXLearningService.getWeightProfile(user.uid, pairCode),
-        FXIndicatorService.getEventStatus(pairCode),
-        FXSimulationService.getConditionAnalysis(user.uid, pairCode),
-        FXSimulationService.getBacktestComparisons(pairCode),
-        FXSimulationService.getViolationLogs(user.uid, pairCode),
-        FXIndicatorService.getUpcomingEvents(pairCode),
-        FXTuningService.getTuningConfig(user.uid, pairCode),
-        FXTuningService.getTuningLogs(user.uid, pairCode)
-      ]);
+      // b. 低頻度データの取得 (分析、過去ログ、設定。TTL 20分)
+      if (forceMetadata || nowTime - lastMeta > METADATA_TTL || !sentiment) {
+        console.log(`[Integrated] Fetching Metadata for ${pairCode}`);
+        const [s, r, wp, cond, btest, logs, tConfig, tLogs] = await Promise.all([
+          getMarketSentimentAction(),
+          getFXReviewsAction(user.uid, 20, pairCode),
+          FXLearningService.getWeightProfile(user.uid, pairCode),
+          FXSimulationService.getConditionAnalysis(user.uid, pairCode),
+          FXSimulationService.getBacktestComparisons(pairCode),
+          FXSimulationService.getViolationLogs(user.uid, pairCode),
+          FXTuningService.getTuningConfig(user.uid, pairCode),
+          FXTuningService.getTuningLogs(user.uid, pairCode)
+        ]);
 
-      setSentiment(s);
-      setReviews(r);
-      setRiskMetrics(rm);
-      setActivePositions(ap);
-      setPerformance(perf);
-      setWeightProfile(wp);
-      setIndicatorStatus(inst);
-      setConditionAnalysis(cond || { timeOfDay: {}, dayOfWeek: {}, regime: {}, sentiment: {}, liquidity: {} });
-      setBacktestComparisons(btest);
-      setViolationLogs(logs);
-      setUpcomingEvents(evts);
-      setTuningConfig(tConfig);
-      setTuningLogs(tLogs);
+        setSentiment(s);
+        setReviews(r);
+        setWeightProfile(wp);
+        setConditionAnalysis(cond || { timeOfDay: {}, dayOfWeek: {}, regime: {}, sentiment: {}, liquidity: {} });
+        setBacktestComparisons(btest);
+        setViolationLogs(logs);
+        setTuningConfig(tConfig);
+        setTuningLogs(tLogs);
 
-      // Save to cache
-      AppPersistence.save(cacheKey("sentiment"), s);
-      AppPersistence.save(cacheKey("reviews"), r);
-      AppPersistence.save(cacheKey("riskMetrics"), rm);
-      AppPersistence.save(cacheKey("activePositions"), ap);
-      AppPersistence.save(cacheKey("performance"), perf);
-      AppPersistence.save(cacheKey("weightProfile"), wp);
-      AppPersistence.save(cacheKey("indicatorStatus"), inst);
-      AppPersistence.save(cacheKey("conditionAnalysis"), cond);
-      AppPersistence.save(cacheKey("backtestComparisons"), btest);
-      AppPersistence.save(cacheKey("violationLogs"), logs);
-      AppPersistence.save(cacheKey("upcomingEvents"), evts);
-      AppPersistence.save(cacheKey("tuningConfig"), tConfig);
-      AppPersistence.save(cacheKey("tuningLogs"), tLogs);
-      AppPersistence.save(lastFetchKey, Date.now());
+        AppPersistence.save(cacheKey("sentiment"), s);
+        AppPersistence.save(cacheKey("reviews"), r);
+        AppPersistence.save(cacheKey("weightProfile"), wp);
+        AppPersistence.save(cacheKey("conditionAnalysis"), cond);
+        AppPersistence.save(cacheKey("backtestComparisons"), btest);
+        AppPersistence.save(cacheKey("violationLogs"), logs);
+        AppPersistence.save(cacheKey("tuningConfig"), tConfig);
+        AppPersistence.save(cacheKey("tuningLogs"), tLogs);
+        AppPersistence.save(lastMetaKey, nowTime);
+      }
+
     } catch (e) {
-      console.error(`Error fetching integrated data for ${pairCode}`, e);
+      console.error(`Error refreshing integrated data for ${pairCode}`, e);
     } finally {
       setIsDataLoading(false);
     }
-  }, [user, pairCode]);
+  }, [user, pairCode, sentiment]);
 
   useEffect(() => {
     refreshData();
-    const interval = setInterval(refreshData, 300000);
+    const interval = setInterval(() => refreshData(), 120000); // 2分チェックに短縮 (TTLフィルタリングがあるため負荷は減少)
     return () => clearInterval(interval);
   }, [refreshData]);
 
@@ -250,7 +287,9 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
     if (!user) return;
     try {
       await FXSimulationService.closeSimulation(user.uid, id, price, reason, pairCode);
-      await refreshData();
+      // onSnapshotによって、activePositions と riskMetrics は自動更新されるため
+      // 全件fetch(refreshData)は不要。集計パフォーマンスのみ必要なら個別に取得or遅延更新。
+      setTimeout(() => refreshData(), 3000); 
     } catch (e) {
       console.error("Failed to close position", e);
     }
@@ -260,7 +299,7 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
     if (!user) return;
     try {
       await FXSimulationService.deleteSimulation(user.uid, id, pairCode);
-      await refreshData();
+      setTimeout(() => refreshData(), 3000);
     } catch (e) {
       console.error("Failed to delete position", e);
     }
@@ -270,11 +309,11 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
     if (!user) return;
     try {
       await FXSimulationService.updateSimulation(user.uid, id, updates, pairCode);
-      await refreshData();
+      // 重要でない更新ならrefreshDataすら不要
     } catch (e) {
       console.error("Failed to update position", e);
     }
-  }, [user, refreshData, pairCode]);
+  }, [user, pairCode]);
 
   // Periodic position management
   useEffect(() => {
