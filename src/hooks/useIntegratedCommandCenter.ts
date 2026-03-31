@@ -41,21 +41,21 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
 
   const cacheKey = (key: string) => `${pairCode}_${key}`;
 
-  // States
-  const [sentiment, setSentiment] = useState<FXMarketSentiment | null>(() => AppPersistence.load(cacheKey("sentiment")));
-  const [reviews, setReviews] = useState<FXTradingReview[]>(() => AppPersistence.load(cacheKey("reviews")) || []);
-  const [riskMetrics, setRiskMetrics] = useState<FXRiskMetrics | null>(() => AppPersistence.load(cacheKey("riskMetrics")));
-  const [activePositions, setActivePositions] = useState<FXSimulation[]>(() => AppPersistence.load(cacheKey("activePositions")) || []);
-  const [performance, setPerformance] = useState<FXPerformanceResult | null>(() => AppPersistence.load(cacheKey("performance"))); 
-  const [weightProfile, setWeightProfile] = useState<FXWeightProfile | null>(() => AppPersistence.load(cacheKey("weightProfile")));
-  const [indicatorStatus, setIndicatorStatus] = useState<{ status: "normal" | "caution" | "prohibited", message: string } | null>(() => AppPersistence.load(cacheKey("indicatorStatus")));
-  const [conditionAnalysis, setConditionAnalysis] = useState<FXConditionAnalysis | null>(() => AppPersistence.load(cacheKey("conditionAnalysis")));
-  const [backtestComparisons, setBacktestComparisons] = useState<FXBacktestComparison[]>(() => AppPersistence.load(cacheKey("backtestComparisons")) || []);
-  const [violationLogs, setViolationLogs] = useState<FXViolationLog[]>(() => AppPersistence.load(cacheKey("violationLogs")) || []);
-  const [upcomingEvents, setUpcomingEvents] = useState<FXEconomicEvent[]>(() => AppPersistence.load(cacheKey("upcomingEvents")) || []);
-  const [tuningConfig, setTuningConfig] = useState<FXTuningConfig | null>(() => AppPersistence.load(cacheKey("tuningConfig")));
-  const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(() => AppPersistence.load(cacheKey("driftAnalysis")));
-  const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>(() => AppPersistence.load(cacheKey("tuningLogs")) || []);
+  // States (ハイドレーション不整合を防ぐため、初期値は null/空配列に固定)
+  const [sentiment, setSentiment] = useState<FXMarketSentiment | null>(null);
+  const [reviews, setReviews] = useState<FXTradingReview[]>([]);
+  const [riskMetrics, setRiskMetrics] = useState<FXRiskMetrics | null>(null);
+  const [activePositions, setActivePositions] = useState<FXSimulation[]>([]);
+  const [performance, setPerformance] = useState<FXPerformanceResult | null>(null); 
+  const [weightProfile, setWeightProfile] = useState<FXWeightProfile | null>(null);
+  const [indicatorStatus, setIndicatorStatus] = useState<{ status: "normal" | "caution" | "prohibited", message: string } | null>(null);
+  const [conditionAnalysis, setConditionAnalysis] = useState<FXConditionAnalysis | null>(null);
+  const [backtestComparisons, setBacktestComparisons] = useState<FXBacktestComparison[]>([]);
+  const [violationLogs, setViolationLogs] = useState<FXViolationLog[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<FXEconomicEvent[]>([]);
+  const [tuningConfig, setTuningConfig] = useState<FXTuningConfig | null>(null);
+  const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(null);
+  const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>([]);
   
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [now, setNow] = useState(new Date());
@@ -63,9 +63,10 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
   // --- 1. System Version & Cache Management ---
   useEffect(() => {
     const currentVer = AppPersistence.load<string>("system_version") || "0.0.0";
+    
+    // システムバージョンチェック
     if (currentVer !== SYSTEM_VERSION) {
       console.log(`[Integrated] System Version Mismatch (${currentVer} -> ${SYSTEM_VERSION}). Clearing old cache...`);
-      // 古いモックデータが含まれる可能性のあるキーを一掃
       const keysToClear = [
         "sentiment", "reviews", "riskMetrics", "activePositions", 
         "performance", "weightProfile", "indicatorStatus", "conditionAnalysis", 
@@ -74,11 +75,38 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
       ];
       keysToClear.forEach(k => AppPersistence.clear(cacheKey(k)));
       AppPersistence.save("system_version", SYSTEM_VERSION);
-      
-      // 強制リフレッシュフラグをセット
       refreshData(true);
     } else {
-      // バージョンが一致していても、HIGH_FREQ_TTLを超えていれば即座にリフレッシュ
+      // バージョンが一致している場合のみ、キャッシュからデータを復元 (ハイドレーション完了後)
+      console.log(`[Integrated] Hydrating cache for ${pairCode}`);
+      const s = AppPersistence.load<FXMarketSentiment>(cacheKey("sentiment"));
+      const r = AppPersistence.load<FXTradingReview[]>(cacheKey("reviews")) || [];
+      const rm = AppPersistence.load<FXRiskMetrics>(cacheKey("riskMetrics"));
+      const ap = AppPersistence.load<FXSimulation[]>(cacheKey("activePositions")) || [];
+      const pf = AppPersistence.load<FXPerformanceResult>(cacheKey("performance"));
+      const wp = AppPersistence.load<FXWeightProfile>(cacheKey("weightProfile"));
+      const istat = AppPersistence.load<{ status: "normal" | "caution" | "prohibited", message: string }>(cacheKey("indicatorStatus"));
+      const cond = AppPersistence.load<FXConditionAnalysis>(cacheKey("conditionAnalysis"));
+      const btest = AppPersistence.load<FXBacktestComparison[]>(cacheKey("backtestComparisons")) || [];
+      const vlogs = AppPersistence.load<FXViolationLog[]>(cacheKey("violationLogs")) || [];
+      const evts = AppPersistence.load<FXEconomicEvent[]>(cacheKey("upcomingEvents")) || [];
+      const tcfg = AppPersistence.load<FXTuningConfig>(cacheKey("tuningConfig"));
+      const tlogs = AppPersistence.load<FXTuningLog[]>(cacheKey("tuningLogs")) || [];
+
+      if (s) setSentiment(s);
+      setReviews(r);
+      if (rm) setRiskMetrics(rm);
+      setActivePositions(ap);
+      if (pf) setPerformance(pf);
+      if (wp) setWeightProfile(wp);
+      if (istat) setIndicatorStatus(istat);
+      if (cond) setConditionAnalysis(cond || { timeOfDay: {}, dayOfWeek: {}, regime: {}, sentiment: {}, liquidity: {} });
+      setBacktestComparisons(btest);
+      setViolationLogs(vlogs);
+      setUpcomingEvents(evts);
+      if (tcfg) setTuningConfig(tcfg);
+      setTuningLogs(tlogs);
+
       refreshData(false);
     }
   }, [user, pairCode]);
