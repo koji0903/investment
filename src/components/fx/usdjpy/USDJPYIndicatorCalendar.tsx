@@ -12,9 +12,13 @@ interface Props {
 export const USDJPYIndicatorCalendar = ({ events }: Props) => {
   if (!events || events.length === 0) return null;
 
+  // 最新の時系列のみを表示するためのフィルタリング
+  const now = new Date().getTime();
+  const futureOnly = events.filter(e => new Date(e.timestamp).getTime() > now);
+
   // グループ化 (日付別)
   const groupedEvents: Record<string, FXEconomicEvent[]> = {};
-  events.forEach(e => {
+  futureOnly.forEach(e => {
     const dateStr = new Date(e.timestamp).toLocaleDateString("ja-JP", { weekday: "short", month: "short", day: "numeric" });
     if (!groupedEvents[dateStr]) groupedEvents[dateStr] = [];
     groupedEvents[dateStr].push(e);
@@ -28,45 +32,52 @@ export const USDJPYIndicatorCalendar = ({ events }: Props) => {
       </div>
 
       <div className="space-y-6">
-        {Object.entries(groupedEvents).map(([date, evts]) => (
-          <div key={date} className="space-y-3">
-            <div className="text-[10px] font-black text-slate-500 uppercase border-l-2 border-indigo-500 pl-2">
-              {date}
-            </div>
-            <div className="space-y-2">
-              {evts.map((evt) => (
-                <div key={evt.id} className="flex items-center justify-between p-3 bg-slate-950/40 border border-slate-800/50 rounded-2xl group hover:border-indigo-500/30 transition-all">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-1.5 h-1.5 rounded-full shrink-0",
-                      evt.importance === "high" ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" : "bg-amber-500"
-                    )} />
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-bold text-slate-200 group-hover:text-indigo-300 transition-colors">
-                        {evt.name}
-                      </span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[9px] font-black px-1 rounded bg-slate-800 text-slate-400 uppercase">
-                          {evt.currency}
+        {Object.entries(groupedEvents).length > 0 ? (
+          Object.entries(groupedEvents).map(([date, evts]) => (
+            <div key={date} className="space-y-3">
+              <div className="text-[10px] font-black text-slate-500 uppercase border-l-2 border-indigo-500 pl-2">
+                {date}
+              </div>
+              <div className="space-y-2">
+                {evts.map((evt) => (
+                  <div key={evt.id} className="flex items-center justify-between p-3 bg-slate-950/40 border border-slate-800/50 rounded-2xl group hover:border-indigo-500/30 transition-all">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-1.5 h-1.5 rounded-full shrink-0",
+                        evt.importance === "high" ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]" : "bg-amber-500"
+                      )} />
+                      <div className="flex flex-col">
+                        <span className="text-[11px] font-bold text-slate-200 group-hover:text-indigo-300 transition-colors">
+                          {evt.name}
                         </span>
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-slate-500">
-                          <Clock size={10} />
-                          {new Date(evt.timestamp).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[9px] font-black px-1 rounded bg-slate-800 text-slate-400 uppercase">
+                            {evt.currency}
+                          </span>
+                          <div className="flex items-center gap-1 text-[9px] font-bold text-slate-500">
+                            <Clock size={10} />
+                            {new Date(evt.timestamp).toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}
+                          </div>
                         </div>
                       </div>
                     </div>
+                    
+                    {evt.importance === "high" && (
+                      <div className="px-2 py-0.5 bg-rose-500/10 border border-rose-500/20 rounded-md">
+                        <span className="text-[8px] font-black text-rose-400 uppercase">高重要度 / ハイリスク</span>
+                      </div>
+                    )}
                   </div>
-                  
-                  {evt.importance === "high" && (
-                    <div className="px-2 py-0.5 bg-rose-500/10 border border-rose-500/20 rounded-md">
-                      <span className="text-[8px] font-black text-rose-400 uppercase">高重要度 / ハイリスク</span>
-                    </div>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-3 bg-slate-950/20 border border-dashed border-slate-800 rounded-3xl">
+             <Info size={24} className="text-slate-600" />
+             <p className="text-xs font-bold text-slate-500">近日中に発表予定の指標はありません</p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );

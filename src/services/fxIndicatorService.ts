@@ -10,37 +10,22 @@ export const FXIndicatorService = {
    */
   async getUpcomingEvents(pairCode: string = "USD/JPY"): Promise<FXEconomicEvent[]> {
     const now = new Date();
-    const baseTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     
-    // カレンダー表示用に数日分のダミー指標を生成
-    const baseEvents: Omit<FXEconomicEvent, "timestamp">[] = [
-      { id: "usd_cpi", name: "米・消費者物価指数", importance: "high", currency: "USD" },
-      { id: "jpy_boj", name: "日銀・政策金利", importance: "high", currency: "JPY" },
-      { id: "eur_ecb", name: "欧州中央銀行(ECB)政策金利", importance: "high", currency: "EUR" },
-      { id: "usd_pce", name: "米・PCEデフレーター", importance: "high", currency: "USD" },
-      { id: "usd_job", name: "米・雇用統計", importance: "high", currency: "USD" },
-      { id: "jpy_tankan", name: "日銀短観", importance: "medium", currency: "JPY" },
-      { id: "eur_ger_pmi", name: "独・製造業PMI", importance: "medium", currency: "EUR" },
+    // 2026年3月末〜4月の主要指標スケジュール (実在する予定に基づく)
+    const masterSchedule: FXEconomicEvent[] = [
+      { id: "usd_cb_cc", name: "米・消費者信頼感指数", importance: "high", currency: "USD", timestamp: "2026-03-31T14:00:00Z" }, // 23:00 JST
+      { id: "jpy_tankan", name: "日銀短観 (1-3月期)", importance: "high", currency: "JPY", timestamp: "2026-03-31T23:50:00Z" }, // 08:50 JST (4/1)
+      { id: "eur_ger_pmi", name: "独・製造業PMI (確定値)", importance: "medium", currency: "EUR", timestamp: "2026-04-01T07:55:00Z" }, // 16:55 JST
+      { id: "usd_adp", name: "米・ADP雇用統計", importance: "high", currency: "USD", timestamp: "2026-04-01T12:15:00Z" }, // 21:15 JST
+      { id: "usd_ism_m", name: "米・ISM製造業景況指数", importance: "high", currency: "USD", timestamp: "2026-04-01T14:00:00Z" }, // 23:00 JST
+      { id: "usd_jobless", name: "米・新規失業保険申請件数", importance: "medium", currency: "USD", timestamp: "2026-04-02T12:30:00Z" }, // 21:30 JST
+      { id: "usd_nfp", name: "米・雇用統計 (非農業部門雇用者数)", importance: "high", currency: "USD", timestamp: "2026-04-03T12:30:00Z" }, // 21:30 JST
+      { id: "usd_unemp", name: "米・失業率", importance: "high", currency: "USD", timestamp: "2026-04-03T12:30:00Z" }, // 21:30 JST
     ];
 
-    const results: FXEconomicEvent[] = [];
-    
-    // 今日
-    results.push({ ...baseEvents[0], timestamp: new Date(now.getTime() + 1000 * 60 * 45).toISOString() });
-    results.push({ ...baseEvents[1], timestamp: new Date(now.getTime() + 1000 * 60 * 60 * 3).toISOString() });
-    results.push({ ...baseEvents[2], timestamp: new Date(now.getTime() + 1000 * 60 * 60 * 5).toISOString() });
-
-    // 明日
-    const tomorrow = new Date(baseTime.getTime() + 1000 * 60 * 60 * 24);
-    results.push({ ...baseEvents[3], timestamp: new Date(tomorrow.setHours(21, 30)).toISOString() });
-
-    // 明後日
-    const dayAfter = new Date(baseTime.getTime() + 1000 * 60 * 60 * 48);
-    results.push({ ...baseEvents[4], timestamp: new Date(dayAfter.setHours(21, 30)).toISOString() });
-    results.push({ ...baseEvents[5], timestamp: new Date(dayAfter.setHours(8, 50)).toISOString() });
-    results.push({ ...baseEvents[6], timestamp: new Date(dayAfter.setHours(16, 30)).toISOString() });
-
-    return results;
+    // フィルタリング: 発表時刻を過ぎたものは除外 (カレンダー表示用)
+    // ユーザー要望「過去のものが表示されないように」に従い厳密に現在以降のみ返す
+    return masterSchedule.filter(e => new Date(e.timestamp).getTime() > now.getTime());
   },
 
   /**
