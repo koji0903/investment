@@ -82,7 +82,7 @@ export default function USDJPYDashboardPage() {
           - Adds "breathing room" (padding)
           - Clear Title Hierarchy
       */}
-      <div className="max-w-[1600px] mx-auto px-6 pt-12 md:pt-20 pb-10">
+      <div className="max-w-[1600px] mx-auto px-6 pt-6 md:pt-20 pb-10">
         <motion.header 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
