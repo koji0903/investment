@@ -12,7 +12,8 @@ import {
   getDoc,
   addDoc,
   orderBy,
-  limit
+  limit,
+  writeBatch
 } from "firebase/firestore";
 import { FXSimulation, LearningMetric, FXTradeContext, FXWeightProfile } from "@/types/fx";
 

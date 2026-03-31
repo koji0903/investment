@@ -92,6 +92,7 @@ export const USDJPYSimulationPanel = ({
         consecutiveLosses: 0, 
         winRate: 0, 
         totalFinishedTrades: 0, 
+        violationCount: 0,
         dailyTradeCount: 0,
         dailyPnlPercent: 0,
         lastEntryTimestamp: new Date(0).toISOString(),
