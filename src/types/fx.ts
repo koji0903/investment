@@ -432,6 +432,7 @@ export interface FXRiskMetrics {
   consecutiveLosses: number;
   winRate: number;
   totalFinishedTrades: number;
+  violationCount: number;      // 違反回数のカウンタ (最適化用)
   dailyTradeCount: number;     // 本日のトレード回数
   dailyPnlPercent: number;    // 本日の損益率 (%)
   ruleComplianceRate: number;  // ルール遵守率 (0-100)

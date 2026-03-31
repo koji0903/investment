@@ -52,8 +52,14 @@ export const FXLearningService = {
       const prefix = getCollPrefix(pair);
       const isWin = simulation.pnl > 0;
       const patterns = this.identifyPatterns(simulation);
+      if (patterns.length === 0) return;
+
+      const batch = writeBatch(db);
       
-      for (const patternId of patterns) {
+      // 1. 全ての対象パターンドキュメントを事前に取得 (読み取り回数はパターンの数だけ発生するが、後の処理をバッチ化)
+      // 本来的には「全件フェッチ」したほうが早いが、パターン数が多い場合は個別取得の方が読み取りドキュメント数は少ない。
+      // 今回は対象パターンのみを対象。
+      await Promise.all(patterns.map(async (patternId) => {
         const docRef = doc(db, `users/${userId}/${prefix}_learning_metrics`, patternId);
         const snap = await getDoc(docRef);
         
@@ -68,7 +74,7 @@ export const FXLearningService = {
             reliabilityCorrection: 0,
             lastUpdatedAt: new Date().toISOString()
           };
-          await setDoc(docRef, newMetric);
+          batch.set(docRef, newMetric);
         } else {
           const data = snap.data() as LearningMetric;
           const newTotal = data.totalTrades + 1;
@@ -76,7 +82,7 @@ export const FXLearningService = {
           const newExpectedValue = (data.expectedValue * data.totalTrades + simulation.pnl) / newTotal;
           const correction = this.calculateCorrection(newWinRate, newTotal);
 
-          await updateDoc(docRef, {
+          batch.update(docRef, {
             winRate: newWinRate,
             totalTrades: newTotal,
             expectedValue: newExpectedValue,
@@ -84,7 +90,9 @@ export const FXLearningService = {
             lastUpdatedAt: new Date().toISOString()
           });
         }
-      }
+      }));
+
+      await batch.commit();
     } catch (error) {
       console.error("Error updating basic metrics:", error);
     }

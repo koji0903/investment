@@ -69,12 +69,23 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
       return;
     }
     try {
+      const CACHE_TTL = 3 * 60 * 1000; // 3分キャッシュ
+      const lastFetchKey = cacheKey("last_integrated_fetch");
+      const lastFetch = AppPersistence.load<number>(lastFetchKey) || 0;
+      
+      // 直近3分以内にフェッチ済みの場合は、既存のキャッシュを利用しリクエストをスキップ
+      if (Date.now() - lastFetch < CACHE_TTL && sentiment) {
+        console.log(`[Integrated] Using cached data for ${pairCode}`);
+        return;
+      }
+
+      console.log(`[Integrated] Fetching fresh data for ${pairCode}`);
       const [
         s, r, rm, ap, perf, wp, inst, cond, btest, logs, evts,
         tConfig, tLogs
       ] = await Promise.all([
         getMarketSentimentAction(),
-        getFXReviewsAction(user.uid, 10, pairCode),
+        getFXReviewsAction(user.uid, 20, pairCode),
         FXSimulationService.getRiskMetrics(user.uid, pairCode),
         FXSimulationService.getActiveSimulations(user.uid, pairCode),
         FXSimulationService.getAggregatedPerformance(user.uid, pairCode),
@@ -116,6 +127,7 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
       AppPersistence.save(cacheKey("upcomingEvents"), evts);
       AppPersistence.save(cacheKey("tuningConfig"), tConfig);
       AppPersistence.save(cacheKey("tuningLogs"), tLogs);
+      AppPersistence.save(lastFetchKey, Date.now());
     } catch (e) {
       console.error(`Error fetching integrated data for ${pairCode}`, e);
     } finally {

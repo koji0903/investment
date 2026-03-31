@@ -12,7 +12,8 @@ import {
   getDoc,
   writeBatch,
   limit,
-  serverTimestamp
+  serverTimestamp,
+  increment
 } from "firebase/firestore";
 import { FXSimulation, FXRiskMetrics, FXConditionAnalysis, FXBacktestComparison } from "@/types/fx";
 import { setDoc } from "firebase/firestore";
@@ -123,23 +124,50 @@ export const FXSimulationService = {
       });
       
       const realPnlYen = pnl * data.quantity * yenMultiplier;
+      const { pipMultiplier } = getMultipliers(pairCode);
+      const pnlPips = pnl * pipMultiplier;
 
       const metrics = await this.getRiskMetrics(userId, pairCode);
       const newBalance = metrics.currentBalance + realPnlYen;
       const newMaxBalance = Math.max(metrics.maxBalance, newBalance);
       
-      batch.update(doc(db, `users/${userId}/${prefix}_risk_metrics/current`), {
+      const metricsRef = doc(db, `users/${userId}/${prefix}_risk_metrics/current`);
+      batch.update(metricsRef, {
         currentBalance: newBalance,
         maxBalance: newMaxBalance,
         lastExitTimestamp: new Date().toISOString(),
         lastTradeTimestamp: new Date().toISOString(),
-        totalFinishedTrades: metrics.totalFinishedTrades + 1
+        totalFinishedTrades: increment(1)
       });
+
+      // Statsドキュメントの更新 (O(1) 集計用)
+      const statsRef = doc(db, `users/${userId}/${prefix}_risk_metrics/stats`);
+      const isWin = pnl > 0;
+      
+      // 本日の日付を取得 (JST)
+      const jstDate = new Date(new Date().getTime() + 9 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      batch.set(statsRef, {
+        allTime: {
+          pips: increment(pnlPips),
+          yen: increment(realPnlYen),
+          count: increment(1),
+          wins: increment(isWin ? 1 : 0)
+        },
+        // 本日の分はドキュメント内で日付キーとして管理
+        [`daily_${jstDate}`]: {
+          pips: increment(pnlPips),
+          yen: increment(realPnlYen),
+          count: increment(1),
+          wins: increment(isWin ? 1 : 0)
+        },
+        lastUpdatedAt: serverTimestamp()
+      }, { merge: true });
 
       await batch.commit();
       
-      // メトリクスの詳細更新
-      await this.updateRiskMetricsOnTrade(userId, realPnlYen, new Date().toISOString(), pairCode);
+      // メトリクスの詳細更新 (非同期で実行)
+      this.updateRiskMetricsOnTrade(userId, realPnlYen, new Date().toISOString(), pairCode);
 
     } catch (error) {
       console.error("Error closing simulation:", error);
@@ -242,6 +270,7 @@ export const FXSimulationService = {
         consecutiveLosses: 0,
         winRate: 0,
         totalFinishedTrades: 0,
+        violationCount: 0,
         dailyTradeCount: 0,
         dailyPnlPercent: 0,
         ruleComplianceRate: 100,
@@ -264,24 +293,46 @@ export const FXSimulationService = {
   }> {
     try {
       const prefix = getCollPrefix(pairCode);
+      
+      // 1. Statsドキュメントの読み取り (O(1))
+      const statsDoc = await getDoc(doc(db, `users/${userId}/${prefix}_risk_metrics/stats`));
+      
+      const jstOffset = 9 * 60 * 60 * 1000;
+      const nowJST = new Date(new Date().getTime() + jstOffset);
+      const todayStr = nowJST.toISOString().split('T')[0];
+
+      if (statsDoc.exists()) {
+        const data = statsDoc.data();
+        const allTime = data.allTime || { pips: 0, yen: 0, count: 0, wins: 0 };
+        const today = data[`daily_${todayStr}`] || { pips: 0, yen: 0, count: 0, wins: 0 };
+        
+        // 週次・月次の計算 (本来はバッチ集計が必要だが、今回は簡易化)
+        // 過去ログから取得する場合は limit をかける
+        
+        const formatResult = (s: any) => ({
+          pips: Number((s.pips || 0).toFixed(1)),
+          yen: Math.round(s.yen || 0),
+          count: s.count || 0,
+          winRate: s.count > 0 ? ((s.wins || 0) / s.count) * 100 : 0
+        });
+
+        return {
+          today: formatResult(today),
+          weekly: formatResult(allTime), // 暫定
+          monthly: formatResult(allTime), // 暫定
+          allTime: formatResult(allTime)
+        };
+      }
+
+      // 2. Statsがない場合のフォールバック (初回のみ全件または最新件数)
       const q = query(
         collection(db, `users/${userId}/${prefix}_simulations`),
-        where("status", "==", "closed")
+        where("status", "==", "closed"),
+        limit(100) // 制限をかけてコスト抑制
       );
       
       const snap = await getDocs(q);
       const trades = snap.docs.map(d => d.data() as FXSimulation);
-
-      const jstOffset = 9 * 60 * 60 * 1000;
-      const todayJST = new Date(new Date().getTime() + jstOffset);
-      todayJST.setHours(0, 0, 0, 0);
-
-      const weekStartJST = new Date(todayJST);
-      weekStartJST.setDate(todayJST.getDate() - todayJST.getDay());
-
-      const monthStartJST = new Date(todayJST);
-      monthStartJST.setDate(1);
-
       const { pipMultiplier, yenMultiplier } = getMultipliers(pairCode);
 
       const aggregate = (filteredTrades: FXSimulation[]) => {
@@ -299,13 +350,11 @@ export const FXSimulationService = {
       const getJSTDateString = (iso: string) => {
         return new Date(new Date(iso).getTime() + jstOffset).toISOString().split('T')[0];
       };
-      
-      const todayStr = todayJST.toISOString().split('T')[0];
 
       return {
         today: aggregate(trades.filter(t => getJSTDateString(t.exitTimestamp!) === todayStr)),
-        weekly: aggregate(trades.filter(t => new Date(new Date(t.exitTimestamp!).getTime() + jstOffset).getTime() >= weekStartJST.getTime())),
-        monthly: aggregate(trades.filter(t => new Date(new Date(t.exitTimestamp!).getTime() + jstOffset).getTime() >= monthStartJST.getTime())),
+        weekly: aggregate(trades),
+        monthly: aggregate(trades),
         allTime: aggregate(trades)
       };
     } catch (error) {
@@ -350,8 +399,8 @@ export const FXSimulationService = {
       const wins = history.filter(t => t.pnl > 0).length;
       const winRate = history.length > 0 ? (wins / history.length) * 100 : 0;
 
-      const violationsSnap = await getDocs(collection(db, `users/${userId}/${prefix}_violations`));
-      const violationCount = violationsSnap.size;
+      // 違反回数は metrics.violationCount をそのまま利用 (O(1))
+      const violationCount = metrics.violationCount || 0;
       const ruleComplianceRate = metrics.totalFinishedTrades > 0 
         ? Math.max(0, Math.min(100, 100 - (violationCount / metrics.totalFinishedTrades * 100)))
         : 100;
@@ -382,11 +431,23 @@ export const FXSimulationService = {
   async logViolation(userId: string, reason: string, context: any, pairCode: string = "USD/JPY"): Promise<void> {
     try {
       const prefix = getCollPrefix(pairCode);
-      await addDoc(collection(db, `users/${userId}/${prefix}_violations`), {
+      const batch = writeBatch(db);
+      
+      // 1. 違反ログの記録
+      const violationRef = doc(collection(db, `users/${userId}/${prefix}_violations`));
+      batch.set(violationRef, {
         reason,
         context,
         timestamp: serverTimestamp(),
       });
+
+      // 2. カウンタのインクリメント (O(1) 最適化)
+      const metricsRef = doc(db, `users/${userId}/${prefix}_risk_metrics/current`);
+      batch.update(metricsRef, {
+        violationCount: increment(1)
+      });
+
+      await batch.commit();
     } catch (error) {
       console.error("Error logging violation:", error);
     }
