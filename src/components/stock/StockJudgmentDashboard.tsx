@@ -60,8 +60,6 @@ export const StockJudgmentDashboard = () => {
     pending: 0, 
     progress: 0,
     currentNames: [] as string[],
-    progress: 0,
-    currentNames: [] as string[],
     failedStocks: [] as { ticker: string, name: string, error?: string }[],
     warningStocks: [] as { ticker: string, name: string, error?: string }[]
   });

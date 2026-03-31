@@ -120,6 +120,6 @@ export interface StockSummaryEntry {
 }
 
 export interface StockSummaryDoc {
-  [ticker: string]: StockSummaryEntry | string;
+  [ticker: string]: StockSummaryEntry | string | undefined;
   lastGlobalUpdate?: string;
 }
