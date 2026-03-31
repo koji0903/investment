@@ -60,9 +60,12 @@ export const StockJudgmentDashboard = () => {
     pending: 0, 
     progress: 0,
     currentNames: [] as string[],
+    progress: 0,
+    currentNames: [] as string[],
     failedStocks: [] as { ticker: string, name: string, error?: string }[],
     warningStocks: [] as { ticker: string, name: string, error?: string }[]
   });
+  const [detailLoading, setDetailLoading] = useState(false);
   const isMountedRef = useRef(true);
   const priorityQueueRef = useRef<Set<string>>(new Set());
   const backgroundQueueRef = useRef<string[]>([]);
@@ -144,6 +147,35 @@ export const StockJudgmentDashboard = () => {
     }
   };
 
+  /**
+   * 銘柄詳細のオンデマンド取得
+   */
+  const handleSelectStock = async (stock: StockJudgment) => {
+    if (!user) return;
+    
+    // すでに詳細データ（チャート等）がある場合は即表示
+    if (stock.chartData && stock.chartData.length > 0) {
+      setSelectedStock(stock);
+      return;
+    }
+
+    setDetailLoading(true);
+    setSelectedStock(stock); // まずは暫定データ（サマリー）を表示
+
+    try {
+      const detail = await StockService.getStockDetail(user.uid, portfolioId, stock.ticker);
+      if (detail) {
+        setSelectedStock(detail);
+        // メモリ上の judgmental リストも更新して次回以降の高速化を図る
+        setAllJudgments(prev => prev.map(j => j.ticker === detail.ticker ? detail : j));
+      }
+    } catch (e) {
+      console.warn("Failed to fetch stock details", e);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const startSyncWorker = async () => {
     if (workerRunningRef.current) return;
     workerRunningRef.current = true;
@@ -209,17 +241,16 @@ export const StockJudgmentDashboard = () => {
     setMasterLoading(true);
     setError(null);
     try {
-      // 1. 銘柄マスタを取得 (Firestore or Cache)
+      // 1. 銘柄マスタを取得 (24h Cache)
       const masters = await StockService.getMasterList();
       if (isMountedRef.current) {
         setMasterList(masters);
         setMasterLoading(false);
       }
 
-      // 2. 既存の判定データを取得
+      // 2. 既存の「サマリー判定データ」を O(1) で取得
       const data = await StockService.getJudgments(user.uid, portfolioId);
       if (isMountedRef.current) {
-        // マスターとマージ
         const masterMap = new Map(masters.map(s => [s.ticker, s]));
         const judgmentMap = new Map(data.map(d => [d.ticker, d]));
         
@@ -230,15 +261,19 @@ export const StockJudgmentDashboard = () => {
 
         setAllJudgments(merged);
         
+        // バックグラウンド同期対象の判定 (未完了 または 24時間以上経過)
         const staleOrUncompleted = merged.filter(d => {
           const isStale = (Date.now() - new Date(d.updatedAt).getTime()) > 24 * 60 * 60 * 1000;
           return d.syncStatus !== "completed" || isStale;
         });
 
-        // 全件のバックグラウンド同期を開始
+        // 全件のバックグラウンド同期を開始 (ただしバックグラウンドなので低頻度)
         if (!initialSyncTriggeredRef.current && staleOrUncompleted.length > 0) {
           initialSyncTriggeredRef.current = true;
-          processSyncQueue(staleOrUncompleted.map(d => d.ticker));
+          // サマリー表示ができているので、バックグラウンド同期は少し遅延させて開始
+          setTimeout(() => {
+            processSyncQueue(staleOrUncompleted.map(d => d.ticker));
+          }, 5000);
         }
 
         setLoading(false);
@@ -543,9 +578,9 @@ export const StockJudgmentDashboard = () => {
       </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <RankingCard title="総合スコア" items={[...allJudgments].sort((a,b)=>b.totalScore-a.totalScore).slice(0,3)} icon={<Trophy className="text-amber-500" />} onSelect={setSelectedStock} />
-        <RankingCard title="高配当利回り" items={[...allJudgments].sort((a,b)=> (b.valuationMetrics?.dividendYield || 0) - (a.valuationMetrics?.dividendYield || 0)).slice(0,3)} icon={<Coins className="text-rose-500" />} onSelect={setSelectedStock} />
-        <RankingCard title="割安バリュエーション" items={[...allJudgments].sort((a,b)=>b.valuationScore-a.valuationScore).slice(0,3)} icon={<TrendingUp className="text-indigo-500" />} onSelect={setSelectedStock} />
+        <RankingCard title="総合スコア" items={[...allJudgments].sort((a,b)=>b.totalScore-a.totalScore).slice(0,3)} icon={<Trophy className="text-amber-500" />} onSelect={handleSelectStock} />
+        <RankingCard title="高配当利回り" items={[...allJudgments].sort((a,b)=> (b.valuationMetrics?.dividendYield || 0) - (a.valuationMetrics?.dividendYield || 0)).slice(0,3)} icon={<Coins className="text-rose-500" />} onSelect={handleSelectStock} />
+        <RankingCard title="割安バリュエーション" items={[...allJudgments].sort((a,b)=>b.valuationScore-a.valuationScore).slice(0,3)} icon={<TrendingUp className="text-indigo-500" />} onSelect={handleSelectStock} />
       </div>
 
       <div className="space-y-10">
@@ -609,7 +644,15 @@ export const StockJudgmentDashboard = () => {
               </motion.div>
             )}
             <div className="relative">
-              <StockList items={displayedItems} onSelect={setSelectedStock} onVisible={addToPriorityQueue} />
+              <StockList items={displayedItems} onSelect={handleSelectStock} onVisible={addToPriorityQueue} />
+              {detailLoading && (
+                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10 backdrop-blur-[2px]">
+                    <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-3xl flex items-center gap-4 border border-indigo-100 dark:border-indigo-900/30 animate-in zoom-in duration-300">
+                       <div className="w-8 h-8 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+                       <span className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">Detail Mining...</span>
+                    </div>
+                 </div>
+              )}
             </div>
             
             <div ref={loadMoreRef} className="h-20 w-full flex items-center justify-center pt-8">

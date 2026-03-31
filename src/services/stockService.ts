@@ -7,8 +7,10 @@ import {
   syncSpecificStockAction, 
   setStockSyncingAction,
   syncStockRealData,
-  getStockBasicInfoAction
+  getStockBasicInfoAction,
+  getStockSummaryAction
 } from "@/lib/actions/stock";
+import { StockSummaryDoc } from "@/types/stock";
 
 import { getStockMasterAction } from "@/lib/actions/stockMaster";
 import { TSE_PRIME_MASTER } from "@/data/tse_prime_master";
@@ -59,26 +61,55 @@ export const StockService = {
 
   getJudgments: async (userId: string, portfolioId: string): Promise<StockJudgment[]> => {
     try {
-      // 1. キャッシュから読み込み
-      const cacheKey = `stock_judgments_${portfolioId}`;
-      const cached = AppPersistence.load<StockJudgment[]>(cacheKey, 30 * 60 * 1000); // 30分キャッシュ
+      // 1. キャッシュから読み込み (メモリ/localStorage)
+      const cacheKey = `stock_judgments_summary_${portfolioId}`;
+      const cached = AppPersistence.load<StockJudgment[]>(cacheKey, 10 * 60 * 1000); // 10分キャッシュ
       if (cached) {
-        console.log("[Stock] Loading judgments from cache");
+        console.log("[Stock] Loading judgments from summary cache");
         return cached;
       }
 
-      // 2. Firestore から取得
-      const results = await getStockJudgmentsAction(userId, portfolioId);
-      
-      // 3. キャッシュに保存
-      if (results.length > 0) {
-        AppPersistence.save(cacheKey, results);
+      // 2. Summary ドキュメントを取得 (O(1) 読み取り)
+      const summary = await getStockSummaryAction(userId, portfolioId);
+      if (summary) {
+        const results: StockJudgment[] = [];
+        Object.entries(summary).forEach(([ticker, entry]) => {
+          if (ticker === "lastGlobalUpdate") return;
+          if (typeof entry === "object") {
+            results.push(entry as any as StockJudgment);
+          }
+        });
+        
+        if (results.length > 0) {
+          AppPersistence.save(cacheKey, results);
+        }
+        return results;
       }
-      
+
+      // 3. フォールバック: 旧来の全件取得 (将来的に廃止)
+      const results = await getStockJudgmentsAction(userId, portfolioId);
       return results;
     } catch (error) {
       console.error("Error fetching stock judgments:", error);
       return [];
+    }
+  },
+
+  /**
+   * 銘柄の詳細情報（チャート等）をオンデマンドで取得
+   */
+  getStockDetail: async (userId: string, portfolioId: string, ticker: string): Promise<StockJudgment | null> => {
+    try {
+      const path = `users/${userId}/portfolios/${portfolioId}/stock_judgments`;
+      const docRef = doc(db, path, ticker);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        return snap.data() as StockJudgment;
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error fetching stock detail for ${ticker}:`, error);
+      return null;
     }
   },
 

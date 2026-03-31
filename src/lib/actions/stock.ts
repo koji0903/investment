@@ -24,7 +24,8 @@ import { isConfigValid } from "@/lib/firebase";
 import { performFinancialAnalysis } from "@/utils/stock/financialAnalysis";
 import { calculateDecision } from "@/utils/investment/decisionEngine"; // 追加
 import { PLData, BSData, CFData, FinancialStatementPayload } from "@/types/financial";
-import { saveFinancialAnalysis, saveInvestmentDecision } from "@/lib/db"; // 追加
+import { saveFinancialAnalysis, saveInvestmentDecision } from "@/lib/db";
+import { StockSummaryEntry, StockSummaryDoc } from "@/types/stock";
 
 // 主要銘柄マスターを使用 (互換性のために残すが、Firestoreマスタを優先する)
 const STKS = TSE_PRIME_MASTER;
@@ -340,7 +341,25 @@ export async function syncSpecificStockAction(userId: string, portfolioId: strin
       console.warn(`[Sync] Financial statement analysis failed for ${ticker}:`, fiErr);
     }
 
-    // 3. Firestoreへの保存はクライアントサイド(Service層)で行うため、ここでは行わない
+    // 5. サマリードキュメントの更新 (非同期・失敗許容)
+    try {
+      const summaryEntry: StockSummaryEntry = {
+        ticker: jud.ticker,
+        companyName: jud.companyName,
+        sector: jud.sector,
+        totalScore: jud.totalScore,
+        signalLabel: jud.signalLabel,
+        updatedAt: jud.updatedAt,
+        syncStatus: jud.syncStatus
+      };
+      const summaryRef = doc(db, `users/${userId}/portfolios/${portfolioId}/stock_judgments_meta`, "summary");
+      await setDoc(summaryRef, {
+        [plainTicker]: summaryEntry,
+        lastGlobalUpdate: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.warn(`[Sync] Summary update failed for ${ticker}`, e);
+    }
 
     return { success: true, data: JSON.parse(JSON.stringify(jud)) };
   } catch (err: any) {
@@ -382,4 +401,22 @@ export async function syncStockRealData(userId: string, portfolioId: string): Pr
     if (res.success && res.data) results.push(res.data);
   }
   return { success: true, count: results.length, data: results };
+}
+
+/**
+ * 銘柄サマリー（リスト表示用軽量データ）を一括取得
+ */
+export async function getStockSummaryAction(userId: string, portfolioId: string): Promise<StockSummaryDoc | null> {
+  if (!userId || !portfolioId) return null;
+  try {
+    const summaryRef = doc(db, `users/${userId}/portfolios/${portfolioId}/stock_judgments_meta`, "summary");
+    const snap = await getDoc(summaryRef);
+    if (snap.exists()) {
+      return snap.data() as StockSummaryDoc;
+    }
+    return null;
+  } catch (err) {
+    console.error("[Stock] getStockSummaryAction error:", err);
+    return null;
+  }
 }

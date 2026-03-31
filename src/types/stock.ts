@@ -108,3 +108,18 @@ export interface StockPairMaster {
   name: string;
   sector: string;
 }
+
+export interface StockSummaryEntry {
+  ticker: string;
+  companyName: string;
+  sector: string;
+  totalScore: number;
+  signalLabel: string;
+  updatedAt: string;
+  syncStatus?: string;
+}
+
+export interface StockSummaryDoc {
+  [ticker: string]: StockSummaryEntry | string;
+  lastGlobalUpdate?: string;
+}
