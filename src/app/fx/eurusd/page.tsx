@@ -4,7 +4,10 @@ import { useAuth } from "@/context/AuthContext";
 import { IntegratedCommandCenter } from "@/components/fx/eurusd/IntegratedCommandCenter";
 import { EURUSDIndicatorBanner } from "@/components/fx/eurusd/EURUSDIndicatorBanner";
 import { useIntegratedCommandCenter } from "@/hooks/useIntegratedCommandCenter";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, ArrowLeft, Cpu, ShieldCheck } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default function EURUSDDashboardPage() {
   const { user, loading } = useAuth();
@@ -42,7 +45,7 @@ export default function EURUSDDashboardPage() {
   );
 
   return (
-    <main className="min-h-screen bg-[#020617] text-slate-200">
+    <main className="min-h-screen bg-[#020617] text-slate-200 font-sans">
       {/* EUR/USD 専用のインジケーターバナー */}
       <EURUSDIndicatorBanner 
         status={indicatorStatus?.status || "normal"} 
@@ -51,36 +54,59 @@ export default function EURUSDDashboardPage() {
         minutesToEvent={minutesToEvent}
       />
       
-      <div className="py-12 px-6">
-        <header className="max-w-[1600px] mx-auto mb-16 flex flex-col md:flex-row md:items-end justify-between gap-6">
-           <div className="space-y-4">
+      <div className="max-w-[1600px] mx-auto px-6 pt-6 md:pt-20 pb-10">
+        <motion.header 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12"
+        >
+          <div className="space-y-4">
+            <Link 
+              href="/fx-judgment" 
+              className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-indigo-400 transition-colors group mb-2"
+            >
+              <ArrowLeft size={12} className="group-hover:-translate-x-1 transition-transform" />
+              <span>判定一覧に戻る</span>
+            </Link>
+            
+            <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3">
-                 <div className="w-8 h-1 bg-indigo-500 rounded-full" />
-                 <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.4em]">Advanced Scalping Module</span>
+                <div className="w-2 h-8 bg-indigo-500 rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+                <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-white uppercase italic pr-4">
+                  EUR/USD <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-indigo-600">DAYTRADE PRO</span>
+                </h1>
               </div>
-              <h1 className="text-5xl lg:text-7xl font-[1000] tracking-tighter italic text-white leading-none">
-                 EUR/USD <span className="text-indigo-500">DAYTRADE PRO</span>
-              </h1>
-              <p className="text-slate-500 font-bold max-w-2xl leading-relaxed">
-                 ユーロドルの高い流動性とテクニカルの整合性を最大限に活用する、プロフェッショナル向け執行ダッシュボード。
+              <p className="text-xs md:text-sm font-bold text-slate-500 tracking-[0.2em] uppercase flex items-center gap-3 mt-2">
+                <Cpu size={14} className="text-indigo-500/50" />
+                Advanced Scalping Module v2.5
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] text-emerald-500/80">システム稼働中</span>
               </p>
-           </div>
-           
-           <div className="flex items-center gap-6 pb-2">
-              <div className="text-right">
-                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">System Status</p>
-                 <p className="text-sm font-black text-emerald-400 uppercase">Operational</p>
-              </div>
-              <div className="w-px h-10 bg-slate-800" />
-              <div className="text-right">
-                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Pair</p>
-                 <p className="text-sm font-black text-white uppercase">EUR/USD</p>
-              </div>
-           </div>
-        </header>
+            </div>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-6">
+            <div className="px-6 py-3 bg-slate-900/50 border border-slate-800 rounded-2xl backdrop-blur-md flex items-center gap-4">
+               <div className="w-10 h-10 bg-indigo-500/10 border border-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400">
+                  <ShieldCheck size={20} />
+               </div>
+               <div>
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-none mb-1">ステータス</p>
+                  <p className="text-xs font-bold text-slate-200">正常稼働中</p>
+               </div>
+            </div>
+          </div>
+        </motion.header>
 
         {/* 統合コマンドセンター */}
-        <IntegratedCommandCenter />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.99 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, delay: 0.2 }}
+        >
+          <IntegratedCommandCenter />
+        </motion.div>
       </div>
     </main>
   );

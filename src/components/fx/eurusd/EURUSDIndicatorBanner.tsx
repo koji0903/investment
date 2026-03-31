@@ -59,7 +59,7 @@ export const EURUSDIndicatorBanner = ({
   const currentTheme = themes[status] || themes.normal;
 
   return (
-    <div className="fixed top-6 right-6 z-[100] flex flex-col items-end gap-3 pointer-events-none">
+    <div className="sticky top-0 md:fixed md:top-6 md:right-6 z-[100] w-full md:w-auto p-4 md:p-0 flex flex-col items-center md:items-end gap-3 pointer-events-none">
       <AnimatePresence mode="wait">
         <motion.div
           key={status}
