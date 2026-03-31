@@ -94,6 +94,10 @@ export async function executeRadar(filter: RadarFilter, forceRefresh = false): P
       const capInOkuyen = stockData.marketCap * 10000;
       if (capInOkuyen < filter.minMarketCap) return null;
 
+      // 最低購入金額フィルタ (現在値 * 100株)
+      const buyPrice = stockData.currentPrice * 100;
+      if (filter.maxInvestment && buyPrice > filter.maxInvestment) return null;
+
       const prices = hist.map(h => h.close).filter(p => typeof p === "number");
       const tech = analyzeStockTechnical(prices, stockData.currentPrice);
       const fund = analyzeStockFundamental(stockData as any); // eslint-disable-line @typescript-eslint/no-explicit-any

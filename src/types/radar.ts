@@ -10,6 +10,7 @@ export interface RadarFilter {
   minRoe: number;
   minRevenueGrowth: number;
   minDividendYield: number;
+  maxInvestment?: number;
   sectors: string[];
 }
 

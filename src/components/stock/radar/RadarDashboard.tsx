@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { AppPersistence } from "@/utils/common/persistence";
 
 const DEFAULT_FILTER: RadarFilter = {
-  minMarketCap: 500, minVolume: 50000, perRange: [0, 20], pbrRange: [0, 1.5], minRoe: 8, minRevenueGrowth: 5, minDividendYield: 2.5, sectors: []
+  minMarketCap: 500, minVolume: 50000, perRange: [0, 20], pbrRange: [0, 1.5], minRoe: 8, minRevenueGrowth: 5, minDividendYield: 2.5, sectors: [], maxInvestment: undefined
 };
 
 export const RadarDashboard: React.FC = () => {
