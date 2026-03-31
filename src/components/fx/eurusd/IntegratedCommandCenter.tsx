@@ -108,6 +108,11 @@ export const IntegratedCommandCenter = () => {
   const rec = decision?.recommendation;
   const isActionAllowed = decision?.isEntryAllowed && rec?.action !== "WAIT" && rec?.action !== "PROHIBITED";
 
+  // EUR/USDのPips幅計算 (1 pip = 0.0001)
+  const currentPrice = quote?.price || 0;
+  const slPips = rec?.sl && currentPrice ? Math.abs(rec.sl - currentPrice) * 10000 : 0;
+  const tpPips = rec?.tp && currentPrice ? Math.abs(rec.tp - currentPrice) * 10000 : 0;
+
   return (
     <div className="space-y-12 pb-32 max-w-[1600px] mx-auto px-4 lg:px-0">
       
@@ -127,14 +132,14 @@ export const IntegratedCommandCenter = () => {
              <ActionCard 
               label="損切り (SL)" 
               value={rec?.sl.toFixed(5) || "---"} 
-              sub="資産保護ポイント" 
+              sub={`資産保護ポイント (${slPips.toFixed(1)} pips)`} 
               icon={ShieldAlert} 
               color="text-rose-400"
              />
              <ActionCard 
               label="利確 (TP)" 
               value={rec?.tp.toFixed(5) || "---"} 
-              sub="ターゲット" 
+              sub={`ターゲット (${tpPips.toFixed(1)} pips)`} 
               icon={Target} 
               color="text-emerald-400"
              />
