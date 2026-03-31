@@ -33,6 +33,8 @@ import { AppPersistence } from "@/utils/common/persistence";
 import { onSnapshot, doc, collection, query, where, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
+const SYSTEM_VERSION = "2.6.0"; // 2026-03-31 リアル指標・正確なキャッシュ同期対応
+
 export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
   const { user } = useAuth();
   const { quote, ohlcData, isLoading: isMarketLoading } = useFXData(pairCode, 3000);
@@ -58,7 +60,30 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
   const [isDataLoading, setIsDataLoading] = useState(true);
   const [now, setNow] = useState(new Date());
 
-  // --- 1. Real-time Clock ---
+  // --- 1. System Version & Cache Management ---
+  useEffect(() => {
+    const currentVer = AppPersistence.load<string>("system_version") || "0.0.0";
+    if (currentVer !== SYSTEM_VERSION) {
+      console.log(`[Integrated] System Version Mismatch (${currentVer} -> ${SYSTEM_VERSION}). Clearing old cache...`);
+      // 古いモックデータが含まれる可能性のあるキーを一掃
+      const keysToClear = [
+        "sentiment", "reviews", "riskMetrics", "activePositions", 
+        "performance", "weightProfile", "indicatorStatus", "conditionAnalysis", 
+        "backtestComparisons", "violationLogs", "upcomingEvents", 
+        "last_highfreq_fetch", "last_metadata_fetch"
+      ];
+      keysToClear.forEach(k => AppPersistence.clear(cacheKey(k)));
+      AppPersistence.save("system_version", SYSTEM_VERSION);
+      
+      // 強制リフレッシュフラグをセット
+      refreshData(true);
+    } else {
+      // バージョンが一致していても、HIGH_FREQ_TTLを超えていれば即座にリフレッシュ
+      refreshData(false);
+    }
+  }, [user, pairCode]);
+
+  // --- 2. Real-time Clock ---
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 10000);
     return () => clearInterval(timer);

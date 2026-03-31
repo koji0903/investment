@@ -528,21 +528,21 @@ interface ActionCardProps {
 }
 
 const ActionCard = ({ label, value, sub, icon: Icon, color, tooltip }: ActionCardProps) => (
-  <div className="p-5 bg-slate-900/80 border border-slate-800 rounded-[32px] space-y-1 hover:border-indigo-500/30 transition-all group relative cursor-help">
+  <div className="p-6 bg-slate-900/80 border border-slate-800 rounded-[40px] space-y-2 hover:border-indigo-500/30 transition-all group relative cursor-help">
     <div className="flex items-center gap-2 text-slate-500 mb-1">
-       <Icon size={12} className={color} />
-       <span className="text-[9px] font-black uppercase tracking-widest">{label}</span>
-       <Info size={10} className="opacity-0 group-hover:opacity-40 transition-opacity ml-auto" />
+       <Icon size={14} className={color} />
+       <span className="text-[11px] font-black uppercase tracking-[0.1em]">{label}</span>
+       <Info size={12} className="opacity-0 group-hover:opacity-40 transition-opacity ml-auto" />
     </div>
-    <div className={cn("text-xl font-black tracking-tight tabular-nums", color)}>{value}</div>
-    <div className="text-[8px] font-bold text-slate-600 uppercase tracking-tight">{sub}</div>
+    <div className={cn("text-2xl font-black tracking-tight tabular-nums", color)}>{value}</div>
+    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">{sub}</div>
 
     {tooltip && (
-       <div className="absolute bottom-full left-0 mb-3 w-48 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
-         <p className="text-[10px] font-bold text-slate-200 leading-relaxed">
+       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-56 p-4 bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 rounded-3xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none translate-y-2 group-hover:translate-y-0 text-left">
+         <p className="text-[11px] font-bold text-slate-200 leading-relaxed">
            {tooltip}
          </p>
-         <div className="absolute top-full left-4 border-8 border-transparent border-t-slate-800" />
+         <div className="absolute top-full left-1/2 -translate-x-1/2 border-[10px] border-transparent border-t-slate-900" />
        </div>
     )}
   </div>
@@ -558,56 +558,56 @@ interface StatusMetricProps {
 }
 
 const StatusMetric = ({ label, value, sub, icon: Icon, highlight, tooltip }: StatusMetricProps) => (
-  <div className="flex items-center gap-3 group relative cursor-help">
+  <div className="flex items-center gap-4 group relative cursor-help">
     <div className={cn(
-      "w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 transition-colors",
+      "w-12 h-12 rounded-2xl flex items-center justify-center text-slate-500 transition-colors",
       highlight ? "bg-rose-500/10 text-rose-500" : "bg-slate-950 text-slate-500 group-hover:bg-slate-900"
     )}>
-       <Icon size={18} />
+       <Icon size={20} />
     </div>
     <div>
-       <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
+       <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1">
          {label}
-         <Info size={8} className="opacity-0 group-hover:opacity-40 transition-opacity" />
+         <Info size={10} className="opacity-0 group-hover:opacity-40 transition-opacity" />
        </p>
        <div className="flex items-baseline gap-2">
-          <span className="text-sm font-black text-slate-200">{value}</span>
+          <span className="text-lg font-black text-slate-100">{value}</span>
           {sub && <span className="text-[10px] font-black text-slate-600 uppercase italic">{sub}</span>}
        </div>
     </div>
 
     {tooltip && (
-       <div className="absolute bottom-full left-0 mb-3 w-56 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
-         <p className="text-[10px] font-bold text-slate-200 leading-relaxed">
+       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-60 p-4 bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 rounded-3xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none translate-y-2 group-hover:translate-y-0 text-left">
+         <p className="text-[11px] font-bold text-slate-200 leading-relaxed">
            {tooltip}
          </p>
-         <div className="absolute top-full left-6 border-8 border-transparent border-t-slate-800" />
+         <div className="absolute top-full left-1/2 -translate-x-1/2 border-[10px] border-transparent border-t-slate-900" />
        </div>
     )}
   </div>
 );
 
 const IndicatorBar = ({ label, value, tooltip }: { label: string, value: number, tooltip?: string }) => (
-  <div className="space-y-1.5 group relative cursor-help hover:z-50">
+  <div className="space-y-2 group relative cursor-help hover:z-[70]">
      <div className="flex justify-between items-center px-1">
-        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{label}</span>
-        <span className="text-xs font-black text-slate-300">{value}%</span>
+        <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{label}</span>
+        <span className="text-sm font-black text-slate-200">{value}%</span>
      </div>
-     <div className="h-1.5 w-full bg-slate-950 rounded-full overflow-hidden">
+     <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden">
         <motion.div 
           initial={{ width: 0 }} animate={{ width: `${value}%` }}
           className={cn(
-            "h-full rounded-full",
+            "h-full rounded-full shadow-[0_0_8px_rgba(99,102,241,0.3)]",
             value > 80 ? "bg-emerald-500" : value > 50 ? "bg-indigo-500" : "bg-amber-500"
           )}
         />
      </div>
      {tooltip && (
-       <div className="absolute bottom-full left-0 mb-2 w-64 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
-         <p className="text-[10px] font-bold text-slate-200 leading-relaxed">
+       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-64 p-4 bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 rounded-3xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none translate-y-2 group-hover:translate-y-0 text-left">
+         <p className="text-[11px] font-bold text-slate-200 leading-relaxed">
            {tooltip}
          </p>
-         <div className="absolute top-full left-4 border-8 border-transparent border-t-slate-800" />
+         <div className="absolute top-full left-1/2 -translate-x-1/2 border-[10px] border-transparent border-t-slate-900" />
        </div>
      )}
   </div>
@@ -772,17 +772,17 @@ const BottomAnalysisTabs = ({
 };
 
 const PerfCard = ({ label, value, sub, tooltip }: { label: string, value: string, sub: string, tooltip?: string }) => (
-  <div className="p-8 bg-slate-950/80 border border-slate-900 rounded-[32px] hover:border-indigo-500/30 transition-all text-center space-y-2 relative group cursor-help hover:z-[60]">
-     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{label}</p>
-     <p className="text-3xl font-black text-slate-100 tabular-nums">{value}</p>
-     <p className="text-[10px] font-bold text-slate-600 uppercase italic">{sub}</p>
+  <div className="p-8 bg-slate-950/80 border border-slate-900 rounded-[40px] hover:border-indigo-500/30 transition-all text-center space-y-3 relative group cursor-help hover:z-[60]">
+     <p className="text-[12px] font-black text-slate-500 uppercase tracking-[0.2em]">{label}</p>
+     <p className="text-4xl font-black text-slate-100 tabular-nums">{value}</p>
+     <p className="text-[11px] font-bold text-slate-600 uppercase italic tracking-wider">{sub}</p>
      
      {tooltip && (
-       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 w-48 p-3 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none">
-         <p className="text-[10px] font-bold text-slate-200 leading-relaxed text-left">
+       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-5 w-56 p-4 bg-slate-900/95 backdrop-blur-xl border border-indigo-500/30 rounded-3xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-[100] pointer-events-none translate-y-2 group-hover:translate-y-0 text-left">
+         <p className="text-[11px] font-bold text-slate-200 leading-relaxed">
            {tooltip}
          </p>
-         <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-800" />
+         <div className="absolute top-full left-1/2 -translate-x-1/2 border-[10px] border-transparent border-t-slate-900" />
        </div>
      )}
   </div>
