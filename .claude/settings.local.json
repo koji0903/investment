@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(grep -r \"export const\\\\|export function\" /c/Users/koji0/Antigravity/investment/src/lib/*.ts)",
-      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")"
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(find /c/Users/koji0/Antigravity/investment/src -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec wc -l {} +)",
+      "Bash(grep -n \"TradingSuitability\\\\|SignalLabel\" /c/Users/koji0/Antigravity/investment/src/types/*.ts)",
+      "Bash(npm install *)",
+      "Bash(npm run *)"
     ]
   }
 }
