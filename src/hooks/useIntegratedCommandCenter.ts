@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useFXData } from "@/hooks/useFXData";
 import { FXSimulationService } from "@/services/fxSimulationService";
@@ -57,8 +57,14 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
   const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(null);
   const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>([]);
   
-  const [isDataLoading, setIsDataLoading] = useState(true);
+   const [isDataLoading, setIsDataLoading] = useState(true);
   const [now, setNow] = useState(new Date());
+
+  // 最新のステートをループなしで参照するための Ref
+  const sentimentRef = useRef<FXMarketSentiment | null>(null);
+  useEffect(() => {
+    sentimentRef.current = sentiment;
+  }, [sentiment]);
 
   // --- 1. System Version & Cache Management ---
   useEffect(() => {
@@ -185,7 +191,8 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
       }
 
       // b. 低頻度データの取得 (分析、過去ログ、設定。TTL 20分)
-      if (forceMetadata || nowTime - lastMeta > METADATA_TTL || !sentiment) {
+      // b. 低頻度データの取得 (分析、過去ログ、設定。TTL 20分)
+      if (forceMetadata || nowTime - lastMeta > METADATA_TTL || !sentimentRef.current) {
         console.log(`[Integrated] Fetching Metadata for ${pairCode}`);
         const [s, r, wp, cond, btest, logs, tConfig, tLogs] = await Promise.all([
           getMarketSentimentAction(),
@@ -223,7 +230,7 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
     } finally {
       setIsDataLoading(false);
     }
-  }, [user, pairCode, sentiment]);
+  }, [user?.uid, pairCode]); // user.uid と pairCode のみに依存させて無限ループを回避
 
   useEffect(() => {
     refreshData();
