@@ -6,7 +6,8 @@
       "Bash(find /c/Users/koji0/Antigravity/investment/src -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec wc -l {} +)",
       "Bash(grep -n \"TradingSuitability\\\\|SignalLabel\" /c/Users/koji0/Antigravity/investment/src/types/*.ts)",
       "Bash(npm install *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(npx tsc *)"
     ]
   }
 }
