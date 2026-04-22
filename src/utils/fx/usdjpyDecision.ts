@@ -52,12 +52,21 @@ export interface USDJPYDecisionResult {
   structure: FXStructureAnalysis;
   orderBook: FXPseudoOrderBook;
   recommendation: {
-    action: "BUY" | "SELL" | "WAIT" | "CAUTION_LOT_REDUCTION" | "PROHIBITED";
+    action: "BUY" | "SELL" | "WAIT" | "CAUTION_LOT_REDUCTION" | "PROHIBITED" | "BUY_PROBE" | "SELL_PROBE" | "BUY_PARTIAL" | "SELL_PARTIAL";
     lot: number;
     tp: number;
     sl: number;
     rr: number;
     reason: string;
+    aggressiveness?: "conservative" | "moderate" | "aggressive";
+  };
+  // 詳細判断根拠 (新規追加)
+  reasoningContext?: {
+    summary: string;
+    positiveFactors: Array<{ factor: string; score: number; explanation: string }>;
+    negativeFactors: Array<{ factor: string; penalty: number; explanation: string }>;
+    suspendReason?: string;
+    suspendRemovalConditions?: string[];
   };
 }
 
@@ -141,38 +150,69 @@ export function calculateUSDJPYDecision(
   });
 
   const finalScore = Math.max(0, Math.min(100, confluenceScore.total + learningCorrection + (weightProfile?.bias || 0)));
-  const confidenceThreshold = tuningConfig?.confidenceThreshold || 70;
+
+  // 動的な信頼度閾値 (市場環境に応じた調整)
+  const dynamicThreshold = calculateDynamicThreshold(
+    regime.type,
+    volatilityAnalysis.volatilityLevel,
+    session.score,
+    riskMetrics
+  );
 
   const isRiskOk = !riskMetrics || (
     riskMetrics.consecutiveLosses < (tuningConfig?.maxDailyDrawdownAllowed ? 5 : 3) &&
     riskMetrics.drawdownPercent < (tuningConfig?.maxDailyDrawdownAllowed || 10)
   );
 
-  const isEntryAllowed =
-    momentumScores.primaryDirection !== "none" &&
-    confluenceScore.total >= confidenceThreshold &&
-    volatilityAnalysis.isVolatileOk &&
-    session.isOk &&
-    !fakeoutAnalysis.isFakeout &&
-    isRiskOk &&
-    (isHighProbMode ? structureAnalysis.isPullback : true) &&
-    (indicatorStatus?.status !== "prohibited") &&
-    (executionProfile?.status !== "critical") &&
-    (structure ? structure.isEntryTiming : true);
+  // 段階的判定システム（AND ロジックではなく段階的スコア評価）
+  const judgment = determineDecisionWithGradation(
+    momentumScores,
+    structureAnalysis,
+    volatilityAnalysis,
+    fakeoutAnalysis,
+    confluenceScore,
+    finalScore,
+    dynamicThreshold,
+    session,
+    indicatorStatus,
+    isRiskOk,
+    riskMetrics
+  );
 
-  // ロット調整
-  const baseLot = 1.0;
-  let adjustedLot = baseLot * (tuningConfig?.riskMultiplier || 1.0);
-  adjustedLot *= (finalScore / 100); // 信頼度に応じて調整
-  if (indicatorStatus.status === "caution") adjustedLot *= 0.5;
-  if (riskMetrics && riskMetrics.consecutiveLosses >= 1) adjustedLot *= 0.7;
+  const isEntryAllowed = judgment.isEntryAllowed;
 
-  if (isEntryAllowed) reasons.push("✓ マルチシグナル合流 - エントリー許可");
+  if (isEntryAllowed) reasons.push(`✓ ${judgment.actionType}判定 - 信頼度${finalScore.toFixed(0)}%`);
   if (!isRiskOk) reasons.push("⚠ リスク制限により停止中");
 
-  const recommendationAction: "BUY" | "SELL" | "WAIT" | "CAUTION_LOT_REDUCTION" | "PROHIBITED" =
+  // ロット調整（判定レベルに応じた段階的調整）
+  const baseLot = 1.0;
+  let adjustedLot = calculateAdaptiveLot(
+    baseLot,
+    finalScore,
+    judgment.aggressiveness,
+    tuningConfig,
+    indicatorStatus,
+    riskMetrics,
+    judgment.actionType
+  );
+
+  const recommendationAction: "BUY" | "SELL" | "WAIT" | "CAUTION_LOT_REDUCTION" | "PROHIBITED" | "BUY_PROBE" | "SELL_PROBE" | "BUY_PARTIAL" | "SELL_PARTIAL" =
     !isEntryAllowed ? (indicatorStatus.status === "prohibited" ? "PROHIBITED" : "WAIT") :
-    (indicatorStatus.status === "caution" ? "CAUTION_LOT_REDUCTION" : (momentumScores.primaryDirection === "buy" ? "BUY" : "SELL"));
+    judgment.recommendedAction;
+
+  // 詳細な判断根拠を構築
+  const reasoningContext = buildDetailedReasoningContext(
+    momentumScores,
+    structureAnalysis,
+    volatilityAnalysis,
+    fakeoutAnalysis,
+    confluenceScore,
+    session,
+    indicatorStatus,
+    riskMetrics,
+    isRiskOk,
+    isEntryAllowed
+  );
 
   return {
     confidence: Math.round(finalScore),
@@ -199,9 +239,255 @@ export function calculateUSDJPYDecision(
       tp: riskReward.tp,
       sl: riskReward.sl,
       rr: riskReward.rr,
-      reason: reasons[reasons.length - 1] || "条件待機中"
-    }
+      reason: reasons[reasons.length - 1] || "条件待機中",
+      aggressiveness: judgment.aggressiveness
+    },
+    reasoningContext
   };
+}
+
+// ============================================================================
+// デイトレ向け段階的判定システム
+// ============================================================================
+
+interface GradationJudgment {
+  isEntryAllowed: boolean;
+  recommendedAction: "BUY" | "SELL" | "BUY_PROBE" | "SELL_PROBE" | "BUY_PARTIAL" | "SELL_PARTIAL" | "WAIT" | "CAUTION_LOT_REDUCTION" | "PROHIBITED";
+  aggressiveness: "conservative" | "moderate" | "aggressive";
+  actionType: "標準" | "試し買い" | "一部";
+  rationale: string;
+}
+
+function calculateDynamicThreshold(
+  regimeType: string,
+  volatilityLevel: "low" | "normal" | "high",
+  sessionScore: number,
+  riskMetrics: any
+): number {
+  let baseThreshold = 70; // デフォルト
+
+  // レジーム別調整
+  if (regimeType === "TREND_UP" || regimeType === "TREND_DOWN") {
+    baseThreshold -= 15; // トレンド相場: 55
+  } else if (regimeType === "STRONG_TREND") {
+    baseThreshold -= 20; // 強いトレンド: 50
+  } else if (regimeType.includes("RANGE")) {
+    baseThreshold += 10; // レンジ相場: 80（厳しく）
+  }
+
+  // ボラティリティ別調整
+  if (volatilityLevel === "high") {
+    baseThreshold -= 10; // 高ボラ: 活発な相場を活かす
+  } else if (volatilityLevel === "low") {
+    baseThreshold += 5; // 低ボラ: 慎重に
+  }
+
+  // セッション別調整
+  if (sessionScore >= 100) {
+    baseThreshold -= 5; // ロンドン・NY開始時は積極的
+  }
+
+  // リスク状況別調整
+  if (riskMetrics) {
+    if (riskMetrics.consecutiveLosses >= 3) baseThreshold += 10; // 連敗中は慎重
+    if (riskMetrics.drawdownPercent > 5) baseThreshold += 5; // DD増加中は慎重
+  }
+
+  return Math.max(40, Math.min(85, baseThreshold)); // 40-85の範囲で制限
+}
+
+function determineDecisionWithGradation(
+  momentum: MomentumScores,
+  structure: StructureAnalysis,
+  volatility: VolatilityAnalysis,
+  fakeout: FakeoutAnalysis,
+  confluence: ConfluenceScore,
+  finalScore: number,
+  dynamicThreshold: number,
+  session: any,
+  indicatorStatus: any,
+  isRiskOk: boolean,
+  riskMetrics: any
+): GradationJudgment {
+  // 禁止状況の判定
+  if (indicatorStatus?.status === "prohibited") {
+    return {
+      isEntryAllowed: false,
+      recommendedAction: "PROHIBITED",
+      aggressiveness: "conservative",
+      actionType: "標準",
+      rationale: "重要指標発表中は取引禁止"
+    };
+  }
+
+  if (!isRiskOk) {
+    return {
+      isEntryAllowed: false,
+      recommendedAction: "CAUTION_LOT_REDUCTION",
+      aggressiveness: "conservative",
+      actionType: "標準",
+      rationale: "リスク制限により停止"
+    };
+  }
+
+  // トレンド方向の確認
+  const hasDirection = momentum.primaryDirection !== "none";
+  if (!hasDirection) {
+    return {
+      isEntryAllowed: false,
+      recommendedAction: "WAIT",
+      aggressiveness: "conservative",
+      actionType: "標準",
+      rationale: "トレンド方向が不明確"
+    };
+  }
+
+  // だまし懸念 → スコア削減（完全禁止ではなく）
+  let adjustedScore = finalScore;
+  if (fakeout.isFakeout) {
+    adjustedScore *= 0.7; // 30%削減
+  }
+
+  // マイクロトレンドボーナス（短期モメンタム）
+  const microTrendBonus = analyzeMicroTrend(momentum, structure) * 15;
+  adjustedScore = Math.min(100, adjustedScore + microTrendBonus);
+
+  // 段階的判定
+  const isCaution = indicatorStatus?.status === "caution";
+
+  // 【高確度エントリー】 75点以上
+  if (adjustedScore >= 75 && volatility.isVolatileOk && session.isOk) {
+    const action = momentum.primaryDirection === "buy"
+      ? "BUY"
+      : "SELL";
+
+    return {
+      isEntryAllowed: true,
+      recommendedAction: action,
+      aggressiveness: "aggressive",
+      actionType: "標準",
+      rationale: `高信頼度シグナル（${adjustedScore.toFixed(0)}/100）- 標準ロットでエントリー`
+    };
+  }
+
+  // 【標準エントリー】 60点以上 & 基本条件OK
+  if (adjustedScore >= 60 && volatility.isVolatileOk && !fakeout.isFakeout) {
+    const action = momentum.primaryDirection === "buy"
+      ? "BUY"
+      : "SELL";
+
+    return {
+      isEntryAllowed: true,
+      recommendedAction: action,
+      aggressiveness: "moderate",
+      actionType: "標準",
+      rationale: `確度エントリー（${adjustedScore.toFixed(0)}/100） - 条件整い判定`
+    };
+  }
+
+  // 【試し買い】 45点以上 & トレンド確認
+  if (
+    adjustedScore >= 45 &&
+    (momentum.rsiValues.tf5m > 40 && momentum.rsiValues.tf5m < 70)
+  ) {
+    const action = momentum.primaryDirection === "buy"
+      ? "BUY_PROBE"
+      : "SELL_PROBE";
+
+    return {
+      isEntryAllowed: true,
+      recommendedAction: action,
+      aggressiveness: "moderate",
+      actionType: "試し買い",
+      rationale: `試験的エントリー（${adjustedScore.toFixed(0)}/100）- 小ロット0.5Lot`
+    };
+  }
+
+  // 【一部エントリー】 40点以上 & マイクロトレンド確認
+  if (adjustedScore >= 40 && structure.isPullback) {
+    const action = momentum.primaryDirection === "buy"
+      ? "BUY_PARTIAL"
+      : "SELL_PARTIAL";
+
+    return {
+      isEntryAllowed: true,
+      recommendedAction: action,
+      aggressiveness: "conservative",
+      actionType: "一部",
+      rationale: `スケーリングエントリー（${adjustedScore.toFixed(0)}/100）- 初期ロット0.3Lot`
+    };
+  }
+
+  // 待機
+  return {
+    isEntryAllowed: false,
+    recommendedAction: "WAIT",
+    aggressiveness: "conservative",
+    actionType: "標準",
+    rationale: `待機中（スコア${adjustedScore.toFixed(0)}/100、閾値${dynamicThreshold.toFixed(0)}） - 次のシグナル待機`
+  };
+}
+
+function analyzeMicroTrend(momentum: MomentumScores, structure: StructureAnalysis): number {
+  let bonus = 0;
+
+  // RSI水準による加算
+  if (momentum.primaryDirection === "buy") {
+    if (momentum.rsiValues.tf1m > 50 && momentum.rsiValues.tf5m > 50) bonus += 0.5;
+    if (momentum.macdValues.tf5m.histogram > 0) bonus += 0.3;
+  } else {
+    if (momentum.rsiValues.tf1m < 50 && momentum.rsiValues.tf5m < 50) bonus += 0.5;
+    if (momentum.macdValues.tf5m.histogram < 0) bonus += 0.3;
+  }
+
+  // 構造ボーナス
+  if (structure.isPullback) bonus += 0.4;
+  if (structure.isBreakout) bonus += 0.3;
+
+  return Math.min(1.0, bonus);
+}
+
+function calculateAdaptiveLot(
+  baseLot: number,
+  finalScore: number,
+  aggressiveness: "conservative" | "moderate" | "aggressive",
+  tuningConfig: any,
+  indicatorStatus: any,
+  riskMetrics: any,
+  actionType: string
+): number {
+  let lot = baseLot * (tuningConfig?.riskMultiplier || 1.0);
+
+  // アグレッシブレベルに応じた倍率
+  if (aggressiveness === "aggressive") {
+    lot *= 1.0; // 標準
+  } else if (aggressiveness === "moderate") {
+    lot *= 0.8; // 20%削減
+  } else {
+    lot *= 0.5; // 50%削減
+  }
+
+  // アクションタイプに応じた調整
+  if (actionType === "試し買い") {
+    lot *= 0.5; // 50% = 0.5 Lot
+  } else if (actionType === "一部") {
+    lot *= 0.3; // 30% = 0.3 Lot
+  }
+
+  // スコアに応じた動的調整
+  lot *= Math.max(0.3, finalScore / 100);
+
+  // 指標警戒時
+  if (indicatorStatus?.status === "caution") {
+    lot *= 0.5;
+  }
+
+  // 連敗時
+  if (riskMetrics?.consecutiveLosses >= 1) {
+    lot *= Math.max(0.5, 1.0 - riskMetrics.consecutiveLosses * 0.15);
+  }
+
+  return Number(Math.max(0.01, lot).toFixed(2));
 }
 
 // ============================================================================
@@ -539,4 +825,190 @@ function checkMarketSession() {
   if (hour >= 16 && hour <= 20) return { name: "ロンドン市場 (London)", isOk: true, score: 100 };
   if (hour >= 21 || hour <= 2) return { name: "NY市場 (New York)", isOk: true, score: 100 };
   return { name: "セッション外 (Inter-session)", isOk: false, score: 50 };
+}
+
+// ============================================================================
+// 詳細判断根拠の構築
+// ============================================================================
+
+function buildDetailedReasoningContext(
+  momentum: MomentumScores,
+  structure: StructureAnalysis,
+  volatility: VolatilityAnalysis,
+  fakeout: FakeoutAnalysis,
+  confluence: ConfluenceScore,
+  session: { name: string; isOk: boolean; score: number },
+  indicatorStatus: { status: "normal" | "caution" | "prohibited"; message: string },
+  riskMetrics: any,
+  isRiskOk: boolean,
+  isEntryAllowed: boolean
+) {
+  const positiveFactors: Array<{ factor: string; score: number; explanation: string }> = [];
+  const negativeFactors: Array<{ factor: string; penalty: number; explanation: string }> = [];
+
+  // ポジティブ要因の分析
+  if (momentum.primaryDirection !== "none") {
+    positiveFactors.push({
+      factor: "トレンド方向性",
+      score: 20,
+      explanation: `${momentum.primaryDirection === "buy" ? "上昇" : "下降"}トレンドが複数タイムフレームで確認されています（信頼度: ${momentum.confidence}%）`
+    });
+  }
+
+  if (momentum.rsiValues.tf5m > 55 && momentum.rsiValues.tf5m < 75) {
+    positiveFactors.push({
+      factor: "RSI最適水準",
+      score: 12,
+      explanation: `5分足RSI ${momentum.rsiValues.tf5m.toFixed(0)}は過熱でも売られすぎでもなく、トレンド確認に最適な水準です`
+    });
+  }
+
+  if (momentum.macdValues.tf5m.histogram > 0 && momentum.primaryDirection === "buy") {
+    positiveFactors.push({
+      factor: "MACD正転",
+      score: 10,
+      explanation: "MACD Histogramが正転し、上昇モメンタムの強化を示唆しています"
+    });
+  }
+
+  if (structure.isPullback) {
+    positiveFactors.push({
+      factor: "押し目確認",
+      score: 15,
+      explanation: `EMA21付近での押し目が確認されており、エントリー最適タイミングです（深さ: ${structure.pullbackDepth.toFixed(4)}）`
+    });
+  }
+
+  if (structure.isBreakout) {
+    positiveFactors.push({
+      factor: "レベルブレイク",
+      score: 13,
+      explanation: "直近の抵抗線/サポート線を正規ブレイクし、新たなトレンド形成が期待できます"
+    });
+  }
+
+  if (volatility.volatilityLevel === "normal" || volatility.volatilityLevel === "high") {
+    positiveFactors.push({
+      factor: "ボラティリティ適正",
+      score: 10,
+      explanation: `現在のATR ${volatility.currentATR.toFixed(5)} は取引に十分な値動きを提供しています`
+    });
+  }
+
+  if (session.isOk) {
+    positiveFactors.push({
+      factor: "アクティブセッション",
+      score: 8,
+      explanation: `${session.name}が稼働中で、流動性と値動きが確保されています`
+    });
+  }
+
+  // ネガティブ要因の分析
+  if (fakeout.isFakeout) {
+    negativeFactors.push({
+      factor: "だまし懸念",
+      penalty: 20,
+      explanation: `${fakeout.reason} - 高い確率でフェイクブレイクの可能性があります`
+    });
+  }
+
+  if (!session.isOk) {
+    negativeFactors.push({
+      factor: "セッション外",
+      penalty: 10,
+      explanation: "市場のアクティブセッション外のため、流動性不足と予期しない値動きのリスクがあります"
+    });
+  }
+
+  if (!volatility.isVolatileOk) {
+    negativeFactors.push({
+      factor: "ボラティリティ不足",
+      penalty: 8,
+      explanation: `現在のボラティリティが低すぎて、取引効率が低下する可能性があります`
+    });
+  }
+
+  if (momentum.rsiValues.tf5m > 75) {
+    negativeFactors.push({
+      factor: "RSI過熱",
+      penalty: 12,
+      explanation: `RSI ${momentum.rsiValues.tf5m.toFixed(0)} は過熱水準にあり、反転リスクが高まっています`
+    });
+  }
+
+  if (momentum.rsiValues.tf5m < 25) {
+    negativeFactors.push({
+      factor: "RSI売られすぎ",
+      penalty: 12,
+      explanation: `RSI ${momentum.rsiValues.tf5m.toFixed(0)} は売られすぎ水準にあり、下振れリスクが高まっています`
+    });
+  }
+
+  // 停止理由と解除条件を構築
+  let suspendReason: string | undefined;
+  let suspendRemovalConditions: string[] = [];
+
+  if (!isEntryAllowed) {
+    if (indicatorStatus.status === "prohibited") {
+      suspendReason = `🛑 重要経済指標による取引禁止: ${indicatorStatus.message}`;
+      suspendRemovalConditions = [
+        "指標発表から30分以上経過",
+        "市場が正常な値動きに戻る（ボラティリティが正常化）",
+        "システムが自動的に運用状態を確認した後"
+      ];
+    } else if (indicatorStatus.status === "caution") {
+      suspendReason = `⚠️ 経済指標警戒中: ${indicatorStatus.message}`;
+      suspendRemovalConditions = [
+        "指標の影響が市場から消滅（通常20分程度）",
+        "ボラティリティが通常範囲内（ATR > 0.03）に戻る"
+      ];
+    } else if (!isRiskOk) {
+      suspendReason = "⚠️ リスク管理による取引制限";
+      const consecutiveLosses = riskMetrics?.consecutiveLosses || 0;
+      const drawdown = riskMetrics?.drawdownPercent || 0;
+      suspendRemovalConditions = [
+        consecutiveLosses >= 3 ? `連敗を2敗以下に減少させる（現在: ${consecutiveLosses}連敗）` : "",
+        drawdown > 5 ? `本日のドローダウンを5%以下に抑制する（現在: ${drawdown.toFixed(1)}%）` : "",
+        "30分以上安定した取引環境を保つ"
+      ].filter(Boolean);
+    } else if (!volatility.isVolatileOk) {
+      suspendReason = "ボラティリティが不適切な水準です";
+      suspendRemovalConditions = [
+        "ボラティリティが正常範囲に戻るまで待機（ATR: 0.03～0.25）",
+        "市場が大きく動き始めるまで待機"
+      ];
+    } else if (!session.isOk) {
+      suspendReason = "非アクティブセッション中のため待機中";
+      suspendRemovalConditions = [
+        `${session.name}まで待機`,
+        "セッション開始後、市場が正常化するまで（通常5～10分）"
+      ];
+    } else if (momentum.primaryDirection === "none") {
+      suspendReason = "トレンド方向性が不明確です";
+      suspendRemovalConditions = [
+        "複数タイムフレーム（5m・15m）で同一方向のトレンド形成",
+        "RSI/MACDで明確な方向性確認",
+        "市場レジーム（トレンド vs レンジ）の判定"
+      ];
+    } else if (confluence.total < 70) {
+      suspendReason = `シグナル合流度が不十分です（現在: ${confluence.total.toFixed(0)}/100）`;
+      suspendRemovalConditions = [
+        "複数の技術指標が同時に同じ方向を示す",
+        "市場構造が明確なサポート/レジスタンスを形成",
+        "信頼度スコアが70以上に上昇"
+      ];
+    }
+  }
+
+  const summary = isEntryAllowed
+    ? `✅ エントリー許可：${momentum.primaryDirection === "buy" ? "買い" : "売り"}シグナル、信頼度${confluence.total.toFixed(0)}/100`
+    : suspendReason || "条件を満たしていません";
+
+  return {
+    summary,
+    positiveFactors: positiveFactors.sort((a, b) => b.score - a.score),
+    negativeFactors: negativeFactors.sort((a, b) => b.penalty - a.penalty),
+    suspendReason,
+    suspendRemovalConditions
+  };
 }

@@ -180,21 +180,29 @@ export const USDJPYDecisionMonitor = ({ decision }: { decision: USDJPYDecisionRe
     switch (rec.action) {
       case "BUY": return "text-emerald-400 border-emerald-500/30 bg-emerald-500/5 shadow-[0_0_40px_rgba(16,185,129,0.1)]";
       case "SELL": return "text-rose-400 border-rose-500/30 bg-rose-500/5 shadow-[0_0_40px_rgba(244,63,94,0.1)]";
+      case "BUY_PROBE": return "text-emerald-300 border-emerald-500/20 bg-emerald-500/3";
+      case "SELL_PROBE": return "text-rose-300 border-rose-500/20 bg-rose-500/3";
+      case "BUY_PARTIAL": return "text-emerald-200 border-emerald-500/15 bg-emerald-500/2";
+      case "SELL_PARTIAL": return "text-rose-200 border-rose-500/15 bg-rose-500/2";
       case "CAUTION_LOT_REDUCTION": return "text-amber-400 border-amber-500/30 bg-amber-500/5";
       case "PROHIBITED": return "text-slate-600 border-slate-700 bg-slate-900/50 grayscale";
       default: return "text-slate-500 border-slate-800 bg-slate-900/30";
     }
   };
 
-  const statusMap = {
+  const statusMap: Record<string, { label: string; icon: any }> = {
     BUY: { label: "買い推奨", icon: ArrowRightCircle },
     SELL: { label: "売り推奨", icon: ArrowRightCircle },
+    BUY_PROBE: { label: "試し買い", icon: ArrowRightCircle },
+    SELL_PROBE: { label: "試し売り", icon: ArrowRightCircle },
+    BUY_PARTIAL: { label: "部分買い", icon: ArrowRightCircle },
+    SELL_PARTIAL: { label: "部分売り", icon: ArrowRightCircle },
     CAUTION_LOT_REDUCTION: { label: "ロット縮小", icon: AlertCircle },
     WAIT: { label: "待機", icon: Timer },
     PROHIBITED: { label: "禁止", icon: ShieldAlert },
   };
 
-  const StatusIcon = statusMap[rec.action].icon;
+  const StatusIcon = (statusMap[rec.action] || statusMap.WAIT).icon;
 
   return (
     <div className={cn(

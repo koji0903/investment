@@ -269,17 +269,95 @@ export const IntegratedCommandCenter = () => {
            />
         </div>
 
-        {/* 判断理由 (Priority 5) */}
-        <div className="p-6 bg-indigo-500/5 border border-indigo-500/10 rounded-[40px] flex items-center gap-6">
-           <div className="w-12 h-12 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 shrink-0">
-              <Info size={24} />
+        {/* 判断理由 (Priority 5) - 詳細版 */}
+        <div className="space-y-4">
+           <div className="p-6 bg-indigo-500/5 border border-indigo-500/10 rounded-[40px] flex items-center gap-6">
+              <div className="w-12 h-12 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 shrink-0">
+                 <Info size={24} />
+              </div>
+              <div className="space-y-1">
+                 <p className="text-[10px] font-black text-indigo-400/60 uppercase tracking-widest">主要な判断根拠 / Reasoning Context</p>
+                 <p className="text-xl font-bold text-slate-200 italic leading-relaxed">
+                    "{(decision as any)?.reasoningContext?.summary || rec?.reason || "市場データを解析中..."}"
+                 </p>
+              </div>
            </div>
-           <div className="space-y-1">
-              <p className="text-[10px] font-black text-indigo-400/60 uppercase tracking-widest">主要な判断根拠 / Reasoning Context</p>
-              <p className="text-xl font-bold text-slate-200 italic leading-relaxed">
-                 "{rec?.reason || "市場データを解析して最適なエントリーポイントを特定しています。"}"
-              </p>
-           </div>
+
+           {/* 詳細分析表示 */}
+           {(decision as any)?.reasoningContext && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                 {/* ポジティブ要因 */}
+                 {(decision as any).reasoningContext.positiveFactors && (decision as any).reasoningContext.positiveFactors.length > 0 && (
+                    <div className="p-6 bg-emerald-500/5 border border-emerald-500/10 rounded-[32px] space-y-4">
+                       <h4 className="text-xs font-black text-emerald-500/80 uppercase tracking-widest flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center text-[10px]">✓</span>
+                          ポジティブ要因
+                       </h4>
+                       <div className="space-y-3">
+                          {(decision as any).reasoningContext.positiveFactors.map((factor: any, idx: number) => (
+                             <div key={idx} className="text-[13px] space-y-1">
+                                <div className="flex items-center justify-between">
+                                   <span className="font-bold text-emerald-400">{factor.factor}</span>
+                                   <span className="text-emerald-500 font-black">+{factor.score}</span>
+                                </div>
+                                <p className="text-slate-400 text-[12px] leading-relaxed">{factor.explanation}</p>
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+                 )}
+
+                 {/* ネガティブ要因 */}
+                 {(decision as any).reasoningContext.negativeFactors && (decision as any).reasoningContext.negativeFactors.length > 0 && (
+                    <div className="p-6 bg-rose-500/5 border border-rose-500/10 rounded-[32px] space-y-4">
+                       <h4 className="text-xs font-black text-rose-500/80 uppercase tracking-widest flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-rose-500/20 flex items-center justify-center text-[10px]">!</span>
+                          リスク要因
+                       </h4>
+                       <div className="space-y-3">
+                          {(decision as any).reasoningContext.negativeFactors.map((factor: any, idx: number) => (
+                             <div key={idx} className="text-[13px] space-y-1">
+                                <div className="flex items-center justify-between">
+                                   <span className="font-bold text-rose-400">{factor.factor}</span>
+                                   <span className="text-rose-500 font-black">-{factor.penalty}</span>
+                                </div>
+                                <p className="text-slate-400 text-[12px] leading-relaxed">{factor.explanation}</p>
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+                 )}
+              </div>
+           )}
+
+           {/* 停止理由と解除条件 */}
+           {(decision as any)?.reasoningContext?.suspendReason && (
+              <div className="p-6 bg-amber-500/5 border border-amber-500/10 rounded-[32px] space-y-4">
+                 <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-center text-amber-500 shrink-0 mt-1">
+                       <AlertTriangle size={18} />
+                    </div>
+                    <div className="space-y-3 flex-1">
+                       <h4 className="text-sm font-black text-amber-500">{(decision as any).reasoningContext.suspendReason}</h4>
+
+                       {(decision as any).reasoningContext.suspendRemovalConditions &&
+                        (decision as any).reasoningContext.suspendRemovalConditions.length > 0 && (
+                          <div className="space-y-2 pt-2 border-t border-amber-500/10">
+                             <p className="text-[11px] font-black text-amber-600/70 uppercase tracking-wider">解除条件：</p>
+                             <ul className="space-y-2">
+                                {(decision as any).reasoningContext.suspendRemovalConditions.map((condition: string, idx: number) => (
+                                   <li key={idx} className="text-[12px] text-amber-600/80 flex items-start gap-2">
+                                      <span className="text-amber-500 mt-1">→</span>
+                                      <span>{condition}</span>
+                                   </li>
+                                ))}
+                             </ul>
+                          </div>
+                       )}
+                    </div>
+                 </div>
+              </div>
+           )}
         </div>
       </section>
 

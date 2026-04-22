@@ -381,9 +381,9 @@ export const IntegratedCommandCenter = () => {
          />
        </section>
 
-       <EURUSDSimulationPanel 
+       <EURUSDSimulationPanel
          currentPrice={quote?.price || 0}
-         decision={decision}
+         decision={decision as any}
          showEntryForm={showEntryForm}
          setShowEntryForm={setShowEntryForm}
          riskMetrics={riskMetrics}

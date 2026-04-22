@@ -46,7 +46,7 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
   const [reviews, setReviews] = useState<FXTradingReview[]>([]);
   const [riskMetrics, setRiskMetrics] = useState<FXRiskMetrics | null>(null);
   const [activePositions, setActivePositions] = useState<FXSimulation[]>([]);
-  const [performance, setPerformance] = useState<FXPerformanceResult | null>(null); 
+  const [performance, setPerformance] = useState<FXPerformanceResult | null>(null);
   const [weightProfile, setWeightProfile] = useState<FXWeightProfile | null>(null);
   const [indicatorStatus, setIndicatorStatus] = useState<{ status: "normal" | "caution" | "prohibited", message: string } | null>(null);
   const [conditionAnalysis, setConditionAnalysis] = useState<FXConditionAnalysis | null>(null);
@@ -56,9 +56,27 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
   const [tuningConfig, setTuningConfig] = useState<FXTuningConfig | null>(null);
   const [driftAnalysis, setDriftAnalysis] = useState<FXDriftAnalysis | null>(null);
   const [tuningLogs, setTuningLogs] = useState<FXTuningLog[]>([]);
-  
-   const [isDataLoading, setIsDataLoading] = useState(true);
+
+  const [isDataLoading, setIsDataLoading] = useState(true);
   const [now, setNow] = useState(new Date());
+
+  // AbortController管理 (メモリリークと重複リクエスト防止)
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isComponentMountedRef = useRef(true);
+
+  // コンポーネントアンマウント時のクリーンアップ
+  useEffect(() => {
+    return () => {
+      isComponentMountedRef.current = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, []);
 
   // 最新のステートをループなしで参照するための Ref
   const sentimentRef = useRef<FXMarketSentiment | null>(null);
@@ -156,18 +174,33 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
     };
   }, [user, pairCode]);
 
-  // --- 3. データ取得 (Granular Fetching) ---
+  // --- 3. データ取得 (Granular Fetching with Timeout & AbortController) ---
   const refreshData = useCallback(async (forceMetadata = false) => {
-    if (!user) {
+    if (!user || !isComponentMountedRef.current) {
       setIsDataLoading(false);
       return;
     }
+
+    // 前のリクエストをキャンセル（重複リクエスト防止）
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    const signal = abortControllerRef.current.signal;
+
+    // タイムアウト処理（リクエスト全体で30秒）
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    }, 30000);
+
     try {
       const HIGH_FREQ_TTL = 3 * 60 * 1000;  // 3分
       const METADATA_TTL = 20 * 60 * 1000; // 20分 (低頻度データ用)
       const lastHighFreqKey = cacheKey("last_highfreq_fetch");
       const lastMetaKey = cacheKey("last_metadata_fetch");
-      
+
       const nowTime = Date.now();
       const lastHighFreq = AppPersistence.load<number>(lastHighFreqKey) || 0;
       const lastMeta = AppPersistence.load<number>(lastMetaKey) || 0;
@@ -175,79 +208,133 @@ export function useIntegratedCommandCenter(pairCode: string = "USD/JPY") {
       // a. 高頻度・中頻度データの取得 (経済指標等)
       if (nowTime - lastHighFreq > HIGH_FREQ_TTL) {
         console.log(`[Integrated] Fetching High-Freq data for ${pairCode}`);
-        const [inst, evts, perf] = await Promise.all([
-          FXIndicatorService.getEventStatus(pairCode),
-          FXIndicatorService.getUpcomingEvents(pairCode),
-          FXSimulationService.getAggregatedPerformance(user.uid, pairCode)
-        ]);
-        setIndicatorStatus(inst);
-        setUpcomingEvents(evts);
-        setPerformance(perf);
-        
-        AppPersistence.save(cacheKey("indicatorStatus"), inst);
-        AppPersistence.save(cacheKey("upcomingEvents"), evts);
-        AppPersistence.save(cacheKey("performance"), perf);
-        AppPersistence.save(lastHighFreqKey, nowTime);
+        try {
+          const result = (await Promise.race([
+            Promise.all([
+              FXIndicatorService.getEventStatus(pairCode),
+              FXIndicatorService.getUpcomingEvents(pairCode),
+              FXSimulationService.getAggregatedPerformance(user.uid, pairCode)
+            ]),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("High-freq fetch timeout")), 15000)
+            )
+          ])) as any[];
+
+          const [inst, evts, perf] = result;
+
+          if (isComponentMountedRef.current) {
+            setIndicatorStatus(inst);
+            setUpcomingEvents(evts);
+            setPerformance(perf);
+
+            AppPersistence.save(cacheKey("indicatorStatus"), inst);
+            AppPersistence.save(cacheKey("upcomingEvents"), evts);
+            AppPersistence.save(cacheKey("performance"), perf);
+            AppPersistence.save(lastHighFreqKey, nowTime);
+          }
+        } catch (e: any) {
+          if (e.name !== "AbortError") {
+            console.warn(`High-freq fetch warning for ${pairCode}:`, e.message);
+          }
+        }
       }
 
-      // b. 低頻度データの取得 (分析、過去ログ、設定。TTL 20分)
-      // b. 低頻度データの取得 (分析、過去ログ、設定。TTL 20分)
+      // b. 低頻度データの取得 (分析、過去ログ、設定)
       if (forceMetadata || nowTime - lastMeta > METADATA_TTL || !sentimentRef.current) {
         console.log(`[Integrated] Fetching Metadata for ${pairCode}`);
-        const [s, r, wp, cond, btest, logs, tConfig, tLogs] = await Promise.all([
-          getMarketSentimentAction(),
-          getFXReviewsAction(user.uid, 20, pairCode),
-          FXLearningService.getWeightProfile(user.uid, pairCode),
-          FXSimulationService.getConditionAnalysis(user.uid, pairCode),
-          FXSimulationService.getBacktestComparisons(pairCode),
-          FXSimulationService.getViolationLogs(user.uid, pairCode),
-          FXTuningService.getTuningConfig(user.uid, pairCode),
-          FXTuningService.getTuningLogs(user.uid, pairCode)
-        ]);
+        try {
+          const result = (await Promise.race([
+            Promise.all([
+              getMarketSentimentAction(),
+              getFXReviewsAction(user.uid, 20, pairCode),
+              FXLearningService.getWeightProfile(user.uid, pairCode),
+              FXSimulationService.getConditionAnalysis(user.uid, pairCode),
+              FXSimulationService.getBacktestComparisons(pairCode),
+              FXSimulationService.getViolationLogs(user.uid, pairCode),
+              FXTuningService.getTuningConfig(user.uid, pairCode),
+              FXTuningService.getTuningLogs(user.uid, pairCode)
+            ]),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Metadata fetch timeout")), 20000)
+            )
+          ])) as any[];
 
-        setSentiment(s);
-        setReviews(r);
-        setWeightProfile(wp);
-        setConditionAnalysis(cond || { timeOfDay: {}, dayOfWeek: {}, regime: {}, sentiment: {}, liquidity: {} });
-        setBacktestComparisons(btest);
-        setViolationLogs(logs);
-        setTuningConfig(tConfig);
-        setTuningLogs(tLogs);
+          const [s, r, wp, cond, btest, logs, tConfig, tLogs] = result;
 
-        AppPersistence.save(cacheKey("sentiment"), s);
-        AppPersistence.save(cacheKey("reviews"), r);
-        AppPersistence.save(cacheKey("weightProfile"), wp);
-        AppPersistence.save(cacheKey("conditionAnalysis"), cond);
-        AppPersistence.save(cacheKey("backtestComparisons"), btest);
-        AppPersistence.save(cacheKey("violationLogs"), logs);
-        AppPersistence.save(cacheKey("tuningConfig"), tConfig);
-        AppPersistence.save(cacheKey("tuningLogs"), tLogs);
-        AppPersistence.save(lastMetaKey, nowTime);
+          if (isComponentMountedRef.current) {
+            setSentiment(s);
+            setReviews(r);
+            setWeightProfile(wp);
+            setConditionAnalysis(cond || { timeOfDay: {}, dayOfWeek: {}, regime: {}, sentiment: {}, liquidity: {} });
+            setBacktestComparisons(btest);
+            setViolationLogs(logs);
+            setTuningConfig(tConfig);
+            setTuningLogs(tLogs);
+
+            AppPersistence.save(cacheKey("sentiment"), s);
+            AppPersistence.save(cacheKey("reviews"), r);
+            AppPersistence.save(cacheKey("weightProfile"), wp);
+            AppPersistence.save(cacheKey("conditionAnalysis"), cond);
+            AppPersistence.save(cacheKey("backtestComparisons"), btest);
+            AppPersistence.save(cacheKey("violationLogs"), logs);
+            AppPersistence.save(cacheKey("tuningConfig"), tConfig);
+            AppPersistence.save(cacheKey("tuningLogs"), tLogs);
+            AppPersistence.save(lastMetaKey, nowTime);
+          }
+        } catch (e: any) {
+          if (e.name !== "AbortError") {
+            console.warn(`Metadata fetch warning for ${pairCode}:`, e.message);
+          }
+        }
       }
 
-    } catch (e) {
-      console.error(`Error refreshing integrated data for ${pairCode}`, e);
+    } catch (e: any) {
+      if (e.name !== "AbortError") {
+        console.error(`Error refreshing integrated data for ${pairCode}:`, e.message);
+      }
     } finally {
-      setIsDataLoading(false);
+      clearTimeout(timeoutId);
+      if (isComponentMountedRef.current) {
+        setIsDataLoading(false);
+      }
     }
-  }, [user?.uid, pairCode]); // user.uid と pairCode のみに依存させて無限ループを回避
+  }, [user?.uid, pairCode]);
 
   useEffect(() => {
     refreshData();
-    const interval = setInterval(() => refreshData(), 120000); // 2分チェックに短縮 (TTLフィルタリングがあるため負荷は減少)
-    return () => clearInterval(interval);
+    refreshIntervalRef.current = setInterval(() => refreshData(), 120000); // 2分チェック
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
   }, [refreshData]);
 
   const triggerDriftAnalysis = useCallback(async () => {
-    if (!user) return;
+    if (!user || !isComponentMountedRef.current) return;
     try {
-      const d = await FXTuningService.analyzeDrift(user.uid, pairCode);
-      setDriftAnalysis(d);
-      AppPersistence.save(cacheKey("driftAnalysis"), d);
-    } catch (e) {
-      console.error(`Manual drift analysis failed for ${pairCode}`, e);
+      const timeoutId = setTimeout(() => {
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+      }, 15000);
+
+      const d = await Promise.race([
+        FXTuningService.analyzeDrift(user.uid, pairCode),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Drift analysis timeout")), 14000)
+        )
+      ]);
+
+      clearTimeout(timeoutId);
+      if (isComponentMountedRef.current) {
+        setDriftAnalysis(d as any);
+        AppPersistence.save(cacheKey("driftAnalysis"), d);
+      }
+    } catch (e: any) {
+      if (e.name !== "AbortError") {
+        console.error(`Drift analysis failed for ${pairCode}:`, e.message);
+      }
     }
-  }, [user, pairCode]);
+  }, [user?.uid, pairCode]);
 
   // Status Calculation based on real-time clock
   const realTimeStatus = useMemo(() => {
